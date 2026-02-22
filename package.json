@@ -1,0 +1,27 @@
+{
+  "name": "fbm-designaciones",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "db:generate": "pnpm --filter @fbm/web drizzle-kit generate",
+    "db:migrate": "pnpm --filter @fbm/web drizzle-kit migrate",
+    "db:seed:municipalities": "pnpm --filter @fbm/web tsx ../../scripts/seed-municipalities.ts",
+    "db:seed:distances": "pnpm --filter @fbm/web tsx ../../scripts/seed-distances.ts",
+    "db:seed": "pnpm --filter @fbm/web tsx ../../scripts/seed-demo-data.ts",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,47 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+
+# build
+dist/
+build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# turbo
+.turbo/
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+
+# vercel
+.vercel
+
+# drizzle
+drizzle/meta/
+
+# sentry
+.sentryclirc
+
+# python
+__pycache__/
+*.pyc
+.venv/
