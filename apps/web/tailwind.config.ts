@@ -47,6 +47,15 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // FBM brand colors
+        fbm: {
+          navy: '#1B2A4A',
+          'navy-light': '#2A3F6A',
+          'navy-dark': '#111D35',
+          orange: '#E87A2B',
+          'orange-light': '#F09A56',
+          'orange-dark': '#C96520',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

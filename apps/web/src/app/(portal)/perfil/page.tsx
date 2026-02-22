@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ProfileView } from './profile-view'
 
 export const metadata: Metadata = {
   title: 'Mi Perfil — FBM Designaciones',
@@ -7,19 +8,14 @@ export const metadata: Metadata = {
 export default function PerfilPage() {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Mi Perfil</h1>
-      <p className="mt-2 text-gray-500">
-        Consulta tus datos personales, categoria y estadisticas de la temporada actual. Puedes
-        actualizar tu numero de telefono y direccion desde aqui.
+      <h1 className="text-fbm-navy text-2xl font-bold">Mi Perfil</h1>
+      <p className="text-muted-foreground mt-2 text-sm">
+        Consulta tus datos personales, categoría y estadísticas de la temporada actual. Puedes
+        actualizar tu número de teléfono y dirección desde aquí.
       </p>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-400">
-          Datos personales — pendiente de implementacion (Fase 1)
-        </div>
-        <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-400">
-          Historial de temporada — pendiente de implementacion (Fase 1)
-        </div>
+      <div className="mt-6">
+        <ProfileView />
       </div>
     </div>
   )

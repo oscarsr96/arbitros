@@ -1,23 +1,23 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 const navLinks = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/admin/partidos', label: 'Partidos', icon: '🏀' },
-  { href: '/admin/personal', label: 'Personal', icon: '👥' },
-  { href: '/admin/asignacion', label: 'Asignación', icon: '📋' },
-  { href: '/admin/reportes', label: 'Reportes', icon: '📈' },
+  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/partidos', label: 'Partidos', icon: '🏀' },
+  { href: '/personal', label: 'Personal', icon: '👥' },
+  { href: '/asignacion', label: 'Asignación', icon: '📋' },
+  { href: '/reportes', label: 'Reportes', icon: '📈' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="bg-background flex min-h-screen">
       {/* Sidebar */}
-      <aside className="flex min-h-screen w-56 flex-col border-r border-gray-200 bg-white shadow-sm">
+      <aside className="border-border bg-fbm-navy flex min-h-screen w-56 flex-col border-r">
         {/* Logo */}
-        <div className="flex h-14 items-center border-b border-gray-200 px-4">
-          <span className="text-sm font-bold tracking-wide text-gray-900">
-            FBM <span className="text-orange-500">Admin</span>
-          </span>
+        <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
+          <Image src="/logo-fbm.png" alt="FBM" width={28} height={28} className="h-7 w-auto" />
+          <span className="text-sm font-bold tracking-wide text-white">Admin</span>
         </div>
 
         {/* Navigation */}
@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
               <span className="text-base leading-none">{link.icon}</span>
               <span>{link.label}</span>
@@ -35,14 +35,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Footer */}
-        <div className="border-t border-gray-200 px-4 py-3">
+        <div className="border-t border-white/10 px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
-              <span className="text-xs font-semibold text-orange-600">DS</span>
+            <div className="bg-fbm-orange flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full">
+              <span className="text-xs font-semibold text-white">DS</span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-xs font-medium text-gray-900">Designador</p>
-              <p className="truncate text-xs text-gray-500">FBM</p>
+              <p className="truncate text-xs font-medium text-white">Designador</p>
+              <p className="truncate text-xs text-white/50">FBM</p>
             </div>
           </div>
         </div>
@@ -51,9 +51,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main content */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
-        <header className="flex h-14 items-center border-b border-gray-200 bg-white px-6 shadow-sm">
+        <header className="border-border bg-card flex h-14 items-center border-b px-6 shadow-sm">
           <div className="flex-1" />
-          <span className="text-xs text-gray-400">Temporada 2024/25</span>
+          <span className="text-muted-foreground text-xs">Temporada 2024/25</span>
         </header>
 
         <main className="flex-1 overflow-auto p-6">{children}</main>
