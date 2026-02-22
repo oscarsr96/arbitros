@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { OptimizationState, Proposal, SolverParameters } from '@/lib/types'
 
 interface AdminState {
   // Matchday selection
@@ -40,6 +41,21 @@ interface AdminState {
   // Person detail sheet
   selectedPersonId: string | null
   setSelectedPersonId: (id: string | null) => void
+
+  // Optimization state — multi-proposal
+  optimizationState: OptimizationState
+  solverParameters: SolverParameters
+  proposals: Proposal[]
+  activeProposalId: string | null
+  showDiff: boolean
+
+  setSolverParameters: (params: Partial<SolverParameters>) => void
+  setProposals: (proposals: Proposal[]) => void
+  setActiveProposalId: (id: string | null) => void
+  deleteProposal: (id: string) => void
+  setOptimizationState: (state: OptimizationState) => void
+  setShowDiff: (show: boolean) => void
+  clearAllProposals: () => void
 }
 
 const defaultMatchFilters = {
@@ -54,6 +70,14 @@ const defaultPersonalFilters = {
   category: '',
   municipality: '',
   search: '',
+}
+
+const defaultSolverParameters: SolverParameters = {
+  costWeight: 0.7,
+  balanceWeight: 0.3,
+  maxMatchesPerPerson: 3,
+  forceExisting: true,
+  numProposals: 3,
 }
 
 export const useAdminStore = create<AdminState>((set) => ({
@@ -91,4 +115,57 @@ export const useAdminStore = create<AdminState>((set) => ({
 
   selectedPersonId: null,
   setSelectedPersonId: (id) => set({ selectedPersonId: id }),
+
+  // Optimization — multi-proposal
+  optimizationState: 'idle',
+  solverParameters: { ...defaultSolverParameters },
+  proposals: [],
+  activeProposalId: null,
+  showDiff: true,
+
+  setSolverParameters: (params) =>
+    set((state) => ({
+      solverParameters: { ...state.solverParameters, ...params },
+    })),
+
+  setProposals: (proposals) =>
+    set({
+      optimizationState: 'done',
+      proposals,
+      activeProposalId: proposals.length > 0 ? proposals[0].id : null,
+      showDiff: true,
+    }),
+
+  setActiveProposalId: (id) => set({ activeProposalId: id }),
+
+  deleteProposal: (id) =>
+    set((state) => {
+      const next = state.proposals.filter((p) => p.id !== id)
+      const newActiveId =
+        state.activeProposalId === id
+          ? next.length > 0
+            ? next[0].id
+            : null
+          : state.activeProposalId
+      return {
+        proposals: next,
+        activeProposalId: newActiveId,
+        // If no proposals left, reset to idle
+        ...(next.length === 0
+          ? { optimizationState: 'idle' as OptimizationState, showDiff: true }
+          : {}),
+      }
+    }),
+
+  setOptimizationState: (state) => set({ optimizationState: state }),
+
+  setShowDiff: (show) => set({ showDiff: show }),
+
+  clearAllProposals: () =>
+    set({
+      optimizationState: 'idle',
+      proposals: [],
+      activeProposalId: null,
+      showDiff: true,
+    }),
 }))

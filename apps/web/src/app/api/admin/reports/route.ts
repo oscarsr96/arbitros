@@ -8,15 +8,16 @@ import {
   getMockVenue,
   getMockMunicipality,
   getMockDesignationsForMatch,
+  mockHistoricalMatchdays,
 } from '@/lib/mock-data'
 
 export async function GET() {
-  // Cost per matchday
+  // Cost per matchday (current)
   const totalCost = mockDesignations
     .filter((d) => d.status !== 'rejected')
     .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
-  // Load per person (referees)
+  // Load per person
   const loadByPerson = mockPersons.map((person) => {
     const desigs = mockDesignations.filter(
       (d) => d.personId === person.id && d.status !== 'rejected',
@@ -80,6 +81,54 @@ export async function GET() {
     })
     .filter((p) => p.matches.length > 0)
 
+  // Cost by matchday (historical + current)
+  const costByMatchday = [
+    ...mockHistoricalMatchdays.map((h) => ({
+      matchday: h.matchday,
+      cost: Number(h.totalCost.toFixed(2)),
+      matches: h.totalMatches,
+    })),
+    {
+      matchday: 15,
+      cost: Number(totalCost.toFixed(2)),
+      matches: mockMatches.length,
+    },
+  ]
+
+  // Cost by municipality (aggregate current + historical)
+  const muniCostMap: Record<string, { totalCost: number; count: number }> = {}
+
+  // Current jornada
+  for (const d of mockDesignations) {
+    if (d.status === 'rejected') continue
+    const match = getMockMatch(d.matchId)
+    if (!match) continue
+    const venue = getMockVenue(match.venueId)
+    if (!venue) continue
+    const muniName = getMockMunicipality(venue.municipalityId)?.name ?? venue.municipalityId
+    if (!muniCostMap[muniName]) muniCostMap[muniName] = { totalCost: 0, count: 0 }
+    muniCostMap[muniName].totalCost += parseFloat(d.travelCost)
+    muniCostMap[muniName].count++
+  }
+
+  // Historical jornadas
+  for (const h of mockHistoricalMatchdays) {
+    for (const d of h.designations) {
+      const muniName = getMockMunicipality(d.venueMunicipalityId)?.name ?? d.venueMunicipalityId
+      if (!muniCostMap[muniName]) muniCostMap[muniName] = { totalCost: 0, count: 0 }
+      muniCostMap[muniName].totalCost += d.travelCost
+      muniCostMap[muniName].count++
+    }
+  }
+
+  const costByMunicipality = Object.entries(muniCostMap)
+    .map(([municipality, data]) => ({
+      municipality,
+      totalCost: Number(data.totalCost.toFixed(2)),
+      count: data.count,
+    }))
+    .sort((a, b) => b.totalCost - a.totalCost)
+
   return NextResponse.json({
     summary: {
       totalCost: Number(totalCost.toFixed(2)),
@@ -91,5 +140,7 @@ export async function GET() {
     },
     loadByPerson,
     liquidation,
+    costByMatchday,
+    costByMunicipality,
   })
 }

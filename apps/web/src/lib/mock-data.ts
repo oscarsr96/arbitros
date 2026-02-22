@@ -286,18 +286,27 @@ export const mockIncompatibilities = [
   },
 ]
 
+// ── Helpers de fecha (local timezone, sin UTC shift) ────────────────────────
+
+function formatLocalDate(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 // ── Partidos ────────────────────────────────────────────────────────────────
 
 const nextSaturday = (() => {
   const d = new Date()
   d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7))
-  return d.toISOString().split('T')[0]
+  return formatLocalDate(d)
 })()
 
 const nextSunday = (() => {
   const d = new Date()
   d.setDate(d.getDate() + ((7 - d.getDay() + 7) % 7 || 7))
-  return d.toISOString().split('T')[0]
+  return formatLocalDate(d)
 })()
 
 export const mockMatches = [
@@ -571,16 +580,16 @@ function getCurrentWeekStart(): string {
   const d = new Date()
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  const monday = new Date(d.setDate(diff))
-  return monday.toISOString().split('T')[0]
+  d.setDate(diff)
+  return formatLocalDate(d)
 }
 
 function getNextWeekStart(): string {
   const d = new Date()
   const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1) + 7
-  const monday = new Date(d.setDate(diff))
-  return monday.toISOString().split('T')[0]
+  d.setDate(diff)
+  return formatLocalDate(d)
 }
 
 const weekStart = getCurrentWeekStart()
@@ -830,13 +839,12 @@ export function isPersonAvailable(personId: string, date: string, time: string):
   const jsDay = d.getDay() // 0=sun, 6=sat
   const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1 // convert to 0=mon, 5=sat, 6=sun
 
-  // Get week start for the date
+  // Get week start for the date (using local time, not UTC)
   const dateObj = new Date(date + 'T00:00:00')
   const dateDayOfWeek = dateObj.getDay()
   const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
-  const ws = new Date(dateObj)
-  ws.setDate(diff)
-  const weekStartStr = ws.toISOString().split('T')[0]
+  dateObj.setDate(diff)
+  const weekStartStr = formatLocalDate(dateObj)
 
   const avails = mockAvailabilities.filter(
     (a) => a.personId === personId && a.weekStart === weekStartStr && a.dayOfWeek === dayOfWeek,
@@ -888,6 +896,248 @@ export function meetsMinCategory(personCategory: string | null, requiredCategory
   if (!personCategory) return false
   return (CATEGORY_RANK[personCategory] ?? 0) >= (CATEGORY_RANK[requiredCategory] ?? 0)
 }
+
+// ── Datos historicos de jornadas anteriores ─────────────────────────────
+
+export interface HistoricalMatchday {
+  matchday: number
+  totalMatches: number
+  totalCost: number
+  designations: {
+    personId: string
+    role: 'arbitro' | 'anotador'
+    travelCost: number
+    distanceKm: number
+    venueMunicipalityId: string
+  }[]
+}
+
+export const mockHistoricalMatchdays: HistoricalMatchday[] = [
+  {
+    matchday: 13,
+    totalMatches: 8,
+    totalCost: 18.5,
+    designations: [
+      {
+        personId: 'person-001',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-001',
+      },
+      {
+        personId: 'person-002',
+        role: 'arbitro',
+        travelCost: 1.3,
+        distanceKm: 13,
+        venueMunicipalityId: 'muni-002',
+      },
+      {
+        personId: 'person-003',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-002',
+      },
+      {
+        personId: 'person-006',
+        role: 'arbitro',
+        travelCost: 1.2,
+        distanceKm: 12,
+        venueMunicipalityId: 'muni-002',
+      },
+      {
+        personId: 'person-007',
+        role: 'arbitro',
+        travelCost: 1.0,
+        distanceKm: 10,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-001',
+        role: 'arbitro',
+        travelCost: 1.5,
+        distanceKm: 15,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-004',
+        role: 'anotador',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-005',
+        role: 'anotador',
+        travelCost: 0.6,
+        distanceKm: 6,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-008',
+        role: 'anotador',
+        travelCost: 1.0,
+        distanceKm: 10,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-009',
+        role: 'anotador',
+        travelCost: 1.8,
+        distanceKm: 18,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-002',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-001',
+      },
+      {
+        personId: 'person-006',
+        role: 'arbitro',
+        travelCost: 2.5,
+        distanceKm: 25,
+        venueMunicipalityId: 'muni-001',
+      },
+      {
+        personId: 'person-007',
+        role: 'arbitro',
+        travelCost: 2.0,
+        distanceKm: 20,
+        venueMunicipalityId: 'muni-006',
+      },
+      {
+        personId: 'person-005',
+        role: 'anotador',
+        travelCost: 0.9,
+        distanceKm: 9,
+        venueMunicipalityId: 'muni-006',
+      },
+    ],
+  },
+  {
+    matchday: 14,
+    totalMatches: 9,
+    totalCost: 22.3,
+    designations: [
+      {
+        personId: 'person-001',
+        role: 'arbitro',
+        travelCost: 1.1,
+        distanceKm: 11,
+        venueMunicipalityId: 'muni-004',
+      },
+      {
+        personId: 'person-002',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-001',
+      },
+      {
+        personId: 'person-003',
+        role: 'arbitro',
+        travelCost: 1.0,
+        distanceKm: 10,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-006',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-005',
+      },
+      {
+        personId: 'person-007',
+        role: 'arbitro',
+        travelCost: 2.0,
+        distanceKm: 20,
+        venueMunicipalityId: 'muni-001',
+      },
+      {
+        personId: 'person-001',
+        role: 'arbitro',
+        travelCost: 2.5,
+        distanceKm: 25,
+        venueMunicipalityId: 'muni-005',
+      },
+      {
+        personId: 'person-002',
+        role: 'arbitro',
+        travelCost: 1.5,
+        distanceKm: 15,
+        venueMunicipalityId: 'muni-003',
+      },
+      {
+        personId: 'person-003',
+        role: 'arbitro',
+        travelCost: 0.8,
+        distanceKm: 8,
+        venueMunicipalityId: 'muni-004',
+      },
+      {
+        personId: 'person-004',
+        role: 'anotador',
+        travelCost: 1.0,
+        distanceKm: 10,
+        venueMunicipalityId: 'muni-002',
+      },
+      {
+        personId: 'person-005',
+        role: 'anotador',
+        travelCost: 1.4,
+        distanceKm: 14,
+        venueMunicipalityId: 'muni-005',
+      },
+      {
+        personId: 'person-008',
+        role: 'anotador',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-002',
+      },
+      {
+        personId: 'person-009',
+        role: 'anotador',
+        travelCost: 0.8,
+        distanceKm: 8,
+        venueMunicipalityId: 'muni-006',
+      },
+      {
+        personId: 'person-006',
+        role: 'arbitro',
+        travelCost: 1.4,
+        distanceKm: 14,
+        venueMunicipalityId: 'muni-006',
+      },
+      {
+        personId: 'person-007',
+        role: 'arbitro',
+        travelCost: 3.0,
+        distanceKm: 0,
+        venueMunicipalityId: 'muni-006',
+      },
+      {
+        personId: 'person-004',
+        role: 'anotador',
+        travelCost: 0.6,
+        distanceKm: 6,
+        venueMunicipalityId: 'muni-004',
+      },
+      {
+        personId: 'person-005',
+        role: 'anotador',
+        travelCost: 0.9,
+        distanceKm: 9,
+        venueMunicipalityId: 'muni-006',
+      },
+    ],
+  },
+]
 
 // Usuario demo por defecto (Carlos Martínez)
 export const DEMO_PERSON_ID = 'person-001'
