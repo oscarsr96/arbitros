@@ -24,8 +24,33 @@ export default function HomePage() {
             href="/disponibilidad"
             className="rounded-md border border-white/20 px-6 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
-            Demo
+            Demo Portal
           </Link>
+        </div>
+
+        {/* Demo Admin */}
+        <div className="mt-8 w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-5">
+          <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-white/50">
+            Demo Admin
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+              { href: '/partidos', label: 'Partidos', icon: '🏀' },
+              { href: '/personal', label: 'Personal', icon: '👥' },
+              { href: '/asignacion', label: 'Asignación', icon: '📋' },
+              { href: '/reportes', label: 'Reportes', icon: '📈' },
+            ].map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2.5 text-sm text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <span>{link.icon}</span>
+                <span>{link.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </main>

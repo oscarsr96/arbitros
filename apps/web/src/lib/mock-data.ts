@@ -14,6 +14,29 @@ export const mockMunicipalities = [
   { id: 'muni-008', name: 'Torrejón de Ardoz', province: 'Madrid' },
 ]
 
+// ── Distancias entre municipios ─────────────────────────────────────────────
+
+export const mockDistances = [
+  { originId: 'muni-001', destId: 'muni-002', distanceKm: 13 },
+  { originId: 'muni-001', destId: 'muni-003', distanceKm: 15 },
+  { originId: 'muni-001', destId: 'muni-004', distanceKm: 11 },
+  { originId: 'muni-001', destId: 'muni-005', distanceKm: 25 },
+  { originId: 'muni-001', destId: 'muni-006', distanceKm: 20 },
+  { originId: 'muni-001', destId: 'muni-007', distanceKm: 30 },
+  { originId: 'muni-001', destId: 'muni-008', distanceKm: 28 },
+  { originId: 'muni-002', destId: 'muni-003', distanceKm: 10 },
+  { originId: 'muni-002', destId: 'muni-004', distanceKm: 8 },
+  { originId: 'muni-002', destId: 'muni-005', distanceKm: 12 },
+  { originId: 'muni-002', destId: 'muni-006', distanceKm: 14 },
+  { originId: 'muni-003', destId: 'muni-004', distanceKm: 6 },
+  { originId: 'muni-003', destId: 'muni-005', distanceKm: 18 },
+  { originId: 'muni-003', destId: 'muni-006', distanceKm: 10 },
+  { originId: 'muni-004', destId: 'muni-005', distanceKm: 14 },
+  { originId: 'muni-004', destId: 'muni-006', distanceKm: 9 },
+  { originId: 'muni-005', destId: 'muni-006', distanceKm: 8 },
+  { originId: 'muni-007', destId: 'muni-008', distanceKm: 15 },
+]
+
 // ── Temporada ───────────────────────────────────────────────────────────────
 
 export const mockSeason = {
@@ -154,7 +177,7 @@ export const mockPersons = [
     email: 'anabelen.sanchez@email.com',
     phone: '645678901',
     role: 'anotador' as const,
-    category: null,
+    category: 'autonomico' as const,
     address: 'C/ Mayor 22, 28901 Getafe',
     postalCode: '28901',
     municipalityId: 'muni-003',
@@ -169,7 +192,7 @@ export const mockPersons = [
     email: 'david.fernandez@email.com',
     phone: '656789012',
     role: 'anotador' as const,
-    category: null,
+    category: 'provincial' as const,
     address: 'C/ Real 10, 28917 Leganés',
     postalCode: '28917',
     municipalityId: 'muni-004',
@@ -177,6 +200,89 @@ export const mockPersons = [
     active: true,
     authUserId: null,
     createdAt: new Date('2024-09-10'),
+  },
+  {
+    id: 'person-006',
+    name: 'Raúl Jiménez Navarro',
+    email: 'raul.jimenez@email.com',
+    phone: '667890123',
+    role: 'arbitro' as const,
+    category: 'autonomico' as const,
+    address: 'C/ Constitución 3, 28936 Móstoles',
+    postalCode: '28936',
+    municipalityId: 'muni-005',
+    bankIban: 'ES6234567890123456789012',
+    active: true,
+    authUserId: null,
+    createdAt: new Date('2024-09-05'),
+  },
+  {
+    id: 'person-007',
+    name: 'Patricia López Martín',
+    email: 'patricia.lopez@email.com',
+    phone: '678901234',
+    role: 'arbitro' as const,
+    category: 'nacional' as const,
+    address: 'C/ Severo Ochoa 12, 28945 Fuenlabrada',
+    postalCode: '28945',
+    municipalityId: 'muni-006',
+    bankIban: 'ES7234567890123456789012',
+    active: true,
+    authUserId: null,
+    createdAt: new Date('2024-08-25'),
+  },
+  {
+    id: 'person-008',
+    name: 'Sofía Morales Vega',
+    email: 'sofia.morales@email.com',
+    phone: '689012345',
+    role: 'anotador' as const,
+    category: 'nacional' as const,
+    address: 'C/ Toledo 40, 28922 Alcorcón',
+    postalCode: '28922',
+    municipalityId: 'muni-002',
+    bankIban: 'ES8234567890123456789012',
+    active: true,
+    authUserId: null,
+    createdAt: new Date('2024-09-15'),
+  },
+  {
+    id: 'person-009',
+    name: 'Javier Romero Díaz',
+    email: 'javier.romero@email.com',
+    phone: '690123456',
+    role: 'anotador' as const,
+    category: 'autonomico' as const,
+    address: 'Av. de Madrid 5, 28936 Móstoles',
+    postalCode: '28936',
+    municipalityId: 'muni-005',
+    bankIban: 'ES9234567890123456789012',
+    active: true,
+    authUserId: null,
+    createdAt: new Date('2024-10-01'),
+  },
+]
+
+// ── Incompatibilidades ──────────────────────────────────────────────────────
+
+export const mockIncompatibilities = [
+  {
+    id: 'incompat-001',
+    personId: 'person-001',
+    teamName: 'CB Vallecas',
+    reason: 'Jugador del club',
+  },
+  {
+    id: 'incompat-002',
+    personId: 'person-003',
+    teamName: 'AD Alcorcón Basket',
+    reason: 'Entrenador de cantera',
+  },
+  {
+    id: 'incompat-003',
+    personId: 'person-006',
+    teamName: 'CB Móstoles',
+    reason: 'Familiar en directiva',
   },
 ]
 
@@ -355,10 +461,11 @@ interface MockDesignation {
 }
 
 export const mockDesignations: MockDesignation[] = [
+  // match-001: 2 arbitros + 1 anotador (full)
   {
     id: 'desig-001',
     matchId: 'match-001',
-    personId: 'person-001',
+    personId: 'person-002', // Laura (nacional) - Madrid
     role: 'arbitro' as const,
     travelCost: '3.00',
     distanceKm: '0.0',
@@ -370,10 +477,10 @@ export const mockDesignations: MockDesignation[] = [
   {
     id: 'desig-002',
     matchId: 'match-001',
-    personId: 'person-002',
+    personId: 'person-006', // Raul (autonomico) - Mostoles
     role: 'arbitro' as const,
-    travelCost: '3.00',
-    distanceKm: '0.0',
+    travelCost: '2.50',
+    distanceKm: '25.0',
     status: 'confirmed' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
     confirmedAt: new Date('2025-03-05T15:00:00'),
@@ -382,55 +489,59 @@ export const mockDesignations: MockDesignation[] = [
   {
     id: 'desig-003',
     matchId: 'match-001',
-    personId: 'person-004',
+    personId: 'person-004', // Ana Belen (anotador) - Getafe
     role: 'anotador' as const,
-    travelCost: '4.50',
+    travelCost: '1.50',
     distanceKm: '15.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
     confirmedAt: null,
     createdAt: new Date('2025-03-05T09:00:00'),
   },
+  // match-002: 1 arbitro only (partial)
   {
     id: 'desig-004',
     matchId: 'match-002',
-    personId: 'person-001',
+    personId: 'person-001', // Carlos (autonomico) - Madrid
     role: 'arbitro' as const,
-    travelCost: '2.40',
-    distanceKm: '24.0',
+    travelCost: '1.30',
+    distanceKm: '13.0',
     status: 'pending' as const,
     notifiedAt: null,
     confirmedAt: null,
     createdAt: new Date('2025-03-05T09:00:00'),
   },
+  // match-003: 1 arbitro (partial)
   {
     id: 'desig-005',
     matchId: 'match-003',
-    personId: 'person-002',
+    personId: 'person-007', // Patricia (nacional) - Fuenlabrada
     role: 'arbitro' as const,
-    travelCost: '1.50',
-    distanceKm: '15.0',
+    travelCost: '1.00',
+    distanceKm: '10.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-06T08:00:00'),
     confirmedAt: null,
     createdAt: new Date('2025-03-06T07:00:00'),
   },
+  // match-004: 1 arbitro (partial, rejected)
   {
     id: 'desig-006',
     matchId: 'match-004',
-    personId: 'person-003',
+    personId: 'person-003', // Miguel (provincial) - Alcorcon
     role: 'arbitro' as const,
-    travelCost: '3.80',
-    distanceKm: '38.0',
+    travelCost: '0.80',
+    distanceKm: '8.0',
     status: 'rejected' as const,
     notifiedAt: new Date('2025-03-06T08:00:00'),
     confirmedAt: null,
     createdAt: new Date('2025-03-06T07:00:00'),
   },
+  // match-006: 1 arbitro (partial)
   {
     id: 'desig-007',
     matchId: 'match-006',
-    personId: 'person-001',
+    personId: 'person-001', // Carlos (autonomico) - Madrid
     role: 'arbitro' as const,
     travelCost: '3.00',
     distanceKm: '0.0',
@@ -439,13 +550,14 @@ export const mockDesignations: MockDesignation[] = [
     confirmedAt: new Date('2025-03-05T16:00:00'),
     createdAt: new Date('2025-03-05T09:00:00'),
   },
+  // match-008: 1 anotador (partial)
   {
     id: 'desig-008',
     matchId: 'match-008',
-    personId: 'person-005',
+    personId: 'person-005', // David (anotador) - Leganes
     role: 'anotador' as const,
-    travelCost: '4.20',
-    distanceKm: '42.0',
+    travelCost: '1.40',
+    distanceKm: '14.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-06T10:00:00'),
     confirmedAt: null,
@@ -463,97 +575,186 @@ function getCurrentWeekStart(): string {
   return monday.toISOString().split('T')[0]
 }
 
-export const mockAvailabilities = [
-  // Carlos (person-001) - disponible sábado mañana y tarde, domingo mañana
-  {
-    id: 'avail-001',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '09:00',
-    endTime: '10:00',
-  },
-  {
-    id: 'avail-002',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '10:00',
-    endTime: '11:00',
-  },
-  {
-    id: 'avail-003',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '11:00',
-    endTime: '12:00',
-  },
-  {
-    id: 'avail-004',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '15:00',
-    endTime: '16:00',
-  },
-  {
-    id: 'avail-005',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '16:00',
-    endTime: '17:00',
-  },
-  {
-    id: 'avail-006',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '17:00',
-    endTime: '18:00',
-  },
-  {
-    id: 'avail-007',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 5,
-    startTime: '18:00',
-    endTime: '19:00',
-  },
-  {
-    id: 'avail-008',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 6,
-    startTime: '09:00',
-    endTime: '10:00',
-  },
-  {
-    id: 'avail-009',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 6,
-    startTime: '10:00',
-    endTime: '11:00',
-  },
-  {
-    id: 'avail-010',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 6,
-    startTime: '11:00',
-    endTime: '12:00',
-  },
-  {
-    id: 'avail-011',
-    personId: 'person-001',
-    weekStart: getCurrentWeekStart(),
-    dayOfWeek: 6,
-    startTime: '12:00',
-    endTime: '13:00',
-  },
-]
+function getNextWeekStart(): string {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) + 7
+  const monday = new Date(d.setDate(diff))
+  return monday.toISOString().split('T')[0]
+}
+
+const weekStart = getCurrentWeekStart()
+const nextWeek = getNextWeekStart()
+
+// Generar disponibilidades para todas las personas en sabado/domingo
+function generateAvailabilities() {
+  const avails: {
+    id: string
+    personId: string
+    weekStart: string
+    dayOfWeek: number
+    startTime: string
+    endTime: string
+  }[] = []
+  let counter = 1
+
+  const schedules: Record<string, { day: number; start: string; end: string }[]> = {
+    'person-001': [
+      // Carlos: sabado 09-13, 15-19; domingo 09-13
+      { day: 5, start: '09:00', end: '10:00' },
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '15:00', end: '16:00' },
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 6, start: '09:00', end: '10:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+    ],
+    'person-002': [
+      // Laura: sabado 10-14, 16-20; domingo 10-14
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '13:00', end: '14:00' },
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 5, start: '19:00', end: '20:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '13:00', end: '14:00' },
+    ],
+    'person-003': [
+      // Miguel: sabado 09-13; domingo 09-13, 15-19
+      { day: 5, start: '09:00', end: '10:00' },
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 6, start: '09:00', end: '10:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '15:00', end: '16:00' },
+      { day: 6, start: '16:00', end: '17:00' },
+      { day: 6, start: '17:00', end: '18:00' },
+      { day: 6, start: '18:00', end: '19:00' },
+    ],
+    'person-004': [
+      // Ana Belen: sabado 09-14; domingo 10-14
+      { day: 5, start: '09:00', end: '10:00' },
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '13:00', end: '14:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '13:00', end: '14:00' },
+    ],
+    'person-005': [
+      // David: sabado 15-21; domingo 15-21
+      { day: 5, start: '15:00', end: '16:00' },
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 5, start: '19:00', end: '20:00' },
+      { day: 5, start: '20:00', end: '21:00' },
+      { day: 6, start: '15:00', end: '16:00' },
+      { day: 6, start: '16:00', end: '17:00' },
+      { day: 6, start: '17:00', end: '18:00' },
+      { day: 6, start: '18:00', end: '19:00' },
+      { day: 6, start: '19:00', end: '20:00' },
+      { day: 6, start: '20:00', end: '21:00' },
+    ],
+    'person-006': [
+      // Raul: sabado 09-14, 16-21; domingo 10-14
+      { day: 5, start: '09:00', end: '10:00' },
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '13:00', end: '14:00' },
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 5, start: '19:00', end: '20:00' },
+      { day: 5, start: '20:00', end: '21:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '13:00', end: '14:00' },
+    ],
+    'person-007': [
+      // Patricia: sabado 10-14, 16-20; domingo 09-14, 16-20
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '13:00', end: '14:00' },
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 5, start: '19:00', end: '20:00' },
+      { day: 6, start: '09:00', end: '10:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '13:00', end: '14:00' },
+      { day: 6, start: '16:00', end: '17:00' },
+      { day: 6, start: '17:00', end: '18:00' },
+      { day: 6, start: '18:00', end: '19:00' },
+      { day: 6, start: '19:00', end: '20:00' },
+    ],
+    'person-008': [
+      // Sofia: sabado 09-14; domingo 09-14
+      { day: 5, start: '09:00', end: '10:00' },
+      { day: 5, start: '10:00', end: '11:00' },
+      { day: 5, start: '11:00', end: '12:00' },
+      { day: 5, start: '12:00', end: '13:00' },
+      { day: 5, start: '13:00', end: '14:00' },
+      { day: 6, start: '09:00', end: '10:00' },
+      { day: 6, start: '10:00', end: '11:00' },
+      { day: 6, start: '11:00', end: '12:00' },
+      { day: 6, start: '12:00', end: '13:00' },
+      { day: 6, start: '13:00', end: '14:00' },
+    ],
+    'person-009': [
+      // Javier: sabado 16-21; domingo 16-21
+      { day: 5, start: '16:00', end: '17:00' },
+      { day: 5, start: '17:00', end: '18:00' },
+      { day: 5, start: '18:00', end: '19:00' },
+      { day: 5, start: '19:00', end: '20:00' },
+      { day: 5, start: '20:00', end: '21:00' },
+      { day: 6, start: '16:00', end: '17:00' },
+      { day: 6, start: '17:00', end: '18:00' },
+      { day: 6, start: '18:00', end: '19:00' },
+      { day: 6, start: '19:00', end: '20:00' },
+      { day: 6, start: '20:00', end: '21:00' },
+    ],
+  }
+
+  for (const [personId, slots] of Object.entries(schedules)) {
+    for (const ws of [weekStart, nextWeek]) {
+      for (const slot of slots) {
+        avails.push({
+          id: `avail-${String(counter++).padStart(3, '0')}`,
+          personId,
+          weekStart: ws,
+          dayOfWeek: slot.day,
+          startTime: slot.start,
+          endTime: slot.end,
+        })
+      }
+    }
+  }
+
+  return avails
+}
+
+export const mockAvailabilities = generateAvailabilities()
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -588,8 +789,104 @@ export function getMockDesignationsForPerson(personId: string) {
     })
 }
 
+export function getMockDesignationsForMatch(matchId: string) {
+  return mockDesignations
+    .filter((d) => d.matchId === matchId)
+    .map((d) => {
+      const person = getMockPerson(d.personId)
+      const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
+      return { ...d, person, municipality }
+    })
+}
+
 export function getMockAvailabilitiesForPerson(personId: string, weekStart: string) {
   return mockAvailabilities.filter((a) => a.personId === personId && a.weekStart === weekStart)
+}
+
+export function getMockDistance(originId: string, destId: string): number {
+  if (originId === destId) return 0
+  const d = mockDistances.find(
+    (d) =>
+      (d.originId === originId && d.destId === destId) ||
+      (d.originId === destId && d.destId === originId),
+  )
+  return d?.distanceKm ?? 35 // fallback for unknown pairs
+}
+
+export function calculateMockTravelCost(
+  personMuniId: string,
+  venueMuniId: string,
+): { cost: number; km: number } {
+  if (personMuniId === venueMuniId) {
+    return { cost: 3.0, km: 0 }
+  }
+  const km = getMockDistance(personMuniId, venueMuniId)
+  return { cost: Number((km * 0.1).toFixed(2)), km }
+}
+
+export function isPersonAvailable(personId: string, date: string, time: string): boolean {
+  // Determine day of week from date (0=sunday, 1=monday... we need 5=saturday, 6=sunday)
+  const d = new Date(date + 'T00:00:00')
+  const jsDay = d.getDay() // 0=sun, 6=sat
+  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1 // convert to 0=mon, 5=sat, 6=sun
+
+  // Get week start for the date
+  const dateObj = new Date(date + 'T00:00:00')
+  const dateDayOfWeek = dateObj.getDay()
+  const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
+  const ws = new Date(dateObj)
+  ws.setDate(diff)
+  const weekStartStr = ws.toISOString().split('T')[0]
+
+  const avails = mockAvailabilities.filter(
+    (a) => a.personId === personId && a.weekStart === weekStartStr && a.dayOfWeek === dayOfWeek,
+  )
+
+  // Check if the person has availability that covers the match time
+  const matchHour = parseInt(time.split(':')[0])
+  return avails.some((a) => {
+    const availStart = parseInt(a.startTime.split(':')[0])
+    const availEnd = parseInt(a.endTime.split(':')[0])
+    return matchHour >= availStart && matchHour < availEnd
+  })
+}
+
+export function getPersonIncompatibilities(personId: string) {
+  return mockIncompatibilities.filter((i) => i.personId === personId)
+}
+
+export function hasTimeOverlap(personId: string, matchId: string): boolean {
+  const targetMatch = getMockMatch(matchId)
+  if (!targetMatch) return false
+
+  const personDesignations = mockDesignations.filter(
+    (d) => d.personId === personId && d.matchId !== matchId && d.status !== 'rejected',
+  )
+
+  const targetHour = parseInt(targetMatch.time.split(':')[0])
+
+  for (const desig of personDesignations) {
+    const otherMatch = getMockMatch(desig.matchId)
+    if (!otherMatch || otherMatch.date !== targetMatch.date) continue
+    const otherHour = parseInt(otherMatch.time.split(':')[0])
+    // 2h window for each match (game time + travel)
+    if (Math.abs(targetHour - otherHour) < 2) return true
+  }
+
+  return false
+}
+
+// Jerarquia de categorias para validacion
+const CATEGORY_RANK: Record<string, number> = {
+  provincial: 1,
+  autonomico: 2,
+  nacional: 3,
+  feb: 4,
+}
+
+export function meetsMinCategory(personCategory: string | null, requiredCategory: string): boolean {
+  if (!personCategory) return false
+  return (CATEGORY_RANK[personCategory] ?? 0) >= (CATEGORY_RANK[requiredCategory] ?? 0)
 }
 
 // Usuario demo por defecto (Carlos Martínez)
