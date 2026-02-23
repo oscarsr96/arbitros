@@ -1,10 +1,12 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { DemoView } from '@/components/demo-view'
 
 export default function HomePage() {
   return (
-    <main className="bg-fbm-navy flex min-h-screen flex-col items-center justify-center">
-      <div className="flex flex-col items-center gap-6">
+    <main className="bg-fbm-navy min-h-screen">
+      {/* Hero */}
+      <div className="flex flex-col items-center gap-6 pb-10 pt-16">
         <Image src="/logo-fbm.png" alt="FBM" width={80} height={80} className="h-20 w-auto" />
         <div className="text-center">
           <h1 className="text-4xl font-bold text-white">Designaciones</h1>
@@ -28,7 +30,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Demo Admin */}
+        {/* Demo Admin links */}
         <div className="mt-8 w-full max-w-md rounded-xl border border-white/10 bg-white/5 p-5">
           <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-white/50">
             Demo Admin
@@ -52,6 +54,11 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Simulación de demo */}
+      <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 lg:px-8">
+        <DemoView />
       </div>
     </main>
   )

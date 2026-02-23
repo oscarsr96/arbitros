@@ -1139,5 +1139,30 @@ export const mockHistoricalMatchdays: HistoricalMatchday[] = [
   },
 ]
 
+// ── Snapshots iniciales para reset ────────────────────────────────────────
+
+const INITIAL_MATCHES = [...mockMatches]
+const INITIAL_PERSONS = [...mockPersons]
+const INITIAL_DESIGNATIONS: MockDesignation[] = [...mockDesignations]
+const INITIAL_AVAILABILITIES = [...mockAvailabilities]
+const INITIAL_INCOMPATIBILITIES = [...mockIncompatibilities]
+
+export function resetMockData() {
+  mockMatches.length = 0
+  mockMatches.push(...INITIAL_MATCHES)
+  mockPersons.length = 0
+  mockPersons.push(...INITIAL_PERSONS)
+  mockDesignations.length = 0
+  mockDesignations.push(...INITIAL_DESIGNATIONS)
+  mockAvailabilities.length = 0
+  mockAvailabilities.push(...INITIAL_AVAILABILITIES)
+  mockIncompatibilities.length = 0
+  mockIncompatibilities.push(...INITIAL_INCOMPATIBILITIES)
+}
+
+// ── Exports para generación demo ──────────────────────────────────────────
+
+export { nextSaturday, nextSunday, weekStart, nextWeek, formatLocalDate }
+
 // Usuario demo por defecto (Carlos Martínez)
 export const DEMO_PERSON_ID = 'person-001'
