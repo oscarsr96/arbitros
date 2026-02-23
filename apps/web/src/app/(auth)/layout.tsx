@@ -6,7 +6,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-4">
           <div className="bg-fbm-navy flex h-16 w-16 items-center justify-center rounded-2xl p-2">
-            <Image src="/logo-fbm.png" alt="FBM" width={48} height={48} className="h-12 w-auto" />
+            <Image
+              src="/logo-fbm.png"
+              alt="FBM"
+              width={332}
+              height={129}
+              quality={95}
+              className="h-12 w-auto"
+            />
           </div>
           <div className="text-center">
             <h2 className="text-fbm-navy text-2xl font-bold">FBM Designaciones</h2>

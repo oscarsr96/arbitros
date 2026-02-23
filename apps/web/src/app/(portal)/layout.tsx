@@ -23,7 +23,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       <header className="bg-fbm-navy sticky top-0 z-50 shadow-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <Link href="/disponibilidad" className="flex items-center gap-2.5">
-            <Image src="/logo-fbm.png" alt="FBM" width={32} height={32} className="h-8 w-auto" />
+            <Image
+              src="/logo-fbm.png"
+              alt="FBM"
+              width={332}
+              height={129}
+              quality={95}
+              className="h-8 w-auto"
+            />
             <span className="text-sm font-bold tracking-wide text-white">Designaciones</span>
           </Link>
 

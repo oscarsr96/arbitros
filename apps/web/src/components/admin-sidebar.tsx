@@ -22,7 +22,14 @@ export function AdminSidebar() {
     <>
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-white/10 px-4">
-        <Image src="/logo-fbm.png" alt="FBM" width={28} height={28} className="h-7 w-auto" />
+        <Image
+          src="/logo-fbm.png"
+          alt="FBM"
+          width={332}
+          height={129}
+          quality={95}
+          className="h-7 w-auto"
+        />
         <span className="text-sm font-bold tracking-wide text-white">Admin</span>
       </div>
 
