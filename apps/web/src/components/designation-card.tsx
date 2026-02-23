@@ -1,12 +1,9 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/status-badge'
 import { CostBadge } from '@/components/cost-badge'
 import { MapPin, Clock, Calendar, Users } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface DesignationCardProps {
   designation: {
@@ -30,7 +27,6 @@ interface DesignationCardProps {
       name: string
     }
   }
-  onStatusChange?: (id: string, newStatus: string) => void
 }
 
 function formatDate(dateStr: string): string {
@@ -42,28 +38,8 @@ function formatDate(dateStr: string): string {
   })
 }
 
-export function DesignationCard({ designation, onStatusChange }: DesignationCardProps) {
-  const [updating, setUpdating] = useState(false)
+export function DesignationCard({ designation }: DesignationCardProps) {
   const { match, venue, competition } = designation
-  const canRespond = designation.status === 'pending' || designation.status === 'notified'
-
-  const handleAction = async (newStatus: 'confirmed' | 'rejected') => {
-    setUpdating(true)
-    try {
-      const res = await fetch(`/api/designations/${designation.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      if (!res.ok) throw new Error('Error')
-      toast.success(newStatus === 'confirmed' ? 'Designación confirmada' : 'Designación rechazada')
-      onStatusChange?.(designation.id, newStatus)
-    } catch {
-      toast.error('Error al actualizar la designación')
-    } finally {
-      setUpdating(false)
-    }
-  }
 
   return (
     <Card className="transition-shadow hover:shadow-md">
@@ -102,35 +78,13 @@ export function DesignationCard({ designation, onStatusChange }: DesignationCard
             </div>
           </div>
 
-          {/* Columna derecha: estado, coste, acciones */}
+          {/* Columna derecha: estado, coste */}
           <div className="flex flex-col items-end gap-2">
             <StatusBadge status={designation.status} />
             <CostBadge cost={designation.travelCost} km={designation.distanceKm} />
             <span className="text-muted-foreground text-xs capitalize">
               {designation.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
             </span>
-
-            {canRespond && (
-              <div className="mt-1 flex gap-1.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 text-xs text-red-600 hover:bg-red-50"
-                  onClick={() => handleAction('rejected')}
-                  disabled={updating}
-                >
-                  Rechazar
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => handleAction('confirmed')}
-                  disabled={updating}
-                >
-                  Confirmar
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </CardContent>

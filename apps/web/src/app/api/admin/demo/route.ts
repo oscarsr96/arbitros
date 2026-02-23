@@ -8,6 +8,7 @@ import {
   mockMunicipalities,
   mockVenues,
   mockCompetitions,
+  mockDistances,
   resetMockData,
   nextSaturday,
   nextSunday,
@@ -132,7 +133,7 @@ export async function GET() {
   let matchesCovered = 0
   let matchesPartial = 0
   for (const match of mockMatches) {
-    const desigs = mockDesignations.filter((d) => d.matchId === match.id && d.status !== 'rejected')
+    const desigs = mockDesignations.filter((d) => d.matchId === match.id)
     const refs = desigs.filter((d) => d.role === 'arbitro').length
     const sco = desigs.filter((d) => d.role === 'anotador').length
     if (refs >= match.refereesNeeded && sco >= match.scorersNeeded) matchesCovered++
@@ -144,13 +145,14 @@ export async function GET() {
     const venue = mockVenues.find((v) => v.id === m.venueId)
     const competition = mockCompetitions.find((c) => c.id === m.competitionId)
     const designations = getMockDesignationsForMatch(m.id)
-    const activeDesigs = designations.filter((d) => d.status !== 'rejected')
-    const refsAssigned = activeDesigs.filter((d) => d.role === 'arbitro').length
-    const scoAssigned = activeDesigs.filter((d) => d.role === 'anotador').length
+    const refsAssigned = designations.filter((d) => d.role === 'arbitro').length
+    const scoAssigned = designations.filter((d) => d.role === 'anotador').length
 
     return {
       ...m,
-      venue: venue ? { ...venue } : undefined,
+      venue: venue
+        ? { ...venue, municipalityName: getMockMunicipality(venue.municipalityId)?.name }
+        : undefined,
       competition: competition ?? undefined,
       designations,
       refereesAssigned: refsAssigned,
@@ -179,7 +181,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json()
-  const { action, numMatches = 20, numReferees = 12, numScorers = 6 } = body
+  const {
+    action,
+    numMatches = 20,
+    numReferees = 12,
+    numScorers = 6,
+    usePythonSolver = false,
+    solverType = 'cpsat',
+  } = body
 
   if (action === 'reset') {
     resetMockData()
@@ -216,6 +225,7 @@ export async function POST(request: Request) {
       municipalityId: muni.id,
       bankIban: randomIBAN(),
       active: true,
+      hasCar: Math.random() < 0.7,
       authUserId: null,
       createdAt: new Date(),
     })
@@ -240,6 +250,7 @@ export async function POST(request: Request) {
       municipalityId: muni.id,
       bankIban: randomIBAN(),
       active: true,
+      hasCar: Math.random() < 0.7,
       authUserId: null,
       createdAt: new Date(),
     })
@@ -340,13 +351,19 @@ export async function POST(request: Request) {
     const venue = mockVenues.find((v) => v.id === m.venueId)
     const competition = mockCompetitions.find((c) => c.id === m.competitionId)
     const designations = getMockDesignationsForMatch(m.id)
-    const activeDesigs = designations.filter((d) => d.status !== 'rejected')
-    const refereesAssigned = activeDesigs.filter((d) => d.role === 'arbitro').length
-    const scorersAssigned = activeDesigs.filter((d) => d.role === 'anotador').length
+    const refereesAssigned = designations.filter((d) => d.role === 'arbitro').length
+    const scorersAssigned = designations.filter((d) => d.role === 'anotador').length
 
     return {
       ...m,
-      venue: venue ? { ...venue, latitude: 0, longitude: 0 } : undefined,
+      venue: venue
+        ? {
+            ...venue,
+            latitude: 0,
+            longitude: 0,
+            municipalityName: getMockMunicipality(venue.municipalityId)?.name,
+          }
+        : undefined,
       competition: competition ?? undefined,
       designations,
       refereesAssigned,
@@ -359,9 +376,7 @@ export async function POST(request: Request) {
     .filter((p) => p.active)
     .map((p) => {
       const municipality = getMockMunicipality(p.municipalityId)
-      const personDesigs = mockDesignations.filter(
-        (d) => d.personId === p.id && d.status !== 'rejected',
-      )
+      const personDesigs = mockDesignations.filter((d) => d.personId === p.id)
       return {
         id: p.id,
         name: p.name,
@@ -373,35 +388,195 @@ export async function POST(request: Request) {
         postalCode: p.postalCode,
         municipalityId: p.municipalityId,
         active: p.active,
+        hasCar: p.hasCar,
         municipality,
         matchesAssigned: personDesigs.length,
-        matchesConfirmed: personDesigs.filter((d) => d.status === 'confirmed').length,
         totalCost: personDesigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0),
         hasAvailability: true,
       }
     })
 
-  const solverResult = solve({
-    matches: enrichedMatches,
-    persons: enrichedPersons,
-    parameters: {
-      costWeight: 0.7,
-      balanceWeight: 0.3,
-      maxMatchesPerPerson: 3,
-      forceExisting: false,
-      numProposals: 1,
-    },
-  })
+  // 7b. Intentar solver Python si se solicita
+  let solverResult: {
+    status: string
+    assignments: {
+      matchId: string
+      personId: string
+      personName: string
+      role: string
+      travelCost: number
+      distanceKm: number
+      isNew: boolean
+    }[]
+    metrics: {
+      totalCost: number
+      coverage: number
+      coveredSlots: number
+      totalSlots: number
+      resolutionTimeMs: number
+      solverType?: string
+    }
+    unassigned: {
+      matchId: string
+      matchLabel: string
+      role: string
+      slotIndex: number
+      reason: string
+    }[]
+  }
+  let pythonFallback = false
+  let actualSolverType = 'greedy-ts'
+
+  if (usePythonSolver) {
+    try {
+      const optimizerUrl = process.env.OPTIMIZER_URL || 'http://localhost:8000'
+
+      // Construir payload en snake_case para Python
+      const pythonPayload = {
+        matches: mockMatches.map((m) => {
+          const venue = mockVenues.find((v) => v.id === m.venueId)
+          const comp = mockCompetitions.find((c) => c.id === m.competitionId)
+          return {
+            id: m.id,
+            date: m.date,
+            time: m.time,
+            home_team: m.homeTeam,
+            away_team: m.awayTeam,
+            venue: {
+              id: venue?.id ?? m.venueId,
+              name: venue?.name ?? '',
+              municipality_id: venue?.municipalityId ?? '',
+            },
+            competition: {
+              id: comp?.id ?? m.competitionId,
+              name: comp?.name ?? '',
+              category: comp?.category ?? '',
+              min_ref_category: comp?.minRefCategory ?? 'provincial',
+              referees_needed: comp?.refereesNeeded ?? m.refereesNeeded,
+              scorers_needed: comp?.scorersNeeded ?? m.scorersNeeded,
+            },
+            referees_needed: m.refereesNeeded,
+            scorers_needed: m.scorersNeeded,
+            designations: [],
+          }
+        }),
+        persons: mockPersons.map((p) => ({
+          id: p.id,
+          name: p.name,
+          role: p.role,
+          category: p.category,
+          municipality_id: p.municipalityId,
+          active: p.active,
+          has_car: p.hasCar,
+          availabilities: mockAvailabilities
+            .filter((a) => a.personId === p.id)
+            .map((a) => ({
+              person_id: a.personId,
+              day_of_week: a.dayOfWeek,
+              start_time: a.startTime,
+              end_time: a.endTime,
+              week_start: a.weekStart,
+            })),
+          incompatibilities: mockIncompatibilities
+            .filter((inc) => inc.personId === p.id)
+            .map((inc) => ({
+              person_id: inc.personId,
+              team_name: inc.teamName,
+            })),
+        })),
+        distances: mockDistances.map((d) => ({
+          origin_id: d.originId,
+          dest_id: d.destId,
+          distance_km: d.distanceKm,
+        })),
+        parameters: {
+          cost_weight: 0.7,
+          balance_weight: 0.3,
+          max_matches_per_person: 3,
+          force_existing: false,
+          max_time_seconds: 30,
+          solver_type: solverType,
+        },
+      }
+
+      const pyRes = await fetch(`${optimizerUrl}/optimize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pythonPayload),
+        signal: AbortSignal.timeout(60000),
+      })
+
+      if (!pyRes.ok) {
+        throw new Error(`Python solver returned ${pyRes.status}`)
+      }
+
+      const pyData = await pyRes.json()
+
+      // Convertir snake_case → camelCase
+      solverResult = {
+        status: pyData.status,
+        assignments: (pyData.assignments ?? []).map((a: Record<string, unknown>) => ({
+          matchId: a.match_id,
+          personId: a.person_id,
+          personName: a.person_name,
+          role: a.role,
+          travelCost: a.travel_cost,
+          distanceKm: a.distance_km,
+          isNew: a.is_new,
+        })),
+        metrics: {
+          totalCost: pyData.metrics?.total_cost ?? 0,
+          coverage: pyData.metrics?.coverage ?? 0,
+          coveredSlots: pyData.metrics?.covered_slots ?? 0,
+          totalSlots: pyData.metrics?.total_slots ?? 0,
+          resolutionTimeMs: pyData.metrics?.resolution_time_ms ?? 0,
+          solverType: pyData.metrics?.solver_type ?? solverType,
+        },
+        unassigned: (pyData.unassigned ?? []).map((u: Record<string, unknown>) => ({
+          matchId: u.match_id,
+          matchLabel: u.match_label,
+          role: u.role,
+          slotIndex: u.slot_index,
+          reason: u.reason,
+        })),
+      }
+      actualSolverType = pyData.metrics?.solver_type ?? solverType
+    } catch {
+      // Fallback al solver TS
+      pythonFallback = true
+      const tsSolverResult = solve({
+        matches: enrichedMatches,
+        persons: enrichedPersons,
+        parameters: {
+          costWeight: 0.7,
+          balanceWeight: 0.3,
+          maxMatchesPerPerson: 3,
+          forceExisting: false,
+          numProposals: 1,
+        },
+      })
+      solverResult = tsSolverResult
+      actualSolverType = 'greedy-ts'
+    }
+  } else {
+    const tsSolverResult = solve({
+      matches: enrichedMatches,
+      persons: enrichedPersons,
+      parameters: {
+        costWeight: 0.7,
+        balanceWeight: 0.3,
+        maxMatchesPerPerson: 3,
+        forceExisting: false,
+        numProposals: 1,
+      },
+    })
+    solverResult = tsSolverResult
+    actualSolverType = 'greedy-ts'
+  }
 
   // 8. Crear designaciones a partir del resultado del solver
   const now = new Date()
-  const statuses: ('confirmed' | 'notified' | 'pending')[] = [
-    'confirmed',
-    'confirmed',
-    'confirmed',
-    'notified',
-    'pending',
-  ]
+  const statuses: ('notified' | 'pending')[] = ['notified', 'notified', 'pending']
   let desigCount = 0
 
   for (const assignment of solverResult.assignments) {
@@ -417,19 +592,18 @@ export async function POST(request: Request) {
       id: `desig-gen-${String(++desigCount).padStart(4, '0')}`,
       matchId: assignment.matchId,
       personId: assignment.personId,
-      role: assignment.role,
+      role: assignment.role as 'arbitro' | 'anotador',
       travelCost: cost.toFixed(2),
       distanceKm: km.toFixed(1),
       status,
       notifiedAt: status !== 'pending' ? now : null,
-      confirmedAt: status === 'confirmed' ? now : null,
       createdAt: now,
     })
   }
 
   // 9. Actualizar estado de partidos según cobertura
   for (const match of mockMatches) {
-    const desigs = mockDesignations.filter((d) => d.matchId === match.id && d.status !== 'rejected')
+    const desigs = mockDesignations.filter((d) => d.matchId === match.id)
     const refs = desigs.filter((d) => d.role === 'arbitro').length
     const sco = desigs.filter((d) => d.role === 'anotador').length
     if (refs >= match.refereesNeeded && sco >= match.scorersNeeded) {
@@ -442,13 +616,14 @@ export async function POST(request: Request) {
     const venue = mockVenues.find((v) => v.id === m.venueId)
     const competition = mockCompetitions.find((c) => c.id === m.competitionId)
     const designations = getMockDesignationsForMatch(m.id)
-    const activeDesigs = designations.filter((d) => d.status !== 'rejected')
-    const refereesAssigned = activeDesigs.filter((d) => d.role === 'arbitro').length
-    const scorersAssigned = activeDesigs.filter((d) => d.role === 'anotador').length
+    const refereesAssigned = designations.filter((d) => d.role === 'arbitro').length
+    const scorersAssigned = designations.filter((d) => d.role === 'anotador').length
 
     return {
       ...m,
-      venue: venue ? { ...venue } : undefined,
+      venue: venue
+        ? { ...venue, municipalityName: getMockMunicipality(venue.municipalityId)?.name }
+        : undefined,
       competition: competition ?? undefined,
       designations,
       refereesAssigned,
@@ -469,6 +644,8 @@ export async function POST(request: Request) {
       solverCoverage: solverResult.metrics.coverage,
       solverCost: solverResult.metrics.totalCost,
       solverTimeMs: solverResult.metrics.resolutionTimeMs,
+      solverType: actualSolverType,
+      pythonFallback,
       matchesCovered: mockMatches.filter((m) => m.status === 'designated').length,
       unassignedSlots: solverResult.unassigned,
     },

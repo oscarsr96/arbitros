@@ -12,10 +12,8 @@ export async function GET() {
     const venue = getMockVenue(match.venueId)
     const competition = getMockCompetition(match.competitionId)
     const designations = getMockDesignationsForMatch(match.id)
-    const activeDesigs = designations.filter((d) => d.status !== 'rejected')
-
-    const refereesAssigned = activeDesigs.filter((d) => d.role === 'arbitro').length
-    const scorersAssigned = activeDesigs.filter((d) => d.role === 'anotador').length
+    const refereesAssigned = designations.filter((d) => d.role === 'arbitro').length
+    const scorersAssigned = designations.filter((d) => d.role === 'anotador').length
 
     return {
       ...match,

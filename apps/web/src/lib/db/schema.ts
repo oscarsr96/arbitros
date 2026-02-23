@@ -29,8 +29,6 @@ export const refereeCategoryEnum = pgEnum('referee_category', [
 export const designationStatusEnum = pgEnum('designation_status', [
   'pending',
   'notified',
-  'confirmed',
-  'rejected',
   'completed',
 ])
 
@@ -119,6 +117,7 @@ export const persons = pgTable('persons', {
   longitude: numeric('longitude', { precision: 9, scale: 6 }),
   bankIban: varchar('bank_iban', { length: 34 }),
   active: boolean('active').default(true).notNull(),
+  hasCar: boolean('has_car').default(true).notNull(),
   authUserId: uuid('auth_user_id').unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
@@ -246,7 +245,6 @@ export const designations = pgTable('designations', {
   distanceKm: numeric('distance_km', { precision: 6, scale: 1 }),
   status: designationStatusEnum('status').default('pending').notNull(),
   notifiedAt: timestamp('notified_at'),
-  confirmedAt: timestamp('confirmed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

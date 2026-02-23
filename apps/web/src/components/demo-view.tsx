@@ -45,6 +45,8 @@ interface GenerateResult {
     solverCoverage: number
     solverCost: number
     solverTimeMs: number
+    solverType?: string
+    pythonFallback?: boolean
     matchesCovered: number
     unassignedSlots: UnassignedSlot[]
   }
@@ -56,15 +58,11 @@ interface GenerateResult {
 const statusColors: Record<string, string> = {
   pending: 'border-yellow-200 bg-yellow-50',
   notified: 'border-blue-200 bg-blue-50',
-  confirmed: 'border-green-200 bg-green-50',
-  rejected: 'border-red-200 bg-red-50',
 }
 
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   notified: 'Notificado',
-  confirmed: 'Confirmado',
-  rejected: 'Rechazado',
 }
 
 // ── Main component ────────────────────────────────────────────────────────
@@ -73,6 +71,8 @@ export function DemoView() {
   const [numMatches, setNumMatches] = useState(20)
   const [numReferees, setNumReferees] = useState(12)
   const [numScorers, setNumScorers] = useState(6)
+  const [usePythonSolver, setUsePythonSolver] = useState(false)
+  const [solverType, setSolverType] = useState<'cpsat' | 'greedy'>('cpsat')
   const [generating, setGenerating] = useState(false)
   const [resetting, setResetting] = useState(false)
   const [stats, setStats] = useState<DemoStats | null>(null)
@@ -82,6 +82,12 @@ export function DemoView() {
   const [filterCoverage, setFilterCoverage] = useState<'all' | 'covered' | 'partial' | 'uncovered'>(
     'all',
   )
+  const [filterCategory, setFilterCategory] = useState<string>('all')
+  const [filterMunicipality, setFilterMunicipality] = useState<string>('all')
+  const [filterClub, setFilterClub] = useState<string>('all')
+  const [filterDate, setFilterDate] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 10
 
   const fetchStats = useCallback(() => {
     fetch('/api/admin/demo')
@@ -102,7 +108,14 @@ export function DemoView() {
       const res = await fetch('/api/admin/demo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generate', numMatches, numReferees, numScorers }),
+        body: JSON.stringify({
+          action: 'generate',
+          numMatches,
+          numReferees,
+          numScorers,
+          usePythonSolver,
+          solverType,
+        }),
       })
       const data: GenerateResult = await res.json()
       setLastResult(data.generated)
@@ -148,15 +161,55 @@ export function DemoView() {
     })
   }
 
-  const expandAll = () => setExpandedIds(new Set(filteredMatches.map((m) => m.id)))
+  const hasActiveFilters =
+    filterCategory !== 'all' ||
+    filterMunicipality !== 'all' ||
+    filterClub !== 'all' ||
+    filterDate !== 'all' ||
+    filterCoverage !== 'all'
+
+  const clearFilters = () => {
+    setFilterCategory('all')
+    setFilterMunicipality('all')
+    setFilterClub('all')
+    setFilterDate('all')
+    setFilterCoverage('all')
+    setCurrentPage(1)
+  }
+
+  const expandAll = () => setExpandedIds(new Set(paginatedMatches.map((m) => m.id)))
   const collapseAll = () => setExpandedIds(new Set())
 
+  const categories = Array.from(
+    new Set(matchesDetail.map((m) => m.competition?.category).filter(Boolean)),
+  ) as string[]
+
+  const municipalities = Array.from(
+    new Set(matchesDetail.map((m) => m.venue?.municipalityName).filter(Boolean)),
+  ).sort() as string[]
+
+  const clubs = Array.from(new Set(matchesDetail.flatMap((m) => [m.homeTeam, m.awayTeam]))).sort()
+
+  const dates = Array.from(new Set(matchesDetail.map((m) => m.date))).sort()
+
   const filteredMatches = matchesDetail.filter((m) => {
+    if (filterCategory !== 'all' && m.competition?.category !== filterCategory) return false
+    if (filterMunicipality !== 'all' && m.venue?.municipalityName !== filterMunicipality)
+      return false
+    if (filterClub !== 'all' && m.homeTeam !== filterClub && m.awayTeam !== filterClub) return false
+    if (filterDate !== 'all' && m.date !== filterDate) return false
     if (filterCoverage === 'all') return true
     if (filterCoverage === 'covered') return m.isCovered
     if (filterCoverage === 'uncovered') return m.refereesAssigned === 0 && m.scorersAssigned === 0
     return !m.isCovered && (m.refereesAssigned > 0 || m.scorersAssigned > 0)
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredMatches.length / pageSize))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const paginatedMatches = filteredMatches.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize,
+  )
 
   const coveragePercent =
     stats && stats.matches > 0 ? Math.round((stats.matchesCovered / stats.matches) * 100) : 0
@@ -180,26 +233,54 @@ export function DemoView() {
           <SliderControl
             label="Partidos"
             min={5}
-            max={50}
+            max={200}
             value={numMatches}
             onChange={setNumMatches}
           />
           <SliderControl
             label="Árbitros"
             min={3}
-            max={30}
+            max={200}
             value={numReferees}
             onChange={setNumReferees}
           />
           <SliderControl
             label="Anotadores"
             min={2}
-            max={15}
+            max={200}
             value={numScorers}
             onChange={setNumScorers}
           />
         </div>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-4 rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+          <label className="flex cursor-pointer items-center gap-2">
+            <input
+              type="checkbox"
+              checked={usePythonSolver}
+              onChange={(e) => setUsePythonSolver(e.target.checked)}
+              className="accent-fbm-orange h-4 w-4 rounded"
+            />
+            <span className="text-sm text-white/70">Usar solver Python (OR-Tools)</span>
+          </label>
+          {usePythonSolver && (
+            <div className="flex items-center gap-2">
+              {(['cpsat', 'greedy'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setSolverType(t)}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                    solverType === t
+                      ? 'bg-fbm-orange text-white'
+                      : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/80'
+                  }`}
+                >
+                  {t === 'cpsat' ? 'CP-SAT (Óptimo)' : 'Greedy'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
           <Button
             onClick={handleGenerate}
             disabled={generating || resetting}
@@ -234,11 +315,24 @@ export function DemoView() {
           <div className="mb-2 flex items-center gap-2">
             <span className="text-lg">✅</span>
             <span className="font-semibold text-green-300">Solver ejecutado</span>
+            {lastResult.pythonFallback && (
+              <Badge
+                variant="outline"
+                className="border-yellow-500/30 bg-yellow-500/20 text-yellow-300"
+              >
+                Fallback a TS (Python no disponible)
+              </Badge>
+            )}
             <Badge
               variant="outline"
               className="ml-auto border-green-500/30 bg-green-500/20 text-green-300"
             >
-              {lastResult.solverStatus} · {lastResult.solverTimeMs}ms
+              {lastResult.solverType === 'cpsat'
+                ? 'CP-SAT'
+                : lastResult.solverType === 'greedy'
+                  ? 'Greedy Python'
+                  : 'Greedy TS'}{' '}
+              · {lastResult.solverStatus} · {lastResult.solverTimeMs}ms
             </Badge>
           </div>
           <div className="grid gap-2 text-sm text-green-200/80 sm:grid-cols-4">
@@ -319,41 +413,152 @@ export function DemoView() {
       {matchesDetail.length > 0 && (
         <div className="space-y-3">
           {/* Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold text-white">
-              Partidos ({filteredMatches.length}
-              {filterCoverage !== 'all' ? ` de ${matchesDetail.length}` : ''})
-            </h3>
-            <div className="flex items-center gap-2">
-              {/* Export buttons */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => exportDemoXlsx(matchesDetail)}
-                className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <FileSpreadsheet className="mr-1 h-3.5 w-3.5" /> Excel
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => exportDemoPdf(matchesDetail)}
-                className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <FileText className="mr-1 h-3.5 w-3.5" /> PDF
-              </Button>
-              <span className="mx-1 h-4 w-px bg-white/10" />
-              {/* Coverage filter */}
-              <div className="flex rounded-lg border border-white/10 bg-white/5">
+          <div className="space-y-3">
+            {/* Row 1: title + actions */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-white">
+                Partidos ({filteredMatches.length}
+                {filteredMatches.length !== matchesDetail.length
+                  ? ` de ${matchesDetail.length}`
+                  : ''}
+                )
+              </h3>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => exportDemoXlsx(matchesDetail)}
+                  className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <FileSpreadsheet className="mr-1 h-3.5 w-3.5" /> Excel
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => exportDemoPdf(matchesDetail)}
+                  className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <FileText className="mr-1 h-3.5 w-3.5" /> PDF
+                </Button>
+                <span className="mx-1 h-4 w-px bg-white/10" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={expandAll}
+                  className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <ChevronDown className="mr-1 h-3 w-3" /> Expandir
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={collapseAll}
+                  className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
+                >
+                  <ChevronUp className="mr-1 h-3 w-3" /> Colapsar
+                </Button>
+              </div>
+            </div>
+
+            {/* Row 2: filters */}
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">
+                Filtros
+              </span>
+              {categories.length > 1 && (
+                <select
+                  value={filterCategory}
+                  onChange={(e) => {
+                    setFilterCategory(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-white/70 outline-none focus:border-white/30"
+                >
+                  <option value="all" className="bg-gray-900">
+                    Categoría
+                  </option>
+                  {categories.sort().map((cat) => (
+                    <option key={cat} value={cat} className="bg-gray-900">
+                      {cat.charAt(0).toUpperCase() + cat.slice(1).replace('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {municipalities.length > 1 && (
+                <select
+                  value={filterMunicipality}
+                  onChange={(e) => {
+                    setFilterMunicipality(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-white/70 outline-none focus:border-white/30"
+                >
+                  <option value="all" className="bg-gray-900">
+                    Municipio
+                  </option>
+                  {municipalities.map((muni) => (
+                    <option key={muni} value={muni} className="bg-gray-900">
+                      {muni}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {clubs.length > 1 && (
+                <select
+                  value={filterClub}
+                  onChange={(e) => {
+                    setFilterClub(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-white/70 outline-none focus:border-white/30"
+                >
+                  <option value="all" className="bg-gray-900">
+                    Club
+                  </option>
+                  {clubs.map((club) => (
+                    <option key={club} value={club} className="bg-gray-900">
+                      {club}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {dates.length > 1 && (
+                <select
+                  value={filterDate}
+                  onChange={(e) => {
+                    setFilterDate(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs font-medium text-white/70 outline-none focus:border-white/30"
+                >
+                  <option value="all" className="bg-gray-900">
+                    Fecha
+                  </option>
+                  {dates.map((d) => (
+                    <option key={d} value={d} className="bg-gray-900">
+                      {new Date(d + 'T00:00:00').toLocaleDateString('es-ES', {
+                        weekday: 'short',
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <span className="mx-0.5 h-4 w-px bg-white/10" />
+              <div className="flex rounded-md border border-white/10 bg-white/5">
                 {(['all', 'covered', 'partial', 'uncovered'] as const).map((f) => (
                   <button
                     key={f}
-                    onClick={() => setFilterCoverage(f)}
-                    className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    onClick={() => {
+                      setFilterCoverage(f)
+                      setCurrentPage(1)
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
                       filterCoverage === f
                         ? 'bg-fbm-orange text-white'
                         : 'text-white/50 hover:bg-white/10 hover:text-white/80'
-                    } ${f === 'all' ? 'rounded-l-lg' : ''} ${f === 'uncovered' ? 'rounded-r-lg' : ''}`}
+                    } ${f === 'all' ? 'rounded-l-md' : ''} ${f === 'uncovered' ? 'rounded-r-md' : ''}`}
                   >
                     {f === 'all'
                       ? 'Todos'
@@ -365,28 +570,20 @@ export function DemoView() {
                   </button>
                 ))}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={expandAll}
-                className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <ChevronDown className="mr-1 h-3 w-3" /> Expandir
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={collapseAll}
-                className="text-xs text-white/50 hover:bg-white/10 hover:text-white"
-              >
-                <ChevronUp className="mr-1 h-3 w-3" /> Colapsar
-              </Button>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-auto rounded-md px-2 py-1 text-[10px] font-medium text-white/40 transition-colors hover:bg-white/10 hover:text-white/70"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
           </div>
 
           {/* Match cards */}
-          <div className="space-y-2">
-            {filteredMatches.map((match) => (
+          <div className="min-h-[600px] space-y-2">
+            {paginatedMatches.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}
@@ -397,6 +594,58 @@ export function DemoView() {
               </MatchCard>
             ))}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="text-xs text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              >
+                ← Anterior
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - safeCurrentPage) <= 2)
+                  .reduce<(number | 'dots')[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push('dots')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === 'dots' ? (
+                      <span key={`dots-${i}`} className="px-1 text-xs text-white/30">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        onClick={() => setCurrentPage(item)}
+                        className={`min-w-[28px] rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                          item === safeCurrentPage
+                            ? 'bg-fbm-orange text-white'
+                            : 'text-white/50 hover:bg-white/10 hover:text-white'
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    ),
+                  )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="text-xs text-white/50 hover:bg-white/10 hover:text-white disabled:opacity-30"
+              >
+                Siguiente →
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -406,16 +655,10 @@ export function DemoView() {
 // ── Designation detail inside expanded match ──────────────────────────────
 
 function DesignationDetail({ match }: { match: EnrichedMatch }) {
-  const refDesigs = match.designations.filter(
-    (d) => d.role === 'arbitro' && d.status !== 'rejected',
-  )
-  const scorDesigs = match.designations.filter(
-    (d) => d.role === 'anotador' && d.status !== 'rejected',
-  )
+  const refDesigs = match.designations.filter((d) => d.role === 'arbitro')
+  const scorDesigs = match.designations.filter((d) => d.role === 'anotador')
 
-  const totalCost = match.designations
-    .filter((d) => d.status !== 'rejected')
-    .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  const totalCost = match.designations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
   return (
     <div className="space-y-3">
@@ -485,6 +728,13 @@ function DesignationRow({ designation }: { designation: EnrichedDesignation }) {
               {designation.person.category}
             </span>
           )}
+          <span
+            className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+              designation.person?.hasCar ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+            }`}
+          >
+            {designation.person?.hasCar ? '🚗 Coche' : '🚶 Sin coche'}
+          </span>
         </div>
         <div className="mt-0.5 flex items-center gap-3 text-xs text-gray-500">
           {designation.municipality && (

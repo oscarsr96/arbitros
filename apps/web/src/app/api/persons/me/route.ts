@@ -15,16 +15,14 @@ export async function GET() {
   const municipality = person.municipalityId ? getMockMunicipality(person.municipalityId) : null
 
   const designations = getMockDesignationsForPerson(person.id)
-  const completedDesignations = designations.filter(
-    (d) => d.status === 'confirmed' || (d.status as string) === 'completed',
-  )
+  const completedDesignations = designations.filter((d) => d.status === 'completed')
   const totalEarned = completedDesignations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
   return NextResponse.json({
     person: { ...person, municipalityName: municipality?.name ?? null },
     stats: {
       totalMatches: designations.length,
-      confirmedMatches: completedDesignations.length,
+      completedMatches: completedDesignations.length,
       totalEarned: totalEarned.toFixed(2),
     },
   })

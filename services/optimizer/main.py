@@ -28,7 +28,7 @@ app.add_middleware(
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "solver": "greedy-v1"}
+    return {"status": "ok", "solvers": ["greedy-v1", "cpsat-v2"]}
 
 
 @app.post("/optimize", response_model=OptimizationResponse)

@@ -251,13 +251,9 @@ export function AsignacionView() {
           venue?.municipalityId ?? '',
         )
 
-        const assigned = mockDesignations.filter(
-          (d) => d.personId === person.id && d.status !== 'rejected',
-        ).length
+        const assigned = mockDesignations.filter((d) => d.personId === person.id).length
 
-        const alreadyAssigned = match.designations.some(
-          (d) => d.personId === person.id && d.status !== 'rejected',
-        )
+        const alreadyAssigned = match.designations.some((d) => d.personId === person.id)
 
         let validation: AssignmentValidation = { valid: true }
 
@@ -466,12 +462,8 @@ export function AsignacionView() {
             ) : (
               sorted.map((match) => {
                 const expanded = expandedMatchIds.has(match.id)
-                const refDesigs = match.designations.filter(
-                  (d) => d.role === 'arbitro' && d.status !== 'rejected',
-                )
-                const scorerDesigs = match.designations.filter(
-                  (d) => d.role === 'anotador' && d.status !== 'rejected',
-                )
+                const refDesigs = match.designations.filter((d) => d.role === 'arbitro')
+                const scorerDesigs = match.designations.filter((d) => d.role === 'anotador')
                 const proposedRefs = getProposedForSlot(match.id, 'arbitro')
                 const proposedScorers = getProposedForSlot(match.id, 'anotador')
 

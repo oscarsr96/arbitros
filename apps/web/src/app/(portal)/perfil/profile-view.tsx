@@ -32,7 +32,7 @@ interface PersonData {
 
 interface Stats {
   totalMatches: number
-  confirmedMatches: number
+  completedMatches: number
   totalEarned: string
 }
 
@@ -193,8 +193,8 @@ export function ProfileView() {
               <p className="text-muted-foreground mt-1 text-xs">Partidos asignados</p>
             </div>
             <div className="rounded-lg bg-green-50 p-4 text-center">
-              <p className="text-3xl font-bold text-green-600">{stats?.confirmedMatches ?? 0}</p>
-              <p className="text-muted-foreground mt-1 text-xs">Confirmados</p>
+              <p className="text-3xl font-bold text-green-600">{stats?.completedMatches ?? 0}</p>
+              <p className="text-muted-foreground mt-1 text-xs">Completados</p>
             </div>
           </div>
 

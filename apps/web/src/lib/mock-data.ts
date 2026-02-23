@@ -138,6 +138,7 @@ export const mockPersons = [
     municipalityId: 'muni-001',
     bankIban: 'ES1234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-08-15'),
   },
@@ -153,6 +154,7 @@ export const mockPersons = [
     municipalityId: 'muni-001',
     bankIban: 'ES2234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-08-15'),
   },
@@ -168,6 +170,7 @@ export const mockPersons = [
     municipalityId: 'muni-002',
     bankIban: 'ES3234567890123456789012',
     active: true,
+    hasCar: false,
     authUserId: null,
     createdAt: new Date('2024-09-01'),
   },
@@ -183,6 +186,7 @@ export const mockPersons = [
     municipalityId: 'muni-003',
     bankIban: 'ES4234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-08-20'),
   },
@@ -198,6 +202,7 @@ export const mockPersons = [
     municipalityId: 'muni-004',
     bankIban: 'ES5234567890123456789012',
     active: true,
+    hasCar: false,
     authUserId: null,
     createdAt: new Date('2024-09-10'),
   },
@@ -213,6 +218,7 @@ export const mockPersons = [
     municipalityId: 'muni-005',
     bankIban: 'ES6234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-09-05'),
   },
@@ -228,6 +234,7 @@ export const mockPersons = [
     municipalityId: 'muni-006',
     bankIban: 'ES7234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-08-25'),
   },
@@ -243,6 +250,7 @@ export const mockPersons = [
     municipalityId: 'muni-002',
     bankIban: 'ES8234567890123456789012',
     active: true,
+    hasCar: false,
     authUserId: null,
     createdAt: new Date('2024-09-15'),
   },
@@ -258,6 +266,7 @@ export const mockPersons = [
     municipalityId: 'muni-005',
     bankIban: 'ES9234567890123456789012',
     active: true,
+    hasCar: true,
     authUserId: null,
     createdAt: new Date('2024-10-01'),
   },
@@ -454,7 +463,7 @@ export const mockMatches = [
 
 // ── Designaciones ───────────────────────────────────────────────────────────
 
-type DesignationStatus = 'pending' | 'notified' | 'confirmed' | 'rejected' | 'completed'
+type DesignationStatus = 'pending' | 'notified' | 'completed'
 
 interface MockDesignation {
   id: string
@@ -465,7 +474,6 @@ interface MockDesignation {
   distanceKm: string
   status: DesignationStatus
   notifiedAt: Date | null
-  confirmedAt: Date | null
   createdAt: Date
 }
 
@@ -478,9 +486,8 @@ export const mockDesignations: MockDesignation[] = [
     role: 'arbitro' as const,
     travelCost: '3.00',
     distanceKm: '0.0',
-    status: 'confirmed' as const,
+    status: 'notified' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
-    confirmedAt: new Date('2025-03-05T14:30:00'),
     createdAt: new Date('2025-03-05T09:00:00'),
   },
   {
@@ -490,9 +497,8 @@ export const mockDesignations: MockDesignation[] = [
     role: 'arbitro' as const,
     travelCost: '2.50',
     distanceKm: '25.0',
-    status: 'confirmed' as const,
+    status: 'notified' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
-    confirmedAt: new Date('2025-03-05T15:00:00'),
     createdAt: new Date('2025-03-05T09:00:00'),
   },
   {
@@ -504,7 +510,6 @@ export const mockDesignations: MockDesignation[] = [
     distanceKm: '15.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
-    confirmedAt: null,
     createdAt: new Date('2025-03-05T09:00:00'),
   },
   // match-002: 1 arbitro only (partial)
@@ -517,7 +522,6 @@ export const mockDesignations: MockDesignation[] = [
     distanceKm: '13.0',
     status: 'pending' as const,
     notifiedAt: null,
-    confirmedAt: null,
     createdAt: new Date('2025-03-05T09:00:00'),
   },
   // match-003: 1 arbitro (partial)
@@ -530,38 +534,23 @@ export const mockDesignations: MockDesignation[] = [
     distanceKm: '10.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-06T08:00:00'),
-    confirmedAt: null,
-    createdAt: new Date('2025-03-06T07:00:00'),
-  },
-  // match-004: 1 arbitro (partial, rejected)
-  {
-    id: 'desig-006',
-    matchId: 'match-004',
-    personId: 'person-003', // Miguel (provincial) - Alcorcon
-    role: 'arbitro' as const,
-    travelCost: '0.80',
-    distanceKm: '8.0',
-    status: 'rejected' as const,
-    notifiedAt: new Date('2025-03-06T08:00:00'),
-    confirmedAt: null,
     createdAt: new Date('2025-03-06T07:00:00'),
   },
   // match-006: 1 arbitro (partial)
   {
-    id: 'desig-007',
+    id: 'desig-006',
     matchId: 'match-006',
     personId: 'person-001', // Carlos (autonomico) - Madrid
     role: 'arbitro' as const,
     travelCost: '3.00',
     distanceKm: '0.0',
-    status: 'confirmed' as const,
+    status: 'notified' as const,
     notifiedAt: new Date('2025-03-05T10:00:00'),
-    confirmedAt: new Date('2025-03-05T16:00:00'),
     createdAt: new Date('2025-03-05T09:00:00'),
   },
   // match-008: 1 anotador (partial)
   {
-    id: 'desig-008',
+    id: 'desig-007',
     matchId: 'match-008',
     personId: 'person-005', // David (anotador) - Leganes
     role: 'anotador' as const,
@@ -569,7 +558,6 @@ export const mockDesignations: MockDesignation[] = [
     distanceKm: '14.0',
     status: 'notified' as const,
     notifiedAt: new Date('2025-03-06T10:00:00'),
-    confirmedAt: null,
     createdAt: new Date('2025-03-06T09:00:00'),
   },
 ]
@@ -868,7 +856,7 @@ export function hasTimeOverlap(personId: string, matchId: string): boolean {
   if (!targetMatch) return false
 
   const personDesignations = mockDesignations.filter(
-    (d) => d.personId === personId && d.matchId !== matchId && d.status !== 'rejected',
+    (d) => d.personId === personId && d.matchId !== matchId,
   )
 
   const targetHour = parseInt(targetMatch.time.split(':')[0])

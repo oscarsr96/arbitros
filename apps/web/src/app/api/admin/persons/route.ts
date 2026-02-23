@@ -12,12 +12,7 @@ export async function GET() {
 
   const enriched: EnrichedPerson[] = mockPersons.map((person) => {
     const municipality = getMockMunicipality(person.municipalityId)
-    const personDesigs = mockDesignations.filter(
-      (d) => d.personId === person.id && d.status !== 'rejected',
-    )
-    const confirmed = personDesigs.filter(
-      (d) => d.status === 'confirmed' || d.status === 'completed',
-    )
+    const personDesigs = mockDesignations.filter((d) => d.personId === person.id)
     const totalCost = personDesigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
     return {
@@ -31,9 +26,9 @@ export async function GET() {
       postalCode: person.postalCode,
       municipalityId: person.municipalityId,
       active: person.active,
+      hasCar: person.hasCar,
       municipality,
       matchesAssigned: personDesigs.length,
-      matchesConfirmed: confirmed.length,
       totalCost: Number(totalCost.toFixed(2)),
       hasAvailability: personsWithAvail.has(person.id),
     }

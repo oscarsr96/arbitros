@@ -13,7 +13,14 @@ export interface EnrichedMatch {
   status: string
   seasonId: string
   matchday: number
-  venue?: { id: string; name: string; address: string; municipalityId: string; postalCode: string }
+  venue?: {
+    id: string
+    name: string
+    address: string
+    municipalityId: string
+    postalCode: string
+    municipalityName?: string
+  }
   competition?: {
     id: string
     name: string
@@ -39,7 +46,6 @@ export interface EnrichedDesignation {
   distanceKm: string
   status: string
   notifiedAt: Date | null
-  confirmedAt: Date | null
   createdAt: Date
   person?: {
     id: string
@@ -47,6 +53,7 @@ export interface EnrichedDesignation {
     role: string
     category: string | null
     municipalityId: string
+    hasCar: boolean
   }
   municipality?: { id: string; name: string }
 }
@@ -62,9 +69,9 @@ export interface EnrichedPerson {
   postalCode: string
   municipalityId: string
   active: boolean
+  hasCar: boolean
   municipality?: { id: string; name: string }
   matchesAssigned: number
-  matchesConfirmed: number
   totalCost: number
   hasAvailability: boolean
 }
@@ -79,7 +86,6 @@ export interface DashboardStats {
   refereesAvailable: number
   scorersAvailable: number
   estimatedCost: number
-  confirmationRate: number
 }
 
 export interface DashboardAlert {

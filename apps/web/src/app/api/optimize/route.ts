@@ -28,9 +28,8 @@ export async function POST(request: Request) {
       const venue = mockVenues.find((v) => v.id === m.venueId)
       const competition = mockCompetitions.find((c) => c.id === m.competitionId)
       const designations = getMockDesignationsForMatch(m.id)
-      const activeDesigs = designations.filter((d) => d.status !== 'rejected')
-      const refereesAssigned = activeDesigs.filter((d) => d.role === 'arbitro').length
-      const scorersAssigned = activeDesigs.filter((d) => d.role === 'anotador').length
+      const refereesAssigned = designations.filter((d) => d.role === 'arbitro').length
+      const scorersAssigned = designations.filter((d) => d.role === 'anotador').length
 
       return {
         ...m,
@@ -48,9 +47,7 @@ export async function POST(request: Request) {
       .filter((p) => p.active)
       .map((p) => {
         const municipality = getMockMunicipality(p.municipalityId)
-        const personDesigs = mockDesignations.filter(
-          (d) => d.personId === p.id && d.status !== 'rejected',
-        )
+        const personDesigs = mockDesignations.filter((d) => d.personId === p.id)
         return {
           id: p.id,
           name: p.name,
@@ -62,9 +59,9 @@ export async function POST(request: Request) {
           postalCode: p.postalCode,
           municipalityId: p.municipalityId,
           active: p.active,
+          hasCar: p.hasCar,
           municipality,
           matchesAssigned: personDesigs.length,
-          matchesConfirmed: personDesigs.filter((d) => d.status === 'confirmed').length,
           totalCost: personDesigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0),
           hasAvailability: true,
         }

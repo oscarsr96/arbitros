@@ -17,15 +17,11 @@ interface AssignmentSlotProps {
 const statusColors: Record<string, string> = {
   pending: 'border-yellow-200 bg-yellow-50',
   notified: 'border-blue-200 bg-blue-50',
-  confirmed: 'border-green-200 bg-green-50',
-  rejected: 'border-red-200 bg-red-50',
 }
 
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   notified: 'Notificado',
-  confirmed: 'Confirmado',
-  rejected: 'Rechazado',
 }
 
 export function AssignmentSlot({
@@ -62,7 +58,7 @@ export function AssignmentSlot({
             </span>
           </div>
         </div>
-        {onRemove && designation.status !== 'confirmed' && (
+        {onRemove && designation.status !== 'completed' && (
           <Button
             variant="ghost"
             size="sm"

@@ -4,8 +4,6 @@ import {
   mockDesignations,
   mockPersons,
   mockAvailabilities,
-  getMockVenue,
-  getMockCompetition,
   getMockDesignationsForMatch,
 } from '@/lib/mock-data'
 import type { DashboardStats, DashboardAlert } from '@/lib/types'
@@ -20,9 +18,8 @@ export async function GET() {
 
   for (const match of mockMatches) {
     const desigs = getMockDesignationsForMatch(match.id)
-    const activeDesigs = desigs.filter((d) => d.status !== 'rejected')
-    const refs = activeDesigs.filter((d) => d.role === 'arbitro').length
-    const scorers = activeDesigs.filter((d) => d.role === 'anotador').length
+    const refs = desigs.filter((d) => d.role === 'arbitro').length
+    const scorers = desigs.filter((d) => d.role === 'anotador').length
 
     if (refs >= match.refereesNeeded && scorers >= match.scorersNeeded) {
       coveredMatches++
@@ -45,15 +42,7 @@ export async function GET() {
     (p) => p.role === 'anotador' && personsWithAvail.has(p.id),
   ).length
 
-  const estimatedCost = mockDesignations
-    .filter((d) => d.status !== 'rejected')
-    .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
-
-  const totalDesigs = mockDesignations.filter((d) => d.status !== 'rejected').length
-  const confirmedDesigs = mockDesignations.filter(
-    (d) => d.status === 'confirmed' || d.status === 'completed',
-  ).length
-  const confirmationRate = totalDesigs > 0 ? Math.round((confirmedDesigs / totalDesigs) * 100) : 0
+  const estimatedCost = mockDesignations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
   const stats: DashboardStats = {
     totalMatches,
@@ -65,7 +54,6 @@ export async function GET() {
     refereesAvailable,
     scorersAvailable,
     estimatedCost: Number(estimatedCost.toFixed(2)),
-    confirmationRate,
   }
 
   // Generate alerts
@@ -84,14 +72,6 @@ export async function GET() {
       type: 'warning',
       message: `${partiallyCovered} partido${partiallyCovered !== 1 ? 's' : ''} parcialmente cubierto${partiallyCovered !== 1 ? 's' : ''}`,
       link: '/partidos?coverage=partial',
-    })
-  }
-
-  const rejectedDesigs = mockDesignations.filter((d) => d.status === 'rejected')
-  if (rejectedDesigs.length > 0) {
-    alerts.push({
-      type: 'warning',
-      message: `${rejectedDesigs.length} designación${rejectedDesigs.length !== 1 ? 'es' : ''} rechazada${rejectedDesigs.length !== 1 ? 's' : ''} — necesitan sustituto`,
     })
   }
 

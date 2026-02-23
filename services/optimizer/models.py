@@ -64,6 +64,7 @@ class Availability(BaseModel):
     day_of_week: int
     start_time: str
     end_time: str
+    week_start: str = ""
 
 
 class Incompatibility(BaseModel):
@@ -84,6 +85,7 @@ class Person(BaseModel):
     category: Optional[str] = None
     municipality_id: str
     active: bool = True
+    has_car: bool = True
     availabilities: list[Availability] = Field(default_factory=list)
     incompatibilities: list[Incompatibility] = Field(default_factory=list)
 
@@ -93,6 +95,8 @@ class SolverParameters(BaseModel):
     balance_weight: float = Field(default=0.3, ge=0, le=1)
     max_matches_per_person: int = Field(default=3, ge=1, le=10)
     force_existing: bool = True
+    max_time_seconds: float = Field(default=30.0, ge=1, le=300)
+    solver_type: str = Field(default="cpsat", pattern="^(cpsat|greedy)$")
 
 
 class OptimizationRequest(BaseModel):
@@ -129,6 +133,7 @@ class SolverMetrics(BaseModel):
     covered_slots: int
     total_slots: int
     resolution_time_ms: int
+    solver_type: str = "cpsat"
 
 
 class OptimizationResponse(BaseModel):

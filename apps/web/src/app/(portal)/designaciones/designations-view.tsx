@@ -40,17 +40,10 @@ export function DesignationsView() {
       .finally(() => setLoading(false))
   }, [])
 
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setDesignations((prev) => prev.map((d) => (d.id === id ? { ...d, status: newStatus } : d)))
-  }
-
   const pending = designations.filter((d) => d.status === 'pending' || d.status === 'notified')
-  const confirmed = designations.filter((d) => d.status === 'confirmed' || d.status === 'completed')
-  const rejected = designations.filter((d) => d.status === 'rejected')
+  const completed = designations.filter((d) => d.status === 'completed')
 
-  const totalCost = designations
-    .filter((d) => d.status !== 'rejected')
-    .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  const totalCost = designations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
   if (loading) {
     return (
@@ -74,8 +67,8 @@ export function DesignationsView() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{confirmed.length}</p>
-            <p className="text-muted-foreground text-xs">Confirmados</p>
+            <p className="text-2xl font-bold text-green-600">{completed.length}</p>
+            <p className="text-muted-foreground text-xs">Completados</p>
           </CardContent>
         </Card>
         <Card>
@@ -91,13 +84,12 @@ export function DesignationsView() {
         <TabsList>
           <TabsTrigger value="all">Todas ({designations.length})</TabsTrigger>
           <TabsTrigger value="pending">Pendientes ({pending.length})</TabsTrigger>
-          <TabsTrigger value="confirmed">Confirmadas ({confirmed.length})</TabsTrigger>
-          <TabsTrigger value="rejected">Rechazadas ({rejected.length})</TabsTrigger>
+          <TabsTrigger value="completed">Completadas ({completed.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-4 space-y-3">
           {designations.map((d) => (
-            <DesignationCard key={d.id} designation={d} onStatusChange={handleStatusChange} />
+            <DesignationCard key={d.id} designation={d} />
           ))}
           {designations.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -108,7 +100,7 @@ export function DesignationsView() {
 
         <TabsContent value="pending" className="mt-4 space-y-3">
           {pending.map((d) => (
-            <DesignationCard key={d.id} designation={d} onStatusChange={handleStatusChange} />
+            <DesignationCard key={d.id} designation={d} />
           ))}
           {pending.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -117,24 +109,13 @@ export function DesignationsView() {
           )}
         </TabsContent>
 
-        <TabsContent value="confirmed" className="mt-4 space-y-3">
-          {confirmed.map((d) => (
-            <DesignationCard key={d.id} designation={d} onStatusChange={handleStatusChange} />
+        <TabsContent value="completed" className="mt-4 space-y-3">
+          {completed.map((d) => (
+            <DesignationCard key={d.id} designation={d} />
           ))}
-          {confirmed.length === 0 && (
+          {completed.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
-              No hay designaciones confirmadas
-            </p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="rejected" className="mt-4 space-y-3">
-          {rejected.map((d) => (
-            <DesignationCard key={d.id} designation={d} onStatusChange={handleStatusChange} />
-          ))}
-          {rejected.length === 0 && (
-            <p className="text-muted-foreground py-8 text-center text-sm">
-              No hay designaciones rechazadas
+              No hay designaciones completadas
             </p>
           )}
         </TabsContent>

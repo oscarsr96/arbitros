@@ -46,7 +46,6 @@ export async function POST(request: Request) {
     distanceKm: km.toFixed(1),
     status: 'pending' as const,
     notifiedAt: null,
-    confirmedAt: null,
     createdAt: new Date(),
   }
 

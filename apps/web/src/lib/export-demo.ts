@@ -10,7 +10,7 @@ export function exportDemoXlsx(matches: EnrichedMatch[]) {
 
   // Sheet 1: Partidos
   const matchRows = matches.map((m) => {
-    const activeDesigs = m.designations.filter((d) => d.status !== 'rejected')
+    const activeDesigs = m.designations
     const refs = activeDesigs.filter((d) => d.role === 'arbitro')
     const scos = activeDesigs.filter((d) => d.role === 'anotador')
     const cost = activeDesigs.reduce((s, d) => s + parseFloat(d.travelCost), 0)
@@ -45,7 +45,6 @@ export function exportDemoXlsx(matches: EnrichedMatch[]) {
   const desigRows: Record<string, string | number>[] = []
   for (const m of matches) {
     for (const d of m.designations) {
-      if (d.status === 'rejected') continue
       desigRows.push({
         Partido: `${m.homeTeam} vs ${m.awayTeam}`,
         Fecha: m.date,
@@ -107,7 +106,7 @@ export function exportDemoPdf(matches: EnrichedMatch[]) {
 
   const totalMatches = matches.length
   const covered = matches.filter((m) => m.isCovered).length
-  const allDesigs = matches.flatMap((m) => m.designations.filter((d) => d.status !== 'rejected'))
+  const allDesigs = matches.flatMap((m) => m.designations)
   const totalCost = allDesigs.reduce((s, d) => s + parseFloat(d.travelCost), 0)
   const coveragePct = totalMatches > 0 ? Math.round((covered / totalMatches) * 100) : 0
 
@@ -145,7 +144,7 @@ export function exportDemoPdf(matches: EnrichedMatch[]) {
   // Match table with designations
   const body: (string | number)[][] = []
   for (const m of matches) {
-    const activeDesigs = m.designations.filter((d) => d.status !== 'rejected')
+    const activeDesigs = m.designations
     const refNames = activeDesigs
       .filter((d) => d.role === 'arbitro')
       .map((d) => d.person?.name ?? '—')

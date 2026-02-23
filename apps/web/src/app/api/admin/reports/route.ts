@@ -13,15 +13,11 @@ import {
 
 export async function GET() {
   // Cost per matchday (current)
-  const totalCost = mockDesignations
-    .filter((d) => d.status !== 'rejected')
-    .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  const totalCost = mockDesignations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
 
   // Load per person
   const loadByPerson = mockPersons.map((person) => {
-    const desigs = mockDesignations.filter(
-      (d) => d.personId === person.id && d.status !== 'rejected',
-    )
+    const desigs = mockDesignations.filter((d) => d.personId === person.id)
     const cost = desigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
     return {
       personId: person.id,
@@ -38,7 +34,7 @@ export async function GET() {
   let uncovered = 0
   for (const match of mockMatches) {
     const desigs = getMockDesignationsForMatch(match.id)
-    const active = desigs.filter((d) => d.status !== 'rejected')
+    const active = desigs
     const refs = active.filter((d) => d.role === 'arbitro').length
     const scorers = active.filter((d) => d.role === 'anotador').length
     if (refs >= match.refereesNeeded && scorers >= match.scorersNeeded) covered++
@@ -50,9 +46,7 @@ export async function GET() {
   const liquidation = mockPersons
     .map((person) => {
       const municipality = getMockMunicipality(person.municipalityId)
-      const desigs = mockDesignations.filter(
-        (d) => d.personId === person.id && d.status !== 'rejected',
-      )
+      const desigs = mockDesignations.filter((d) => d.personId === person.id)
       const matches = desigs.map((d) => {
         const match = getMockMatch(d.matchId)
         const venue = match ? getMockVenue(match.venueId) : undefined
@@ -100,7 +94,6 @@ export async function GET() {
 
   // Current jornada
   for (const d of mockDesignations) {
-    if (d.status === 'rejected') continue
     const match = getMockMatch(d.matchId)
     if (!match) continue
     const venue = getMockVenue(match.venueId)

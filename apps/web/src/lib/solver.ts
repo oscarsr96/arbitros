@@ -139,7 +139,7 @@ function hasTimeOverlapWith(
 
   // Comprobar contra designaciones existentes en la BD (mock)
   for (const d of existingDesignations) {
-    if (d.personId !== personId || d.status === 'rejected') continue
+    if (d.personId !== personId) continue
     const match = getMockMatchLocal(d.matchId)
     if (!match || match.date !== matchDate) continue
     const otherHour = parseInt(match.time.split(':')[0])
@@ -174,7 +174,6 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   // Cargar designaciones existentes como asignaciones ya hechas
   const existingByMatch: Record<string, { personId: string; role: string }[]> = {}
   for (const d of mockDesignations) {
-    if (d.status === 'rejected') continue
     if (!existingByMatch[d.matchId]) existingByMatch[d.matchId] = []
     existingByMatch[d.matchId].push({ personId: d.personId, role: d.role })
     if (personLoadCount[d.personId] !== undefined) {
@@ -438,7 +437,10 @@ function findBestCandidate(
 
     // Calcular coste y score
     const { cost, km } = calculateTravelCost(person.municipalityId, venueMuniId)
-    const normalizedCost = cost / 10 // normalizar a rango ~0-1
+    let normalizedCost = cost / 10 // normalizar a rango ~0-1
+    if (!person.hasCar && km > 15) {
+      normalizedCost *= 2.0
+    }
     const normalizedLoad = currentLoad / maxLoad
 
     const score = costWeight * normalizedCost + balanceWeight * normalizedLoad
@@ -575,7 +577,6 @@ export function solvePartial(
   for (const p of persons) personLoadCount[p.id] = 0
 
   for (const d of mockDesignations) {
-    if (d.status === 'rejected') continue
     const m = matches.find((m) => m.id === d.matchId)
     if (m) {
       currentAssignments.push({

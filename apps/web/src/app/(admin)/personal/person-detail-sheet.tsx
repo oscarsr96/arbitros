@@ -49,8 +49,7 @@ const categoryLabels: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   notified: 'Notificado',
-  confirmed: 'Confirmado',
-  rejected: 'Rechazado',
+  completed: 'Completado',
 }
 
 interface PersonDetailSheetProps {
@@ -206,10 +205,10 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                         <Badge
                           variant="outline"
                           className={`text-xs ${
-                            d.status === 'confirmed'
+                            d.status === 'completed'
                               ? 'border-green-200 text-green-700'
-                              : d.status === 'rejected'
-                                ? 'border-red-200 text-red-700'
+                              : d.status === 'notified'
+                                ? 'border-blue-200 text-blue-700'
                                 : 'border-gray-200 text-gray-600'
                           }`}
                         >
@@ -243,9 +242,9 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                 </div>
                 <div>
                   <p className="text-lg font-bold text-green-600">
-                    {data.designations.filter((d) => d.status === 'confirmed').length}
+                    {data.designations.filter((d) => d.status === 'completed').length}
                   </p>
-                  <p className="text-xs text-gray-500">Confirmados</p>
+                  <p className="text-xs text-gray-500">Completados</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold text-gray-900">

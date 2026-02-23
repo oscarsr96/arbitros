@@ -10,9 +10,9 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
 
   const designation = mockDesignations[index]
 
-  if (designation.status === 'confirmed') {
+  if (designation.status === 'completed') {
     return NextResponse.json(
-      { error: 'No se puede eliminar una designación confirmada' },
+      { error: 'No se puede eliminar una designación completada' },
       { status: 400 },
     )
   }

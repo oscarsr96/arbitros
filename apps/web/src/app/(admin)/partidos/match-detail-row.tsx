@@ -16,8 +16,7 @@ interface MatchDetailRowProps {
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   notified: 'Notificado',
-  confirmed: 'Confirmado',
-  rejected: 'Rechazado',
+  completed: 'Completado',
 }
 
 export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDetailRowProps) {
@@ -116,13 +115,11 @@ export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDeta
                         <Badge
                           variant="outline"
                           className={`ml-auto text-xs ${
-                            d.status === 'confirmed'
+                            d.status === 'completed'
                               ? 'border-green-200 bg-green-50 text-green-700'
-                              : d.status === 'rejected'
-                                ? 'border-red-200 bg-red-50 text-red-700'
-                                : d.status === 'notified'
-                                  ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                  : 'border-yellow-200 bg-yellow-50 text-yellow-700'
+                              : d.status === 'notified'
+                                ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                : 'border-yellow-200 bg-yellow-50 text-yellow-700'
                           }`}
                         >
                           {statusLabels[d.status] ?? d.status}

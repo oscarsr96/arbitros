@@ -14,16 +14,6 @@ const statusConfig: Record<
     variant: 'secondary',
     className: 'bg-blue-100 text-blue-800 hover:bg-blue-100',
   },
-  confirmed: {
-    label: 'Confirmada',
-    variant: 'secondary',
-    className: 'bg-green-100 text-green-800 hover:bg-green-100',
-  },
-  rejected: {
-    label: 'Rechazada',
-    variant: 'destructive',
-    className: 'bg-red-100 text-red-800 hover:bg-red-100',
-  },
   completed: {
     label: 'Completada',
     variant: 'secondary',

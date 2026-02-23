@@ -28,7 +28,6 @@ const mockDesignations: {
   distanceKm: string
   status: string
   notifiedAt: Date | null
-  confirmedAt: Date | null
   createdAt: Date
 }[] = []
 
@@ -102,8 +101,8 @@ function makePerson(overrides: Partial<EnrichedPerson> & { id: string }): Enrich
     postalCode: '',
     municipalityId: 'muni-A',
     active: true,
+    hasCar: true,
     matchesAssigned: 0,
-    matchesConfirmed: 0,
     totalCost: 0,
     hasAvailability: true,
     ...overrides,

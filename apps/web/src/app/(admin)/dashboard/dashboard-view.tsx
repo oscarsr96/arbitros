@@ -96,9 +96,9 @@ export function DashboardView() {
           icon={DollarSign}
         />
         <StatCard
-          label="Designaciones confirmadas"
-          value={`${stats.confirmationRate} %`}
-          sub="De las designaciones activas"
+          label="Designaciones activas"
+          value={`${stats.coveredMatches}`}
+          sub="Partidos completamente cubiertos"
           color="bg-teal-50 text-teal-700 border-teal-200"
           icon={CheckCircle2}
         />
