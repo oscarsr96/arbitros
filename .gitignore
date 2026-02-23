@@ -45,3 +45,10 @@ drizzle/meta/
 __pycache__/
 *.pyc
 .venv/
+
+# reports
+*.pdf
+
+# build info
+tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
