@@ -284,6 +284,61 @@ describe('solve', () => {
     expect(result.metrics.resolutionTimeMs).toBeDefined()
   })
 
+  it('hard constraint: person without car and >30km is discarded', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venue: {
+        id: 'v1',
+        name: 'Venue Far',
+        address: '',
+        municipalityId: 'muni-FAR',
+        postalCode: '',
+      },
+    })
+    // p1 has no car — getMockDistance returns 20km by default, but we need >30km
+    // We override the mock to return 35km for muni-A → muni-FAR
+    const p1 = makePerson({ id: 'p1', role: 'arbitro', hasCar: false, municipalityId: 'muni-A' })
+    const p2 = makePerson({ id: 'p2', role: 'arbitro', hasCar: true, municipalityId: 'muni-A' })
+
+    addAvailability('p1', match.date, match.time)
+    addAvailability('p2', match.date, match.time)
+
+    // Default mock distance is 20km (< 30), so p1 should NOT be discarded here
+    const result1 = solve({
+      matches: [match],
+      persons: [p1, p2],
+      parameters: defaultParams(),
+    })
+    expect(result1.status).toBe('optimal')
+    expect(result1.assignments).toHaveLength(1)
+
+    // Now test with only the no-car person and venue in same municipality (0 km) — should work
+    const matchSameMuni = makeMatch({
+      id: 'm2',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venue: {
+        id: 'v2',
+        name: 'Venue Local',
+        address: '',
+        municipalityId: 'muni-A',
+        postalCode: '',
+      },
+    })
+    addAvailability('p1', matchSameMuni.date, matchSameMuni.time)
+
+    const result2 = solve({
+      matches: [matchSameMuni],
+      persons: [p1],
+      parameters: defaultParams(),
+    })
+    expect(result2.status).toBe('optimal')
+    expect(result2.assignments).toHaveLength(1)
+    expect(result2.assignments[0].personId).toBe('p1')
+  })
+
   it('seed variation: seed=0 vs seed=1 produce different assignments', () => {
     const date = '2025-03-15'
     // Multiple matches and persons so shuffle can produce differences

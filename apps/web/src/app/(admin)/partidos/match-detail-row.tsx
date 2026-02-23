@@ -3,7 +3,8 @@
 import { MatchStatusBadge } from '@/components/match-status-badge'
 import { CoverageIndicator } from '@/components/coverage-indicator'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronUp, MapPin } from 'lucide-react'
+import { ChevronDown, ChevronUp, MapPin, Navigation } from 'lucide-react'
+import { getDirectionsUrl } from '@/lib/utils'
 import type { EnrichedMatch } from '@/lib/types'
 
 interface MatchDetailRowProps {
@@ -112,6 +113,22 @@ export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDeta
                         <span className="text-xs text-gray-400">
                           {d.travelCost} € · {d.distanceKm} km
                         </span>
+                        {d.person?.address && match.venue?.address && (
+                          <a
+                            href={getDirectionsUrl(
+                              d.person.address,
+                              match.venue.address,
+                              d.person.hasCar,
+                            )}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                          >
+                            <Navigation className="h-2.5 w-2.5" />
+                            Cómo llegar
+                          </a>
+                        )}
                         <Badge
                           variant="outline"
                           className={`ml-auto text-xs ${

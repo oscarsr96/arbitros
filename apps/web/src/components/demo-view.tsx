@@ -16,6 +16,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { exportDemoXlsx, exportDemoPdf } from '@/lib/export-demo'
+import { Navigation } from 'lucide-react'
+import { getDirectionsUrl } from '@/lib/utils'
 import type { EnrichedMatch, EnrichedDesignation, UnassignedSlot } from '@/lib/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -668,7 +670,7 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
         </p>
         <div className="space-y-1.5">
           {refDesigs.map((d) => (
-            <DesignationRow key={d.id} designation={d} />
+            <DesignationRow key={d.id} designation={d} venueAddress={match.venue?.address} />
           ))}
           {refDesigs.length < match.refereesNeeded &&
             Array.from({ length: match.refereesNeeded - refDesigs.length }).map((_, i) => (
@@ -687,7 +689,7 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
         </p>
         <div className="space-y-1.5">
           {scorDesigs.map((d) => (
-            <DesignationRow key={d.id} designation={d} />
+            <DesignationRow key={d.id} designation={d} venueAddress={match.venue?.address} />
           ))}
           {scorDesigs.length < match.scorersNeeded &&
             Array.from({ length: match.scorersNeeded - scorDesigs.length }).map((_, i) => (
@@ -710,7 +712,13 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
 
 // ── Single designation row ────────────────────────────────────────────────
 
-function DesignationRow({ designation }: { designation: EnrichedDesignation }) {
+function DesignationRow({
+  designation,
+  venueAddress,
+}: {
+  designation: EnrichedDesignation
+  venueAddress?: string
+}) {
   return (
     <div
       className={`flex items-center justify-between rounded-lg border p-2.5 ${statusColors[designation.status] ?? 'border-gray-200 bg-white'}`}
@@ -745,6 +753,22 @@ function DesignationRow({ designation }: { designation: EnrichedDesignation }) {
           )}
           <span>{designation.travelCost} €</span>
           <span>{designation.distanceKm} km</span>
+          {designation.person?.address && venueAddress && (
+            <a
+              href={getDirectionsUrl(
+                designation.person.address,
+                venueAddress,
+                designation.person.hasCar,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
+            >
+              <Navigation className="h-2.5 w-2.5" />
+              Cómo llegar
+            </a>
+          )}
         </div>
       </div>
     </div>

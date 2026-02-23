@@ -54,6 +54,7 @@ export interface EnrichedDesignation {
     category: string | null
     municipalityId: string
     hasCar: boolean
+    address: string
   }
   municipality?: { id: string; name: string }
 }

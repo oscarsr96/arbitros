@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { DesignationCard } from '@/components/designation-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { DEMO_PERSON_ID } from '@/lib/mock-data'
+import { DEMO_PERSON_ID, getMockPerson } from '@/lib/mock-data'
 
 interface Designation {
   id: string
@@ -40,6 +40,7 @@ export function DesignationsView() {
       .finally(() => setLoading(false))
   }, [])
 
+  const demoPerson = getMockPerson(DEMO_PERSON_ID)
   const pending = designations.filter((d) => d.status === 'pending' || d.status === 'notified')
   const completed = designations.filter((d) => d.status === 'completed')
 
@@ -89,7 +90,12 @@ export function DesignationsView() {
 
         <TabsContent value="all" className="mt-4 space-y-3">
           {designations.map((d) => (
-            <DesignationCard key={d.id} designation={d} />
+            <DesignationCard
+              key={d.id}
+              designation={d}
+              personAddress={demoPerson?.address}
+              personHasCar={demoPerson?.hasCar}
+            />
           ))}
           {designations.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -100,7 +106,12 @@ export function DesignationsView() {
 
         <TabsContent value="pending" className="mt-4 space-y-3">
           {pending.map((d) => (
-            <DesignationCard key={d.id} designation={d} />
+            <DesignationCard
+              key={d.id}
+              designation={d}
+              personAddress={demoPerson?.address}
+              personHasCar={demoPerson?.hasCar}
+            />
           ))}
           {pending.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -111,7 +122,12 @@ export function DesignationsView() {
 
         <TabsContent value="completed" className="mt-4 space-y-3">
           {completed.map((d) => (
-            <DesignationCard key={d.id} designation={d} />
+            <DesignationCard
+              key={d.id}
+              designation={d}
+              personAddress={demoPerson?.address}
+              personHasCar={demoPerson?.hasCar}
+            />
           ))}
           {completed.length === 0 && (
             <p className="text-muted-foreground py-8 text-center text-sm">

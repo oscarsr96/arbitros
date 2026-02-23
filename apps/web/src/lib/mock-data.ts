@@ -12,30 +12,84 @@ export const mockMunicipalities = [
   { id: 'muni-006', name: 'Fuenlabrada', province: 'Madrid' },
   { id: 'muni-007', name: 'Alcalá de Henares', province: 'Madrid' },
   { id: 'muni-008', name: 'Torrejón de Ardoz', province: 'Madrid' },
+  { id: 'muni-009', name: 'Pozuelo de Alarcón', province: 'Madrid' },
+  { id: 'muni-010', name: 'Rivas-Vaciamadrid', province: 'Madrid' },
+  { id: 'muni-011', name: 'Las Rozas', province: 'Madrid' },
+  { id: 'muni-012', name: 'Majadahonda', province: 'Madrid' },
+  { id: 'muni-013', name: 'Boadilla del Monte', province: 'Madrid' },
+  { id: 'muni-014', name: 'Tres Cantos', province: 'Madrid' },
+  { id: 'muni-015', name: 'San Sebastián de los Reyes', province: 'Madrid' },
+  { id: 'muni-016', name: 'Colmenar Viejo', province: 'Madrid' },
+  { id: 'muni-017', name: 'Alcobendas', province: 'Madrid' },
+  { id: 'muni-018', name: 'Coslada', province: 'Madrid' },
+  { id: 'muni-019', name: 'Arganda del Rey', province: 'Madrid' },
+  { id: 'muni-020', name: 'Parla', province: 'Madrid' },
+  { id: 'muni-021', name: 'Pinto', province: 'Madrid' },
+  { id: 'muni-022', name: 'Valdemoro', province: 'Madrid' },
+  { id: 'muni-023', name: 'Aranjuez', province: 'Madrid' },
+  { id: 'muni-024', name: 'Collado Villalba', province: 'Madrid' },
+  { id: 'muni-025', name: 'San Fernando de Henares', province: 'Madrid' },
+  { id: 'muni-026', name: 'Torrelodones', province: 'Madrid' },
+  { id: 'muni-027', name: 'Villanueva de la Cañada', province: 'Madrid' },
+  { id: 'muni-028', name: 'Navalcarnero', province: 'Madrid' },
+  { id: 'muni-029', name: 'Humanes de Madrid', province: 'Madrid' },
+  { id: 'muni-030', name: 'Ciempozuelos', province: 'Madrid' },
 ]
 
 // ── Distancias entre municipios ─────────────────────────────────────────────
 
-export const mockDistances = [
-  { originId: 'muni-001', destId: 'muni-002', distanceKm: 13 },
-  { originId: 'muni-001', destId: 'muni-003', distanceKm: 15 },
-  { originId: 'muni-001', destId: 'muni-004', distanceKm: 11 },
-  { originId: 'muni-001', destId: 'muni-005', distanceKm: 25 },
-  { originId: 'muni-001', destId: 'muni-006', distanceKm: 20 },
-  { originId: 'muni-001', destId: 'muni-007', distanceKm: 30 },
-  { originId: 'muni-001', destId: 'muni-008', distanceKm: 28 },
-  { originId: 'muni-002', destId: 'muni-003', distanceKm: 10 },
-  { originId: 'muni-002', destId: 'muni-004', distanceKm: 8 },
-  { originId: 'muni-002', destId: 'muni-005', distanceKm: 12 },
-  { originId: 'muni-002', destId: 'muni-006', distanceKm: 14 },
-  { originId: 'muni-003', destId: 'muni-004', distanceKm: 6 },
-  { originId: 'muni-003', destId: 'muni-005', distanceKm: 18 },
-  { originId: 'muni-003', destId: 'muni-006', distanceKm: 10 },
-  { originId: 'muni-004', destId: 'muni-005', distanceKm: 14 },
-  { originId: 'muni-004', destId: 'muni-006', distanceKm: 9 },
-  { originId: 'muni-005', destId: 'muni-006', distanceKm: 8 },
-  { originId: 'muni-007', destId: 'muni-008', distanceKm: 15 },
-]
+// Coordenadas aproximadas (km desde centro de Madrid) para calcular distancias realistas
+const MUNI_COORDS: Record<string, { x: number; y: number }> = {
+  'muni-001': { x: 0, y: 0 }, // Madrid (centro)
+  'muni-002': { x: -10, y: -5 }, // Alcorcón (suroeste)
+  'muni-003': { x: -3, y: -13 }, // Getafe (sur)
+  'muni-004': { x: -6, y: -10 }, // Leganés (sur)
+  'muni-005': { x: -18, y: -8 }, // Móstoles (suroeste)
+  'muni-006': { x: -10, y: -15 }, // Fuenlabrada (sur)
+  'muni-007': { x: 25, y: 5 }, // Alcalá de Henares (este)
+  'muni-008': { x: 20, y: 5 }, // Torrejón de Ardoz (este)
+  'muni-009': { x: -10, y: 2 }, // Pozuelo de Alarcón (oeste)
+  'muni-010': { x: 10, y: -12 }, // Rivas-Vaciamadrid (sureste)
+  'muni-011': { x: -15, y: 5 }, // Las Rozas (noroeste)
+  'muni-012': { x: -14, y: 3 }, // Majadahonda (noroeste)
+  'muni-013': { x: -16, y: 0 }, // Boadilla del Monte (oeste)
+  'muni-014': { x: -3, y: 18 }, // Tres Cantos (norte)
+  'muni-015': { x: 2, y: 16 }, // San Sebastián de los Reyes (norte)
+  'muni-016': { x: -2, y: 22 }, // Colmenar Viejo (norte)
+  'muni-017': { x: 0, y: 14 }, // Alcobendas (norte)
+  'muni-018': { x: 12, y: 0 }, // Coslada (este)
+  'muni-019': { x: 20, y: -12 }, // Arganda del Rey (sureste)
+  'muni-020': { x: -5, y: -20 }, // Parla (sur)
+  'muni-021': { x: -2, y: -22 }, // Pinto (sur)
+  'muni-022': { x: 0, y: -27 }, // Valdemoro (sur)
+  'muni-023': { x: 5, y: -42 }, // Aranjuez (sur lejano)
+  'muni-024': { x: -25, y: 15 }, // Collado Villalba (noroeste lejano)
+  'muni-025': { x: 15, y: 2 }, // San Fernando de Henares (este)
+  'muni-026': { x: -18, y: 10 }, // Torrelodones (noroeste)
+  'muni-027': { x: -22, y: 3 }, // Villanueva de la Cañada (oeste)
+  'muni-028': { x: -25, y: -8 }, // Navalcarnero (suroeste lejano)
+  'muni-029': { x: -12, y: -18 }, // Humanes de Madrid (sur)
+  'muni-030': { x: 2, y: -32 }, // Ciempozuelos (sur lejano)
+}
+
+function generateDistances(): { originId: string; destId: string; distanceKm: number }[] {
+  const distances: { originId: string; destId: string; distanceKm: number }[] = []
+  const ids = mockMunicipalities.map((m) => m.id)
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = MUNI_COORDS[ids[i]]
+      const b = MUNI_COORDS[ids[j]]
+      if (!a || !b) continue
+      // Distancia euclidiana × 1.3 (factor carretera) redondeada a entero
+      const straight = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
+      const road = Math.round(straight * 1.3)
+      distances.push({ originId: ids[i], destId: ids[j], distanceKm: road || 1 })
+    }
+  }
+  return distances
+}
+
+export const mockDistances = generateDistances()
 
 // ── Temporada ───────────────────────────────────────────────────────────────
 
@@ -53,7 +107,7 @@ export const mockSeason = {
 export const mockCompetitions = [
   {
     id: 'comp-001',
-    name: 'Liga Preferente Masculina',
+    name: 'Liga VIPS Masculina',
     category: 'preferente',
     gender: 'male' as const,
     refereesNeeded: 2,
@@ -63,8 +117,38 @@ export const mockCompetitions = [
   },
   {
     id: 'comp-002',
-    name: '1ª División Femenina',
-    category: '1a_division',
+    name: 'Liga VIPS Femenina',
+    category: 'preferente',
+    gender: 'female' as const,
+    refereesNeeded: 2,
+    scorersNeeded: 1,
+    minRefCategory: 'autonomico' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-003',
+    name: 'Sub-22 Masculina',
+    category: 'sub22',
+    gender: 'male' as const,
+    refereesNeeded: 2,
+    scorersNeeded: 1,
+    minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-004',
+    name: 'Junior Masculino ORO',
+    category: 'junior',
+    gender: 'male' as const,
+    refereesNeeded: 2,
+    scorersNeeded: 1,
+    minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-005',
+    name: 'Junior Femenino ORO',
+    category: 'junior',
     gender: 'female' as const,
     refereesNeeded: 2,
     scorersNeeded: 1,
@@ -72,13 +156,53 @@ export const mockCompetitions = [
     seasonId: 'season-001',
   },
   {
-    id: 'comp-003',
-    name: 'Liga Junior Masculina',
-    category: 'junior',
+    id: 'comp-006',
+    name: 'Cadete Masculino ORO',
+    category: 'cadete',
     gender: 'male' as const,
     refereesNeeded: 2,
     scorersNeeded: 1,
     minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-007',
+    name: 'Cadete Femenino ORO',
+    category: 'cadete',
+    gender: 'female' as const,
+    refereesNeeded: 2,
+    scorersNeeded: 1,
+    minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-008',
+    name: 'Infantil Masculino',
+    category: 'infantil',
+    gender: 'male' as const,
+    refereesNeeded: 1,
+    scorersNeeded: 1,
+    minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-009',
+    name: 'Infantil Femenino',
+    category: 'infantil',
+    gender: 'female' as const,
+    refereesNeeded: 1,
+    scorersNeeded: 1,
+    minRefCategory: 'provincial' as const,
+    seasonId: 'season-001',
+  },
+  {
+    id: 'comp-010',
+    name: 'Preferente Masculina',
+    category: '1a_division',
+    gender: 'male' as const,
+    refereesNeeded: 2,
+    scorersNeeded: 1,
+    minRefCategory: 'autonomico' as const,
     seasonId: 'season-001',
   },
 ]
@@ -88,38 +212,143 @@ export const mockCompetitions = [
 export const mockVenues = [
   {
     id: 'venue-001',
-    name: 'Polideportivo Municipal de Vallecas',
-    address: 'C/ Payaso Fofó 1, 28018 Madrid',
+    name: 'Pab. Magariños',
+    address: 'C/ Serrano 127, 28006 Madrid',
     municipalityId: 'muni-001',
-    postalCode: '28018',
+    postalCode: '28006',
   },
   {
     id: 'venue-002',
-    name: 'Pabellón Santo Domingo',
+    name: 'Pab. Municipal Santo Domingo',
     address: 'Av. de Lisboa s/n, 28922 Alcorcón',
     municipalityId: 'muni-002',
     postalCode: '28922',
   },
   {
     id: 'venue-003',
-    name: 'Centro Deportivo Getafe',
-    address: 'C/ Ramón y Cajal 5, 28901 Getafe',
+    name: 'Pab. Juan de la Cierva',
+    address: 'C/ Juan de la Cierva 5, 28901 Getafe',
     municipalityId: 'muni-003',
     postalCode: '28901',
   },
   {
     id: 'venue-004',
-    name: 'Polideportivo La Fortuna',
-    address: 'C/ La Fortuna 12, 28917 Leganés',
+    name: 'Pab. Europa',
+    address: 'Av. de Europa s/n, 28916 Leganés',
     municipalityId: 'muni-004',
-    postalCode: '28917',
+    postalCode: '28916',
   },
   {
     id: 'venue-005',
-    name: 'Pabellón Jorge Garbajosa',
+    name: 'Pab. Jorge Garbajosa',
     address: 'Av. de la Constitución 23, 28933 Móstoles',
     municipalityId: 'muni-005',
     postalCode: '28933',
+  },
+  {
+    id: 'venue-006',
+    name: 'Pab. Fernando Martín',
+    address: 'C/ Chile 2, 28943 Fuenlabrada',
+    municipalityId: 'muni-006',
+    postalCode: '28943',
+  },
+  {
+    id: 'venue-007',
+    name: 'Pab. Caja Mágica',
+    address: 'Camino de Perales s/n, 28041 Madrid',
+    municipalityId: 'muni-001',
+    postalCode: '28041',
+  },
+  {
+    id: 'venue-008',
+    name: 'Pab. José Antonio Paraíso',
+    address: 'C/ Soledad 14, 28850 Torrejón de Ardoz',
+    municipalityId: 'muni-008',
+    postalCode: '28850',
+  },
+  {
+    id: 'venue-009',
+    name: 'UCJC Sports Club',
+    address: 'C/ Tulipán s/n, 28692 Villanueva de la Cañada',
+    municipalityId: 'muni-027',
+    postalCode: '28692',
+  },
+  {
+    id: 'venue-010',
+    name: 'Pab. Veritas',
+    address: 'C/ Júpiter 1, 28223 Pozuelo de Alarcón',
+    municipalityId: 'muni-009',
+    postalCode: '28223',
+  },
+  {
+    id: 'venue-011',
+    name: 'Pol. Francisco Chico Mendes',
+    address: 'C/ Marqués de la Valdavia 113, 28100 Alcobendas',
+    municipalityId: 'muni-017',
+    postalCode: '28100',
+  },
+  {
+    id: 'venue-012',
+    name: 'Pol. Dehesa Boyal',
+    address: 'Av. de Baunatal s/n, 28702 San Sebastián de los Reyes',
+    municipalityId: 'muni-015',
+    postalCode: '28702',
+  },
+  {
+    id: 'venue-013',
+    name: 'Pab. Príncipe Felipe',
+    address: 'C/ Ferial 1, 28660 Boadilla del Monte',
+    municipalityId: 'muni-013',
+    postalCode: '28660',
+  },
+  {
+    id: 'venue-014',
+    name: 'Pol. El Pradillo',
+    address: 'C/ Comunidad de Castilla La Mancha s/n, 28232 Las Rozas',
+    municipalityId: 'muni-011',
+    postalCode: '28232',
+  },
+  {
+    id: 'venue-015',
+    name: 'CDM Gallur',
+    address: 'Paseo de los Olivos 44, 28011 Madrid',
+    municipalityId: 'muni-001',
+    postalCode: '28011',
+  },
+  {
+    id: 'venue-016',
+    name: 'Pol. Municipal Rivas',
+    address: 'C/ Vivero 1, 28523 Rivas-Vaciamadrid',
+    municipalityId: 'muni-010',
+    postalCode: '28523',
+  },
+  {
+    id: 'venue-017',
+    name: 'Pol. Municipal Tres Cantos',
+    address: 'Av. de los Labradores s/n, 28760 Tres Cantos',
+    municipalityId: 'muni-014',
+    postalCode: '28760',
+  },
+  {
+    id: 'venue-018',
+    name: 'Pab. Valdeluz (Alcalá)',
+    address: 'C/ Antonio Machado 4, 28805 Alcalá de Henares',
+    municipalityId: 'muni-007',
+    postalCode: '28805',
+  },
+  {
+    id: 'venue-019',
+    name: 'Pol. Municipal Majadahonda',
+    address: 'C/ Gran Vía 52, 28220 Majadahonda',
+    municipalityId: 'muni-012',
+    postalCode: '28220',
+  },
+  {
+    id: 'venue-020',
+    name: 'Pab. Municipal Parla',
+    address: 'Av. de las Ciencias s/n, 28981 Parla',
+    municipalityId: 'muni-020',
+    postalCode: '28981',
   },
 ]
 
@@ -792,7 +1021,18 @@ export function getMockDesignationsForMatch(matchId: string) {
     .map((d) => {
       const person = getMockPerson(d.personId)
       const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
-      return { ...d, person, municipality }
+      const personWithAddress = person
+        ? {
+            id: person.id,
+            name: person.name,
+            role: person.role,
+            category: person.category,
+            municipalityId: person.municipalityId,
+            hasCar: person.hasCar,
+            address: person.address,
+          }
+        : undefined
+      return { ...d, person: personWithAddress, municipality }
     })
 }
 

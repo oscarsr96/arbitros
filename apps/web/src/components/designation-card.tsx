@@ -3,7 +3,8 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/status-badge'
 import { CostBadge } from '@/components/cost-badge'
-import { MapPin, Clock, Calendar, Users } from 'lucide-react'
+import { MapPin, Clock, Calendar, Users, Navigation } from 'lucide-react'
+import { getDirectionsUrl } from '@/lib/utils'
 
 interface DesignationCardProps {
   designation: {
@@ -27,6 +28,8 @@ interface DesignationCardProps {
       name: string
     }
   }
+  personAddress?: string
+  personHasCar?: boolean
 }
 
 function formatDate(dateStr: string): string {
@@ -38,8 +41,17 @@ function formatDate(dateStr: string): string {
   })
 }
 
-export function DesignationCard({ designation }: DesignationCardProps) {
+export function DesignationCard({
+  designation,
+  personAddress,
+  personHasCar,
+}: DesignationCardProps) {
   const { match, venue, competition } = designation
+
+  const directionsUrl =
+    personAddress && venue?.address
+      ? getDirectionsUrl(personAddress, venue.address, personHasCar ?? true)
+      : null
 
   return (
     <Card className="transition-shadow hover:shadow-md">
@@ -75,6 +87,18 @@ export function DesignationCard({ designation }: DesignationCardProps) {
             <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
               <MapPin className="h-3.5 w-3.5" />
               <span>{venue?.name ?? '—'}</span>
+              {directionsUrl && (
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="ml-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  <Navigation className="h-3 w-3" />
+                  Cómo llegar
+                </a>
+              )}
             </div>
           </div>
 

@@ -437,6 +437,10 @@ function findBestCandidate(
 
     // Calcular coste y score
     const { cost, km } = calculateTravelCost(person.municipalityId, venueMuniId)
+
+    // Hard constraint: sin coche y >30km → descartado
+    if (!person.hasCar && km > 30) continue
+
     let normalizedCost = cost / 10 // normalizar a rango ~0-1
     if (!person.hasCar && km > 15) {
       normalizedCost *= 2.0
@@ -512,6 +516,7 @@ function getUnassignedReason(
   let incompatible = 0
   let maxLoad = 0
   let alreadyAssigned = 0
+  let noCarTooFar = 0
 
   for (const person of candidatesOfRole) {
     if (proposedAssignments.some((a) => a.matchId === match.id && a.personId === person.id)) {
@@ -544,6 +549,14 @@ function getUnassignedReason(
       incompatible++
       continue
     }
+
+    // Comprobar hard constraint coche para diagnóstico
+    const venueMuni = match.venue?.municipalityId ?? ''
+    const { km } = calculateTravelCost(person.municipalityId, venueMuni)
+    if (!person.hasCar && km > 30) {
+      noCarTooFar++
+      continue
+    }
   }
 
   const reasons: string[] = []
@@ -551,6 +564,7 @@ function getUnassignedReason(
   if (overlap > 0) reasons.push(`${overlap} con solapamiento`)
   if (categoryInsufficient > 0) reasons.push(`${categoryInsufficient} categoría insuficiente`)
   if (incompatible > 0) reasons.push(`${incompatible} incompatible`)
+  if (noCarTooFar > 0) reasons.push(`${noCarTooFar} sin coche (>30km)`)
   if (maxLoad > 0) reasons.push(`${maxLoad} con carga máxima`)
   if (alreadyAssigned > 0) reasons.push(`${alreadyAssigned} ya asignados`)
 
