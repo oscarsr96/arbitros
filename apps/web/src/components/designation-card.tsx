@@ -99,24 +99,30 @@ export function DesignationCard({
               <span>{venue?.name ?? '—'}</span>
             </div>
 
-            {/* Departure info + directions link */}
-            {directionsUrl && departure && (
-              <a
-                href={directionsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className={`ml-6 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${urgencyStyles[departure.urgency]}`}
-              >
-                <Navigation className="h-3 w-3" />
-                {departure.urgency === 'past' ? (
-                  <span>Sal ya! (~{departure.travelMin} min)</span>
-                ) : (
-                  <span>
-                    Sal a las {departure.label} (~{departure.travelMin} min)
+            {/* Directions + departure time */}
+            {directionsUrl && (
+              <div className="ml-6 flex flex-wrap items-center gap-2">
+                <a
+                  href={directionsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+                >
+                  <Navigation className="h-3 w-3" />
+                  Cómo llegar
+                </a>
+                {departure && (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium ${urgencyStyles[departure.urgency]}`}
+                  >
+                    <Clock className="h-3 w-3" />
+                    {departure.urgency === 'past'
+                      ? `Sal ya! (~${departure.travelMin} min)`
+                      : `Sal a las ${departure.label} (~${departure.travelMin} min)`}
                   </span>
                 )}
-              </a>
+              </div>
             )}
           </div>
 
