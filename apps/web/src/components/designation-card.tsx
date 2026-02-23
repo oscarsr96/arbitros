@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/status-badge'
 import { CostBadge } from '@/components/cost-badge'
 import { MapPin, Clock, Calendar, Users, Navigation } from 'lucide-react'
-import { getDirectionsUrl } from '@/lib/utils'
+import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
 
 interface DesignationCardProps {
   designation: {
@@ -41,16 +41,26 @@ function formatDate(dateStr: string): string {
   })
 }
 
+const urgencyStyles = {
+  past: 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100',
+  soon: 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100',
+  normal: 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100',
+} as const
+
 export function DesignationCard({
   designation,
   personAddress,
   personHasCar,
 }: DesignationCardProps) {
   const { match, venue, competition } = designation
+  const hasCar = personHasCar ?? true
 
   const directionsUrl =
-    personAddress && venue?.address
-      ? getDirectionsUrl(personAddress, venue.address, personHasCar ?? true)
+    personAddress && venue?.address ? getDirectionsUrl(personAddress, venue.address, hasCar) : null
+
+  const departure =
+    match?.date && match?.time
+      ? getDepartureInfo(match.date, match.time, parseFloat(designation.distanceKm) || 0, hasCar)
       : null
 
   return (
@@ -83,23 +93,31 @@ export function DesignationCard({
               </span>
             </div>
 
-            {/* Pabellón */}
+            {/* Pabellón + directions */}
             <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
               <MapPin className="h-3.5 w-3.5" />
               <span>{venue?.name ?? '—'}</span>
-              {directionsUrl && (
-                <a
-                  href={directionsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="ml-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
-                >
-                  <Navigation className="h-3 w-3" />
-                  Cómo llegar
-                </a>
-              )}
             </div>
+
+            {/* Departure info + directions link */}
+            {directionsUrl && departure && (
+              <a
+                href={directionsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={`ml-6 inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${urgencyStyles[departure.urgency]}`}
+              >
+                <Navigation className="h-3 w-3" />
+                {departure.urgency === 'past' ? (
+                  <span>Sal ya! (~{departure.travelMin} min)</span>
+                ) : (
+                  <span>
+                    Sal a las {departure.label} (~{departure.travelMin} min)
+                  </span>
+                )}
+              </a>
+            )}
           </div>
 
           {/* Columna derecha: estado, coste */}

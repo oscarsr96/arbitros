@@ -4,7 +4,7 @@ import { MatchStatusBadge } from '@/components/match-status-badge'
 import { CoverageIndicator } from '@/components/coverage-indicator'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronUp, MapPin, Navigation } from 'lucide-react'
-import { getDirectionsUrl } from '@/lib/utils'
+import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
 import type { EnrichedMatch } from '@/lib/types'
 
 interface MatchDetailRowProps {
@@ -113,22 +113,40 @@ export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDeta
                         <span className="text-xs text-gray-400">
                           {d.travelCost} € · {d.distanceKm} km
                         </span>
-                        {d.person?.address && match.venue?.address && (
-                          <a
-                            href={getDirectionsUrl(
-                              d.person.address,
-                              match.venue.address,
-                              d.person.hasCar,
-                            )}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
-                          >
-                            <Navigation className="h-2.5 w-2.5" />
-                            Cómo llegar
-                          </a>
-                        )}
+                        {d.person?.address &&
+                          match.venue?.address &&
+                          (() => {
+                            const dep = getDepartureInfo(
+                              match.date,
+                              match.time,
+                              parseFloat(d.distanceKm) || 0,
+                              d.person!.hasCar,
+                            )
+                            return (
+                              <a
+                                href={getDirectionsUrl(
+                                  d.person!.address,
+                                  match.venue!.address,
+                                  d.person!.hasCar,
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                                  dep.urgency === 'past'
+                                    ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                                    : dep.urgency === 'soon'
+                                      ? 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                                      : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                }`}
+                              >
+                                <Navigation className="h-2.5 w-2.5" />
+                                {dep.urgency === 'past'
+                                  ? `Sal ya! (~${dep.travelMin}min)`
+                                  : `Sal ${dep.label} (~${dep.travelMin}min)`}
+                              </a>
+                            )
+                          })()}
                         <Badge
                           variant="outline"
                           className={`ml-auto text-xs ${

@@ -17,7 +17,7 @@ import {
 import { toast } from 'sonner'
 import { exportDemoXlsx, exportDemoPdf } from '@/lib/export-demo'
 import { Navigation } from 'lucide-react'
-import { getDirectionsUrl } from '@/lib/utils'
+import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
 import type { EnrichedMatch, EnrichedDesignation, UnassignedSlot } from '@/lib/types'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -670,7 +670,13 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
         </p>
         <div className="space-y-1.5">
           {refDesigs.map((d) => (
-            <DesignationRow key={d.id} designation={d} venueAddress={match.venue?.address} />
+            <DesignationRow
+              key={d.id}
+              designation={d}
+              venueAddress={match.venue?.address}
+              matchDate={match.date}
+              matchTime={match.time}
+            />
           ))}
           {refDesigs.length < match.refereesNeeded &&
             Array.from({ length: match.refereesNeeded - refDesigs.length }).map((_, i) => (
@@ -689,7 +695,13 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
         </p>
         <div className="space-y-1.5">
           {scorDesigs.map((d) => (
-            <DesignationRow key={d.id} designation={d} venueAddress={match.venue?.address} />
+            <DesignationRow
+              key={d.id}
+              designation={d}
+              venueAddress={match.venue?.address}
+              matchDate={match.date}
+              matchTime={match.time}
+            />
           ))}
           {scorDesigs.length < match.scorersNeeded &&
             Array.from({ length: match.scorersNeeded - scorDesigs.length }).map((_, i) => (
@@ -715,9 +727,13 @@ function DesignationDetail({ match }: { match: EnrichedMatch }) {
 function DesignationRow({
   designation,
   venueAddress,
+  matchDate,
+  matchTime,
 }: {
   designation: EnrichedDesignation
   venueAddress?: string
+  matchDate?: string
+  matchTime?: string
 }) {
   return (
     <div
@@ -753,22 +769,42 @@ function DesignationRow({
           )}
           <span>{designation.travelCost} €</span>
           <span>{designation.distanceKm} km</span>
-          {designation.person?.address && venueAddress && (
-            <a
-              href={getDirectionsUrl(
-                designation.person.address,
-                venueAddress,
-                designation.person.hasCar,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 transition-colors hover:bg-blue-100"
-            >
-              <Navigation className="h-2.5 w-2.5" />
-              Cómo llegar
-            </a>
-          )}
+          {designation.person?.address &&
+            venueAddress &&
+            matchDate &&
+            matchTime &&
+            (() => {
+              const dep = getDepartureInfo(
+                matchDate,
+                matchTime,
+                parseFloat(designation.distanceKm) || 0,
+                designation.person!.hasCar,
+              )
+              return (
+                <a
+                  href={getDirectionsUrl(
+                    designation.person!.address,
+                    venueAddress,
+                    designation.person!.hasCar,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                    dep.urgency === 'past'
+                      ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100'
+                      : dep.urgency === 'soon'
+                        ? 'border-orange-300 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                        : 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  }`}
+                >
+                  <Navigation className="h-2.5 w-2.5" />
+                  {dep.urgency === 'past'
+                    ? `Sal ya! (~${dep.travelMin}min)`
+                    : `Sal ${dep.label} (~${dep.travelMin}min)`}
+                </a>
+              )
+            })()}
         </div>
       </div>
     </div>
