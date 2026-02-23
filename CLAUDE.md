@@ -206,6 +206,7 @@ Donde α y β son pesos configurables por el designador. Por defecto α=0.7, β=
 5. **Sin solapamiento**: una persona no puede estar en dos partidos cuya franja horaria se solape (considerar duración del partido ~1,5h + margen de desplazamiento).
 6. **Incompatibilidades**: un árbitro no puede pitar partidos de su propio club.
 7. **Carga máxima**: ninguna persona puede superar X partidos por jornada (configurable, por defecto 3).
+8. **Restricción coche** (hard): persona sin coche (`hasCar=false`) y distancia >30km → descartada. Sin coche y 15-30km → penalización soft ×2 coste.
 
 ### Implementación
 
@@ -647,6 +648,28 @@ Llamar a Google Maps en cada asignación sería lento y caro. Con ~180 municipio
 ### ¿Por qué Zustand y no Redux/Context?
 
 El estado global de la app es moderado: filtros activos, partido seleccionado, asignaciones en curso. Zustand resuelve esto con una fracción del boilerplate de Redux y sin los problemas de rendimiento de Context para actualizaciones frecuentes.
+
+---
+
+## Helpers de navegación y hora de salida
+
+### `getDirectionsUrl(origin, destination, hasCar)` — `lib/utils.ts`
+
+Genera enlace Google Maps Directions con `travelmode=driving|transit` según `hasCar`.
+**Nota**: Google Maps URLs **NO soportan** el parámetro `departure_time`. Siempre abre con "Leave Now". La hora de salida se muestra como badge separado en la UI.
+
+### `getDepartureInfo(matchDate, matchTime, distanceKm, hasCar)` — `lib/utils.ts`
+
+Calcula hora de salida estimada: `horaPartido - tiempoViaje - 40min buffer (30 llegada + 10 margen)`.
+
+- Driving: ~1.5 min/km (40 km/h media urbana)
+- Transit: ~3 min/km (20 km/h con esperas)
+- Devuelve `{ departureTime, label, urgency, travelMin }`
+- Urgencia: `past` (ya debería haber salido), `soon` (<1h), `normal`
+
+### Botón "Cómo llegar" + badge hora de salida
+
+Presentes en 3 vistas: portal designaciones (`designation-card.tsx`), admin partidos (`match-detail-row.tsx`), demo (`demo-view.tsx`). Son elementos separados: enlace azul "Cómo llegar" + badge con colores de urgencia.
 
 ---
 
