@@ -5,14 +5,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className="bg-background flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex flex-col items-center gap-4">
-          <div className="bg-fbm-navy flex h-16 w-16 items-center justify-center rounded-2xl p-2">
+          <div className="bg-fbm-navy flex items-center justify-center rounded-2xl px-5 py-3">
             <Image
               src="/logo-fbm.png"
               alt="FBM"
               width={332}
               height={129}
               quality={95}
-              className="h-12 w-auto"
+              className="h-10 w-auto"
             />
           </div>
           <div className="text-center">
