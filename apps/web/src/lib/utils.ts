@@ -18,7 +18,7 @@ export function getDirectionsUrl(origin: string, destination: string, hasCar: bo
 
 // ── Departure time helpers ──────────────────────────────────────────────
 
-const ARRIVAL_BUFFER_MIN = 30 // llegar 30 min antes del partido
+const ARRIVAL_BUFFER_MIN = 40 // llegar 30 min antes + 10 min margen
 
 function estimateTravelMinutes(km: number, hasCar: boolean): number {
   if (km <= 0) return hasCar ? 15 : 20 // mismo municipio
