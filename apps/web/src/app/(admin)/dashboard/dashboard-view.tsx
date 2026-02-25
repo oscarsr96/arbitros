@@ -76,6 +76,36 @@ export function DashboardView() {
   const coveragePercent =
     stats.totalMatches > 0 ? Math.round((stats.coveredMatches / stats.totalMatches) * 100) : 0
 
+  // Availability urgency for alert button
+  const refPct =
+    stats.totalReferees > 0
+      ? Math.round((stats.refereesAvailable / stats.totalReferees) * 100)
+      : 100
+  const scorPct =
+    stats.totalScorers > 0 ? Math.round((stats.scorersAvailable / stats.totalScorers) * 100) : 100
+  const refLow = refPct < 60
+  const scorLow = scorPct < 60
+  const bothGood = refPct >= 90 && scorPct >= 90
+
+  const alertDefaultRoles: string[] =
+    refLow && !scorLow ? ['arbitro'] : !refLow && scorLow ? ['anotador'] : []
+
+  const alertButtonLabel = bothGood
+    ? 'Enviar alerta de disponibilidad'
+    : refLow && scorLow
+      ? 'Enviar alerta a todos'
+      : refLow
+        ? 'Enviar alerta a árbitros'
+        : scorLow
+          ? 'Enviar alerta a anotadores'
+          : 'Enviar alerta de disponibilidad'
+
+  const alertButtonVariant: 'ghost' | 'destructive' | 'outline' = bothGood
+    ? 'ghost'
+    : refLow || scorLow
+      ? 'destructive'
+      : 'outline'
+
   return (
     <div>
       <div className="mb-6 flex items-start justify-between">
@@ -83,9 +113,13 @@ export function DashboardView() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-sm text-gray-500">Resumen del estado de la jornada actual.</p>
         </div>
-        <Button onClick={() => setAlertDialogOpen(true)} variant="outline" className="gap-2">
+        <Button
+          onClick={() => setAlertDialogOpen(true)}
+          variant={alertButtonVariant}
+          className={`gap-2 ${alertButtonVariant === 'destructive' ? 'animate-pulse' : ''}`}
+        >
           <Bell className="h-4 w-4" />
-          Enviar alerta de disponibilidad
+          {alertButtonLabel}
         </Button>
       </div>
 
@@ -268,6 +302,7 @@ export function DashboardView() {
       <AvailabilityAlertDialog
         open={alertDialogOpen}
         onOpenChange={setAlertDialogOpen}
+        defaultRoles={alertDefaultRoles}
         onSent={() => {
           toast.success('Alerta de disponibilidad enviada')
           fetchAlertLog()

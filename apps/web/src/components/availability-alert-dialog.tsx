@@ -28,6 +28,7 @@ interface AvailabilityAlertDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSent: () => void
+  defaultRoles?: string[]
 }
 
 const ROLES = [
@@ -54,6 +55,7 @@ export function AvailabilityAlertDialog({
   open,
   onOpenChange,
   onSent,
+  defaultRoles,
 }: AvailabilityAlertDialogProps) {
   const [step, setStep] = useState<1 | 2>(1)
   const [weekStart, setWeekStart] = useState(getDefaultWeekStart)
@@ -84,15 +86,15 @@ export function AvailabilityAlertDialog({
     if (open) fetchPreview()
   }, [open, fetchPreview])
 
-  // Reset when dialog closes
+  // Reset when dialog opens/closes
   useEffect(() => {
-    if (!open) {
+    if (open) {
       setStep(1)
-      setSelectedRoles([])
+      setSelectedRoles(defaultRoles ?? [])
       setSelectedCategories([])
       setMessage('')
     }
-  }, [open])
+  }, [open, defaultRoles])
 
   const toggleRole = (role: string) =>
     setSelectedRoles((prev) =>
