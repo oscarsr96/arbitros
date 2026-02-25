@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react'
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/calendario', label: 'Calendario', icon: '📅' },
   { href: '/partidos', label: 'Partidos', icon: '🏀' },
   { href: '/personal', label: 'Personal', icon: '👥' },
   { href: '/asignacion', label: 'Asignación', icon: '📋' },

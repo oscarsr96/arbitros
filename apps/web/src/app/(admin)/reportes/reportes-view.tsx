@@ -23,8 +23,12 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import { exportLiquidationXlsx } from '@/lib/export-xlsx'
-import { exportLiquidationPdf, exportPersonDetailPdf } from '@/lib/export-pdf'
+import { exportLiquidationXlsx, exportMonthlyLiquidationXlsx } from '@/lib/export-xlsx'
+import {
+  exportLiquidationPdf,
+  exportPersonDetailPdf,
+  exportMonthlyLiquidationPdf,
+} from '@/lib/export-pdf'
 
 interface ReportData {
   summary: {
@@ -62,6 +66,17 @@ interface ReportData {
   }[]
   costByMatchday: { matchday: number; cost: number; matches: number }[]
   costByMunicipality: { municipality: string; totalCost: number; count: number }[]
+  monthlyLiquidation: {
+    personId: string
+    name: string
+    role: string
+    municipality: string
+    bankIban: string
+    matchdays: { matchday: number; matches: number; cost: number; km: number }[]
+    totalMatches: number
+    totalKm: number
+    totalCost: number
+  }[]
 }
 
 const FBM_NAVY = '#00205B'
@@ -71,6 +86,8 @@ export function ReportesView() {
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null)
+  const [liquidationView, setLiquidationView] = useState<'current' | 'monthly'>('current')
+  const [selectedMonthlyPerson, setSelectedMonthlyPerson] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/reports')
@@ -116,7 +133,26 @@ export function ReportesView() {
     exportPersonDetailPdf(selectedLiquidation, data.summary.matchday)
   }
 
+  const handleExportMonthlyExcel = () => {
+    if (!data) return
+    const matchdays = [
+      ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
+    ].sort()
+    exportMonthlyLiquidationXlsx(data.monthlyLiquidation, matchdays)
+  }
+
+  const handleExportMonthlyPdf = () => {
+    if (!data) return
+    const matchdays = [
+      ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
+    ].sort()
+    exportMonthlyLiquidationPdf(data.monthlyLiquidation, matchdays)
+  }
+
   const selectedLiquidation = data?.liquidation.find((p) => p.personId === selectedPerson)
+  const selectedMonthlyLiq = data?.monthlyLiquidation.find(
+    (p) => p.personId === selectedMonthlyPerson,
+  )
 
   if (loading || !data) {
     return (
@@ -338,89 +374,149 @@ export function ReportesView() {
         </div>
       </div>
 
-      {/* Liquidation table */}
+      {/* Liquidation section with toggle */}
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-800">Liquidación</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 text-xs">
-              <Download className="h-3 w-3" />
-              CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportExcel}
-              className="gap-2 text-xs"
-            >
-              <FileSpreadsheet className="h-3 w-3" />
-              Excel
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleExportPdf} className="gap-2 text-xs">
-              <FileText className="h-3 w-3" />
-              PDF
-            </Button>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-gray-800">Liquidación</h2>
+            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+              <button
+                onClick={() => setLiquidationView('current')}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  liquidationView === 'current'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Jornada actual
+              </button>
+              <button
+                onClick={() => setLiquidationView('monthly')}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                  liquidationView === 'monthly'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Mensual (J13-J15)
+              </button>
+            </div>
           </div>
+          {liquidationView === 'current' ? (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={exportCSV} className="gap-2 text-xs">
+                <Download className="h-3 w-3" />
+                CSV
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className="gap-2 text-xs"
+              >
+                <FileSpreadsheet className="h-3 w-3" />
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                className="gap-2 text-xs"
+              >
+                <FileText className="h-3 w-3" />
+                PDF
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportMonthlyExcel}
+                className="gap-2 text-xs"
+              >
+                <FileSpreadsheet className="h-3 w-3" />
+                Excel mensual
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportMonthlyPdf}
+                className="gap-2 text-xs"
+              >
+                <FileText className="h-3 w-3" />
+                PDF mensual
+              </Button>
+            </div>
+          )}
         </div>
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left">
-                <th className="px-3 py-2 text-xs font-medium text-gray-600">Persona</th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-600">Rol</th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-600">Municipio</th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-600">Partidos</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
-                  Total (€)
-                </th>
-                <th className="px-3 py-2 text-xs font-medium text-gray-600" />
-              </tr>
-            </thead>
-            <tbody>
-              {data.liquidation.map((person) => (
-                <tr key={person.personId} className="border-b border-gray-50">
-                  <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
-                  <td className="px-3 py-2">
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${
-                        person.role === 'arbitro'
-                          ? 'border-blue-200 text-blue-600'
-                          : 'border-purple-200 text-purple-600'
-                      }`}
-                    >
-                      {person.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
-                  <td className="px-3 py-2 text-xs text-gray-600">{person.matches.length}</td>
-                  <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
-                    {person.totalCost.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <button
-                      onClick={() => setSelectedPerson(person.personId)}
-                      className="text-xs font-medium text-blue-600 hover:underline"
-                    >
-                      Detalle
-                    </button>
-                  </td>
+
+        {liquidationView === 'current' ? (
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-left">
+                  <th className="px-3 py-2 text-xs font-medium text-gray-600">Persona</th>
+                  <th className="px-3 py-2 text-xs font-medium text-gray-600">Rol</th>
+                  <th className="px-3 py-2 text-xs font-medium text-gray-600">Municipio</th>
+                  <th className="px-3 py-2 text-xs font-medium text-gray-600">Partidos</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
+                    Total (€)
+                  </th>
+                  <th className="px-3 py-2 text-xs font-medium text-gray-600" />
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t bg-gray-50">
-                <td colSpan={4} className="px-3 py-2 text-sm font-semibold text-gray-900">
-                  Total
-                </td>
-                <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
-                  {data.summary.totalCost.toFixed(2)} €
-                </td>
-                <td />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.liquidation.map((person) => (
+                  <tr key={person.personId} className="border-b border-gray-50">
+                    <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${
+                          person.role === 'arbitro'
+                            ? 'border-blue-200 text-blue-600'
+                            : 'border-purple-200 text-purple-600'
+                        }`}
+                      >
+                        {person.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
+                    <td className="px-3 py-2 text-xs text-gray-600">{person.matches.length}</td>
+                    <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                      {person.totalCost.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => setSelectedPerson(person.personId)}
+                        className="text-xs font-medium text-blue-600 hover:underline"
+                      >
+                        Detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t bg-gray-50">
+                  <td colSpan={4} className="px-3 py-2 text-sm font-semibold text-gray-900">
+                    Total
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+                    {data.summary.totalCost.toFixed(2)} €
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        ) : (
+          <MonthlyLiquidationTable
+            data={data.monthlyLiquidation}
+            onSelectPerson={setSelectedMonthlyPerson}
+          />
+        )}
       </div>
 
       {/* Person detail sheet */}
@@ -480,6 +576,164 @@ export function ReportesView() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Monthly person detail sheet */}
+      <Sheet
+        open={!!selectedMonthlyPerson}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMonthlyPerson(null)
+        }}
+      >
+        <SheetContent className="w-full overflow-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>{selectedMonthlyLiq?.name ?? 'Detalle mensual'}</SheetTitle>
+          </SheetHeader>
+          {selectedMonthlyLiq && (
+            <div className="space-y-4 pt-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Partidos</p>
+                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalMatches}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Km totales</p>
+                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalKm}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalCost.toFixed(2)} €</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                {selectedMonthlyLiq.matchdays.map((md) => (
+                  <div
+                    key={md.matchday}
+                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Jornada {md.matchday}</p>
+                      <p className="text-xs text-gray-500">
+                        {md.matches} partido{md.matches !== 1 ? 's' : ''} · {md.km} km
+                      </p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">{md.cost.toFixed(2)} €</p>
+                  </div>
+                ))}
+              </div>
+              <Separator />
+              <div className="text-xs text-gray-500">
+                <p>IBAN: {selectedMonthlyLiq.bankIban}</p>
+                <p>Municipio: {selectedMonthlyLiq.municipality}</p>
+                <p>Rol: {selectedMonthlyLiq.role === 'arbitro' ? 'Árbitro' : 'Anotador'}</p>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
+  )
+}
+
+// ── Monthly Liquidation Table ─────────────────────────────────────────────
+
+interface MonthlyLiquidationData {
+  personId: string
+  name: string
+  role: string
+  municipality: string
+  bankIban: string
+  matchdays: { matchday: number; matches: number; cost: number; km: number }[]
+  totalMatches: number
+  totalKm: number
+  totalCost: number
+}
+
+function MonthlyLiquidationTable({
+  data,
+  onSelectPerson,
+}: {
+  data: MonthlyLiquidationData[]
+  onSelectPerson: (personId: string) => void
+}) {
+  const allMatchdays = [...new Set(data.flatMap((p) => p.matchdays.map((m) => m.matchday)))].sort()
+  const grandTotal = data.reduce((sum, p) => sum + p.totalCost, 0)
+
+  return (
+    <div className="overflow-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b bg-gray-50 text-left">
+            <th className="px-3 py-2 text-xs font-medium text-gray-600">Persona</th>
+            <th className="px-3 py-2 text-xs font-medium text-gray-600">Rol</th>
+            <th className="px-3 py-2 text-xs font-medium text-gray-600">Municipio</th>
+            {allMatchdays.map((md) => (
+              <th key={md} className="px-3 py-2 text-center text-xs font-medium text-gray-600">
+                J{md}
+              </th>
+            ))}
+            <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Partidos</th>
+            <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Km</th>
+            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">Total (€)</th>
+            <th className="px-3 py-2 text-xs font-medium text-gray-600" />
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((person) => (
+            <tr key={person.personId} className="border-b border-gray-50">
+              <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
+              <td className="px-3 py-2">
+                <Badge
+                  variant="outline"
+                  className={`text-xs ${
+                    person.role === 'arbitro'
+                      ? 'border-blue-200 text-blue-600'
+                      : 'border-purple-200 text-purple-600'
+                  }`}
+                >
+                  {person.role === 'arbitro' ? 'Árb.' : 'Anot.'}
+                </Badge>
+              </td>
+              <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
+              {allMatchdays.map((md) => {
+                const entry = person.matchdays.find((m) => m.matchday === md)
+                return (
+                  <td key={md} className="px-3 py-2 text-center text-xs text-gray-600">
+                    {entry ? `${entry.cost.toFixed(2)}` : '—'}
+                  </td>
+                )
+              })}
+              <td className="px-3 py-2 text-center text-xs text-gray-600">{person.totalMatches}</td>
+              <td className="px-3 py-2 text-center text-xs text-gray-600">{person.totalKm}</td>
+              <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                {person.totalCost.toFixed(2)}
+              </td>
+              <td className="px-3 py-2">
+                <button
+                  onClick={() => onSelectPerson(person.personId)}
+                  className="text-xs font-medium text-blue-600 hover:underline"
+                >
+                  Detalle
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t bg-gray-50">
+            <td
+              colSpan={3 + allMatchdays.length + 2}
+              className="px-3 py-2 text-sm font-semibold text-gray-900"
+            >
+              Total
+            </td>
+            <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+              {grandTotal.toFixed(2)} €
+            </td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
     </div>
   )
 }

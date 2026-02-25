@@ -126,3 +126,85 @@ export function exportPersonDetailPdf(
 
   doc.save(`justificante-${person.name.replace(/\s+/g, '-').toLowerCase()}-j${matchday}.pdf`)
 }
+
+// ── Monthly Liquidation PDF ─────────────────────────────────────────────
+
+interface MonthlyLiquidationPerson {
+  name: string
+  role: string
+  municipality: string
+  bankIban: string
+  matchdays: { matchday: number; matches: number; cost: number; km: number }[]
+  totalMatches: number
+  totalKm: number
+  totalCost: number
+}
+
+export function exportMonthlyLiquidationPdf(
+  data: MonthlyLiquidationPerson[],
+  matchdays: number[],
+  season: string = '2024-25',
+) {
+  const doc = new jsPDF({ orientation: 'landscape' })
+
+  // Header
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FBM — Federación de Baloncesto de Madrid', 14, 20)
+
+  const mdLabel =
+    matchdays.length > 0 ? `J${matchdays[0]}-J${matchdays[matchdays.length - 1]}` : 'Mensual'
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Liquidación Mensual ${mdLabel} — Temporada ${season}`, 14, 30)
+
+  // Build columns
+  const head = [
+    'Persona',
+    'Rol',
+    'Municipio',
+    ...matchdays.map((md) => `J${md} (€)`),
+    'Partidos',
+    'Km',
+    'Total (€)',
+  ]
+
+  const body = data.map((p) => [
+    p.name,
+    p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
+    p.municipality,
+    ...matchdays.map((md) => {
+      const entry = p.matchdays.find((m) => m.matchday === md)
+      return entry ? entry.cost.toFixed(2) : '—'
+    }),
+    p.totalMatches.toString(),
+    p.totalKm.toString(),
+    p.totalCost.toFixed(2),
+  ])
+
+  const grandTotal = data.reduce((sum, p) => sum + p.totalCost, 0)
+  const foot = ['Total', '', '', ...matchdays.map(() => ''), '', '', grandTotal.toFixed(2) + ' €']
+
+  autoTable(doc, {
+    startY: 40,
+    head: [head],
+    body,
+    foot: [foot],
+    styles: { fontSize: 7 },
+    headStyles: { fillColor: [0, 32, 91] },
+    footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
+    columnStyles: {
+      [head.length - 1]: { halign: 'right' },
+      [head.length - 2]: { halign: 'center' },
+      [head.length - 3]: { halign: 'center' },
+    },
+  })
+
+  // Footer
+  const pageHeight = doc.internal.pageSize.height
+  doc.setFontSize(8)
+  doc.setTextColor(128, 128, 128)
+  doc.text(`Generado el ${new Date().toLocaleDateString('es-ES')}`, 14, pageHeight - 10)
+
+  doc.save(`liquidacion-mensual-${mdLabel}.pdf`)
+}

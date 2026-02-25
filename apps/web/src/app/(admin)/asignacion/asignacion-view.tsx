@@ -9,6 +9,7 @@ import { AssignmentSlot } from '@/components/assignment-slot'
 import { PersonPicker } from '@/components/person-picker'
 import { PublishDialog } from '@/components/publish-dialog'
 import { ProposalSelector } from '@/components/proposal-selector'
+import { SubstitutionPanel, type SubstitutionContext } from '@/components/substitution-panel'
 import { useAdminStore } from '@/stores/admin-store'
 import { Send, Zap, Loader2, MapPin, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
@@ -44,6 +45,7 @@ export function AsignacionView() {
   const [publishOpen, setPublishOpen] = useState(false)
   const [sortBy, setSortBy] = useState<'cost' | 'load'>('cost')
   const [applying, setApplying] = useState(false)
+  const [substitutionContext, setSubstitutionContext] = useState<SubstitutionContext | null>(null)
   const { activeSlot, setActiveSlot, expandedMatchIds, toggleExpandedMatch } = useAdminStore()
 
   const {
@@ -100,6 +102,20 @@ export function AsignacionView() {
   }
 
   const handleRemove = async (designationId: string) => {
+    // Find designation details before deleting
+    let removedPersonName = ''
+    let removedMatchId = ''
+    let removedRole: 'arbitro' | 'anotador' = 'arbitro'
+    for (const match of matches) {
+      const desig = match.designations.find((d) => d.id === designationId)
+      if (desig) {
+        removedPersonName = desig.person?.name ?? ''
+        removedMatchId = match.id
+        removedRole = desig.role
+        break
+      }
+    }
+
     const res = await fetch(`/api/admin/designations/${designationId}`, {
       method: 'DELETE',
     })
@@ -107,9 +123,39 @@ export function AsignacionView() {
     if (res.ok) {
       toast.success('Asignación eliminada')
       fetchMatches()
+      // Open substitution panel
+      if (removedMatchId && removedPersonName) {
+        setSubstitutionContext({
+          matchId: removedMatchId,
+          role: removedRole,
+          removedPersonName,
+        })
+      }
     } else {
       const data = await res.json()
       toast.error(data.error ?? 'Error al eliminar')
+    }
+  }
+
+  const handleSubstitute = async (personId: string) => {
+    if (!substitutionContext) return
+    const res = await fetch('/api/admin/designations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        matchId: substitutionContext.matchId,
+        personId,
+        role: substitutionContext.role,
+      }),
+    })
+
+    if (res.ok) {
+      toast.success('Sustituto asignado correctamente')
+      setSubstitutionContext(null)
+      fetchMatches()
+    } else {
+      const data = await res.json()
+      toast.error(data.error ?? 'Error al asignar sustituto')
     }
   }
 
@@ -681,6 +727,13 @@ export function AsignacionView() {
             pendingDesignations: pendingDesigs,
             personsToNotify: personsToNotify,
           }}
+        />
+
+        <SubstitutionPanel
+          context={substitutionContext}
+          matches={matches}
+          onClose={() => setSubstitutionContext(null)}
+          onSubstitute={handleSubstitute}
         />
       </div>
     </TooltipProvider>

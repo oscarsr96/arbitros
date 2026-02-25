@@ -122,6 +122,94 @@ export async function GET() {
     }))
     .sort((a, b) => b.totalCost - a.totalCost)
 
+  // Monthly liquidation: aggregate historical + current per person
+  const monthlyMap: Record<
+    string,
+    {
+      personId: string
+      name: string
+      role: string
+      municipality: string
+      bankIban: string
+      matchdays: { matchday: number; matches: number; cost: number; km: number }[]
+      totalMatches: number
+      totalKm: number
+      totalCost: number
+    }
+  > = {}
+
+  const ensurePerson = (personId: string) => {
+    if (!monthlyMap[personId]) {
+      const person = getMockPerson(personId)
+      const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
+      monthlyMap[personId] = {
+        personId,
+        name: person?.name ?? personId,
+        role: person?.role ?? '',
+        municipality: municipality?.name ?? '',
+        bankIban: person?.bankIban ?? '',
+        matchdays: [],
+        totalMatches: 0,
+        totalKm: 0,
+        totalCost: 0,
+      }
+    }
+  }
+
+  // Historical matchdays
+  for (const h of mockHistoricalMatchdays) {
+    // Group by person within this matchday
+    const personAgg: Record<string, { matches: number; cost: number; km: number }> = {}
+    for (const d of h.designations) {
+      if (!personAgg[d.personId]) personAgg[d.personId] = { matches: 0, cost: 0, km: 0 }
+      personAgg[d.personId].matches++
+      personAgg[d.personId].cost += d.travelCost
+      personAgg[d.personId].km += d.distanceKm
+    }
+    for (const [personId, agg] of Object.entries(personAgg)) {
+      ensurePerson(personId)
+      monthlyMap[personId].matchdays.push({
+        matchday: h.matchday,
+        matches: agg.matches,
+        cost: Number(agg.cost.toFixed(2)),
+        km: Number(agg.km.toFixed(1)),
+      })
+      monthlyMap[personId].totalMatches += agg.matches
+      monthlyMap[personId].totalKm += agg.km
+      monthlyMap[personId].totalCost += agg.cost
+    }
+  }
+
+  // Current matchday (J15)
+  const currentAgg: Record<string, { matches: number; cost: number; km: number }> = {}
+  for (const d of mockDesignations) {
+    if (!currentAgg[d.personId]) currentAgg[d.personId] = { matches: 0, cost: 0, km: 0 }
+    currentAgg[d.personId].matches++
+    currentAgg[d.personId].cost += parseFloat(d.travelCost)
+    currentAgg[d.personId].km += parseFloat(d.distanceKm)
+  }
+  for (const [personId, agg] of Object.entries(currentAgg)) {
+    ensurePerson(personId)
+    monthlyMap[personId].matchdays.push({
+      matchday: 15,
+      matches: agg.matches,
+      cost: Number(agg.cost.toFixed(2)),
+      km: Number(agg.km.toFixed(1)),
+    })
+    monthlyMap[personId].totalMatches += agg.matches
+    monthlyMap[personId].totalKm += agg.km
+    monthlyMap[personId].totalCost += agg.cost
+  }
+
+  const monthlyLiquidation = Object.values(monthlyMap)
+    .map((p) => ({
+      ...p,
+      totalKm: Number(p.totalKm.toFixed(1)),
+      totalCost: Number(p.totalCost.toFixed(2)),
+    }))
+    .filter((p) => p.totalMatches > 0)
+    .sort((a, b) => b.totalCost - a.totalCost)
+
   return NextResponse.json({
     summary: {
       totalCost: Number(totalCost.toFixed(2)),
@@ -135,5 +223,6 @@ export async function GET() {
     liquidation,
     costByMatchday,
     costByMunicipality,
+    monthlyLiquidation,
   })
 }
