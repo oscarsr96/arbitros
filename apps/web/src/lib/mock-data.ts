@@ -1367,6 +1367,20 @@ export const mockHistoricalMatchdays: HistoricalMatchday[] = [
   },
 ]
 
+// ── Alertas de disponibilidad ────────────────────────────────────────────
+
+export interface MockAlert {
+  id: string
+  weekStart: string
+  roles: string[]
+  categories: string[]
+  message: string
+  recipientCount: number
+  sentAt: Date
+}
+
+export const mockAlertLog: MockAlert[] = []
+
 // ── Snapshots iniciales para reset ────────────────────────────────────────
 
 const INITIAL_MATCHES = [...mockMatches]
@@ -1386,6 +1400,7 @@ export function resetMockData() {
   mockAvailabilities.push(...INITIAL_AVAILABILITIES)
   mockIncompatibilities.length = 0
   mockIncompatibilities.push(...INITIAL_INCOMPATIBILITIES)
+  mockAlertLog.length = 0
 }
 
 // ── Exports para generación demo ──────────────────────────────────────────

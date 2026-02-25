@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { StatCard } from '@/components/stat-card'
 import { Progress } from '@/components/ui/progress'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { AvailabilityAlertDialog } from '@/components/availability-alert-dialog'
+import { toast } from 'sonner'
 import {
   Calendar,
   Users,
@@ -14,13 +18,33 @@ import {
   AlertTriangle,
   Info,
   ArrowRight,
+  Bell,
+  Mail,
 } from 'lucide-react'
 import type { DashboardStats, DashboardAlert } from '@/lib/types'
+
+interface AlertLogEntry {
+  id: string
+  weekStart: string
+  roles: string[]
+  categories: string[]
+  message: string
+  recipientCount: number
+  sentAt: string
+}
 
 export function DashboardView() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [alerts, setAlerts] = useState<DashboardAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const [alertDialogOpen, setAlertDialogOpen] = useState(false)
+  const [alertLog, setAlertLog] = useState<AlertLogEntry[]>([])
+
+  const fetchAlertLog = useCallback(() => {
+    fetch('/api/admin/alerts')
+      .then((r) => r.json())
+      .then((data) => setAlertLog(data.alerts ?? []))
+  }, [])
 
   useEffect(() => {
     fetch('/api/admin/dashboard')
@@ -30,7 +54,8 @@ export function DashboardView() {
         setAlerts(data.alerts)
       })
       .finally(() => setLoading(false))
-  }, [])
+    fetchAlertLog()
+  }, [fetchAlertLog])
 
   if (loading || !stats) {
     return (
@@ -53,9 +78,15 @@ export function DashboardView() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Resumen del estado de la jornada actual.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-500">Resumen del estado de la jornada actual.</p>
+        </div>
+        <Button onClick={() => setAlertDialogOpen(true)} variant="outline" className="gap-2">
+          <Bell className="h-4 w-4" />
+          Enviar alerta de disponibilidad
+        </Button>
       </div>
 
       {/* Stats grid */}
@@ -159,6 +190,57 @@ export function DashboardView() {
         )}
       </div>
 
+      {/* Alert history */}
+      {alertLog.length > 0 && (
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 text-sm font-semibold text-gray-800">
+            Alertas de disponibilidad enviadas
+          </h2>
+          <div className="space-y-2">
+            {alertLog.slice(0, 5).map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center gap-3 rounded-lg border border-gray-100 bg-gray-50 p-3"
+              >
+                <Mail className="h-4 w-4 flex-shrink-0 text-blue-500" />
+                <div className="flex-1">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-medium">{entry.recipientCount}</span> destinatario
+                    {entry.recipientCount !== 1 ? 's' : ''} — semana{' '}
+                    <span className="font-medium">{entry.weekStart}</span>
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {entry.roles.map((r) => (
+                      <Badge key={r} variant="secondary" className="text-[10px]">
+                        {r === 'arbitro' ? 'Árbitros' : 'Anotadores'}
+                      </Badge>
+                    ))}
+                    {entry.categories.map((c) => (
+                      <Badge key={c} variant="outline" className="text-[10px]">
+                        {c}
+                      </Badge>
+                    ))}
+                    {entry.roles.length === 0 && entry.categories.length === 0 && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Todos
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400">
+                  {new Date(entry.sentAt).toLocaleString('es-ES', {
+                    day: 'numeric',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Quick links */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Link
@@ -182,6 +264,15 @@ export function DashboardView() {
           </div>
         </Link>
       </div>
+
+      <AvailabilityAlertDialog
+        open={alertDialogOpen}
+        onOpenChange={setAlertDialogOpen}
+        onSent={() => {
+          toast.success('Alerta de disponibilidad enviada')
+          fetchAlertLog()
+        }}
+      />
     </div>
   )
 }
