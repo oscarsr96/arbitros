@@ -13,6 +13,7 @@ const navLinks = [
   { href: '/personal', label: 'Personal', icon: '👥' },
   { href: '/asignacion', label: 'Asignación', icon: '📋' },
   { href: '/reportes', label: 'Reportes', icon: '📈' },
+  { href: '/wiki', label: 'Wiki', icon: '📖' },
 ]
 
 export function AdminSidebar() {
