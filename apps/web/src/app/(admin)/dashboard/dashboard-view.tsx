@@ -20,8 +20,38 @@ import {
   ArrowRight,
   Bell,
   Mail,
+  FlaskConical,
 } from 'lucide-react'
 import type { DashboardStats, DashboardAlert } from '@/lib/types'
+
+type DemoScenario = 'real' | 'good' | 'low_refs' | 'low_all'
+
+const DEMO_SCENARIOS: { value: DemoScenario; label: string; description: string }[] = [
+  { value: 'real', label: 'Datos reales', description: 'Sin modificar' },
+  { value: 'good', label: 'Buena disponibilidad', description: '>90% todos' },
+  { value: 'low_refs', label: 'Faltan árbitros', description: '<60% árbitros' },
+  { value: 'low_all', label: 'Faltan todos', description: '<60% ambos' },
+]
+
+function applyDemoScenario(stats: DashboardStats, scenario: DemoScenario): DashboardStats {
+  if (scenario === 'real') return stats
+  const s = { ...stats }
+  switch (scenario) {
+    case 'good':
+      s.refereesAvailable = s.totalReferees
+      s.scorersAvailable = s.totalScorers
+      break
+    case 'low_refs':
+      s.refereesAvailable = Math.max(1, Math.floor(s.totalReferees * 0.33))
+      s.scorersAvailable = s.totalScorers
+      break
+    case 'low_all':
+      s.refereesAvailable = Math.max(1, Math.floor(s.totalReferees * 0.33))
+      s.scorersAvailable = Math.max(1, Math.floor(s.totalScorers * 0.25))
+      break
+  }
+  return s
+}
 
 interface AlertLogEntry {
   id: string
@@ -39,6 +69,7 @@ export function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [alertDialogOpen, setAlertDialogOpen] = useState(false)
   const [alertLog, setAlertLog] = useState<AlertLogEntry[]>([])
+  const [demoScenario, setDemoScenario] = useState<DemoScenario>('real')
 
   const fetchAlertLog = useCallback(() => {
     fetch('/api/admin/alerts')
@@ -73,16 +104,16 @@ export function DashboardView() {
     )
   }
 
+  const ds = applyDemoScenario(stats, demoScenario)
+
   const coveragePercent =
-    stats.totalMatches > 0 ? Math.round((stats.coveredMatches / stats.totalMatches) * 100) : 0
+    ds.totalMatches > 0 ? Math.round((ds.coveredMatches / ds.totalMatches) * 100) : 0
 
   // Availability urgency for alert button
   const refPct =
-    stats.totalReferees > 0
-      ? Math.round((stats.refereesAvailable / stats.totalReferees) * 100)
-      : 100
+    ds.totalReferees > 0 ? Math.round((ds.refereesAvailable / ds.totalReferees) * 100) : 100
   const scorPct =
-    stats.totalScorers > 0 ? Math.round((stats.scorersAvailable / stats.totalScorers) * 100) : 100
+    ds.totalScorers > 0 ? Math.round((ds.scorersAvailable / ds.totalScorers) * 100) : 100
   const refLow = refPct < 60
   const scorLow = scorPct < 60
   const bothGood = refPct >= 90 && scorPct >= 90
@@ -123,46 +154,81 @@ export function DashboardView() {
         </Button>
       </div>
 
+      {/* Demo scenario selector */}
+      <div className="mb-6 flex items-center gap-3 rounded-lg border border-dashed border-purple-300 bg-purple-50/50 px-4 py-2.5">
+        <FlaskConical className="h-4 w-4 flex-shrink-0 text-purple-500" />
+        <span className="text-xs font-medium text-purple-600">Escenario demo:</span>
+        <div className="flex gap-1.5">
+          {DEMO_SCENARIOS.map((s) => (
+            <button
+              key={s.value}
+              onClick={() => setDemoScenario(s.value)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                demoScenario === s.value
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-white text-purple-700 hover:bg-purple-100'
+              }`}
+              title={s.description}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        {demoScenario !== 'real' && (
+          <span className="ml-auto text-[10px] text-purple-400">
+            Datos simulados — no afecta a la base de datos
+          </span>
+        )}
+      </div>
+
       {/* Stats grid */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           label="Partidos esta jornada"
-          value={stats.totalMatches}
-          sub={`${stats.coveredMatches} cubiertos, ${stats.uncoveredMatches} sin cubrir`}
+          value={ds.totalMatches}
+          sub={`${ds.coveredMatches} cubiertos, ${ds.uncoveredMatches} sin cubrir`}
           color="bg-blue-50 text-blue-700 border-blue-200"
           icon={Calendar}
         />
         <StatCard
           label="Árbitros disponibles"
-          value={`${stats.refereesAvailable} / ${stats.totalReferees}`}
-          sub="Con disponibilidad registrada"
-          color="bg-green-50 text-green-700 border-green-200"
+          value={`${ds.refereesAvailable} / ${ds.totalReferees}`}
+          sub={`${refPct}% con disponibilidad`}
+          color={
+            refLow
+              ? 'bg-red-50 text-red-700 border-red-200'
+              : 'bg-green-50 text-green-700 border-green-200'
+          }
           icon={Users}
         />
         <StatCard
           label="Anotadores disponibles"
-          value={`${stats.scorersAvailable} / ${stats.totalScorers}`}
-          sub="Con disponibilidad registrada"
-          color="bg-purple-50 text-purple-700 border-purple-200"
+          value={`${ds.scorersAvailable} / ${ds.totalScorers}`}
+          sub={`${scorPct}% con disponibilidad`}
+          color={
+            scorLow
+              ? 'bg-red-50 text-red-700 border-red-200'
+              : 'bg-purple-50 text-purple-700 border-purple-200'
+          }
           icon={UserCheck}
         />
         <StatCard
           label="Partidos sin cubrir"
-          value={stats.uncoveredMatches + stats.partiallyCovered}
-          sub={`${stats.uncoveredMatches} vacíos, ${stats.partiallyCovered} parciales`}
+          value={ds.uncoveredMatches + ds.partiallyCovered}
+          sub={`${ds.uncoveredMatches} vacíos, ${ds.partiallyCovered} parciales`}
           color="bg-orange-50 text-orange-700 border-orange-200"
           icon={AlertCircle}
         />
         <StatCard
           label="Coste estimado"
-          value={`${stats.estimatedCost.toFixed(2)} €`}
+          value={`${ds.estimatedCost.toFixed(2)} €`}
           sub="Total desplazamiento jornada"
           color="bg-gray-50 text-gray-700 border-gray-200"
           icon={DollarSign}
         />
         <StatCard
           label="Designaciones activas"
-          value={`${stats.coveredMatches}`}
+          value={`${ds.coveredMatches}`}
           sub="Partidos completamente cubiertos"
           color="bg-teal-50 text-teal-700 border-teal-200"
           icon={CheckCircle2}
@@ -177,7 +243,7 @@ export function DashboardView() {
         </div>
         <Progress value={coveragePercent} className="h-3" />
         <p className="mt-2 text-xs text-gray-500">
-          {stats.coveredMatches} de {stats.totalMatches} partidos completamente cubiertos
+          {ds.coveredMatches} de {ds.totalMatches} partidos completamente cubiertos
         </p>
       </div>
 
