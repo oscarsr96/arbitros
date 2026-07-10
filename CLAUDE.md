@@ -698,8 +698,12 @@ SENTRY_DSN=https://...
 NEXT_PUBLIC_APP_URL=https://designaciones.fbm.es
 TRAVEL_COST_PER_KM=0.10
 TRAVEL_COST_SAME_MUNICIPALITY=3.00
-AVAILABILITY_DAYS_ADVANCE=10
 ```
+
+**Nota**: la antelación para declarar disponibilidad ya no es un env var global. Pasa a ser
+config por categoría en código (`apps/web/src/lib/availability-deadline.ts`,
+`AVAILABILITY_DEADLINE_DAYS`): provincial 7 días, autonómico 8, nacional 10, feb 12 (categoría
+desconocida → 12, el más restrictivo).
 
 ---
 
