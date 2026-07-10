@@ -6,17 +6,19 @@ import { FilterBar } from '@/components/filter-bar'
 import { MatchStatusBadge } from '@/components/match-status-badge'
 import { CoverageIndicator } from '@/components/coverage-indicator'
 import { CSVImportDialog } from '@/components/csv-import-dialog'
+import { XlsxImportDialog } from '@/components/xlsx-import-dialog'
 import { MatchDetailRow } from './match-detail-row'
 import { useAdminStore } from '@/stores/admin-store'
 import { Upload, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
-import type { EnrichedMatch, CSVMatchRow } from '@/lib/types'
+import type { EnrichedMatch, CSVMatchRow, ParsedXlsxMatch } from '@/lib/types'
 import { mockMunicipalities, mockCompetitions } from '@/lib/mock-data'
 
 export function PartidosView() {
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
   const [loading, setLoading] = useState(true)
   const [csvOpen, setCsvOpen] = useState(false)
+  const [xlsxOpen, setXlsxOpen] = useState(false)
   const { matchFilters, setMatchFilter, resetMatchFilters, expandedMatchIds, toggleExpandedMatch } =
     useAdminStore()
 
@@ -46,6 +48,29 @@ export function PartidosView() {
     }
     if (data.errors?.length > 0) {
       toast.warning(`Advertencias: ${data.errors.join('; ')}`)
+    }
+  }
+
+  const handleImportXlsx = async (rows: ParsedXlsxMatch[]) => {
+    const res = await fetch('/api/admin/matches/import-xlsx', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matches: rows }),
+    })
+    const data = await res.json()
+    if (data.imported > 0) {
+      const extras = [
+        data.venuesCreated > 0 ? `${data.venuesCreated} pabellón(es) nuevo(s)` : null,
+        data.courtsCreated > 0 ? `${data.courtsCreated} pista(s) nueva(s)` : null,
+      ].filter(Boolean)
+      toast.success(
+        `${data.imported} partido${data.imported !== 1 ? 's' : ''} importado${data.imported !== 1 ? 's' : ''}` +
+          (extras.length > 0 ? ` (${extras.join(', ')})` : ''),
+      )
+      fetchMatches()
+    }
+    if (data.warnings?.length > 0) {
+      toast.warning(`Advertencias: ${data.warnings.join('; ')}`)
     }
   }
 
@@ -121,10 +146,16 @@ export function PartidosView() {
             {sorted.length} partido{sorted.length !== 1 ? 's' : ''} en la jornada
           </p>
         </div>
-        <Button onClick={() => setCsvOpen(true)} className="gap-2">
-          <Upload className="h-4 w-4" />
-          Importar CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setCsvOpen(true)} variant="outline" className="gap-2">
+            <Upload className="h-4 w-4" />
+            Importar CSV
+          </Button>
+          <Button onClick={() => setXlsxOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" />
+            Importar XLSX
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -191,6 +222,7 @@ export function PartidosView() {
       </div>
 
       <CSVImportDialog open={csvOpen} onOpenChange={setCsvOpen} onImport={handleImport} />
+      <XlsxImportDialog open={xlsxOpen} onOpenChange={setXlsxOpen} onImport={handleImportXlsx} />
     </div>
   )
 }
