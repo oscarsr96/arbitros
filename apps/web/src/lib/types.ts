@@ -120,6 +120,37 @@ export interface CSVMatchRow {
   jornada: string
 }
 
+// ── Importación XLSX de jornada ─────────────────────────────────────────────
+
+export interface ParsedXlsxMatch {
+  date: string // YYYY-MM-DD (hora local)
+  time: string // HH:MM
+  venueName: string
+  courtName: string | null // null = pista implícita (pabellón sin sufijo)
+  district: string
+  category: string
+  group: string
+  homeTeam: string
+  awayTeam: string
+  refereesNeeded: number
+  sheet: string // hoja de origen (SABADO, DOMINGO, ENTRE SEMANA, MOSTOLES...)
+}
+
+export interface ParsedCamposVenue {
+  district: string
+  name: string
+  address: string
+  metro: string
+  bus: string
+  observations: string
+}
+
+export interface XlsxImportResult {
+  matches: ParsedXlsxMatch[]
+  camposVenues: ParsedCamposVenue[]
+  warnings: string[]
+}
+
 // ── Solver types ────────────────────────────────────────────────────────────
 
 export interface SolverParameters {
