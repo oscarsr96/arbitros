@@ -209,7 +209,19 @@ export const mockCompetitions = [
 
 // ── Pabellones ──────────────────────────────────────────────────────────────
 
-export const mockVenues = [
+export interface MockVenue {
+  id: string
+  name: string
+  address: string
+  municipalityId: string
+  postalCode: string
+  district?: string
+  metro?: string
+  bus?: string
+  observations?: string
+}
+
+export const mockVenues: MockVenue[] = [
   {
     id: 'venue-001',
     name: 'Pab. Magariños',
@@ -350,6 +362,20 @@ export const mockVenues = [
     municipalityId: 'muni-020',
     postalCode: '28981',
   },
+]
+
+// ── Pistas ──────────────────────────────────────────────────────────────────
+
+export interface MockCourt {
+  id: string
+  venueId: string
+  name: string
+}
+
+export const mockCourts: MockCourt[] = [
+  { id: 'court-001', venueId: 'venue-001', name: 'Pista 1' },
+  { id: 'court-002', venueId: 'venue-001', name: 'Pista 2' },
+  { id: 'court-003', venueId: 'venue-007', name: 'Pista Central' },
 ]
 
 // ── Personas ────────────────────────────────────────────────────────────────
@@ -547,7 +573,23 @@ const nextSunday = (() => {
   return formatLocalDate(d)
 })()
 
-export const mockMatches = [
+export interface MockMatch {
+  id: string
+  date: string
+  time: string
+  venueId: string
+  competitionId: string
+  homeTeam: string
+  awayTeam: string
+  refereesNeeded: number
+  scorersNeeded: number
+  status: 'scheduled' | 'designated' | 'played' | 'suspended'
+  seasonId: string
+  matchday: number
+  courtId?: string | null
+}
+
+export const mockMatches: MockMatch[] = [
   {
     id: 'match-001',
     date: nextSaturday,
@@ -561,6 +603,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-002',
@@ -575,6 +618,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-003',
@@ -589,6 +633,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-004',
@@ -603,6 +648,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-005',
@@ -617,6 +663,7 @@ export const mockMatches = [
     status: 'scheduled' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-006',
@@ -631,6 +678,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-007',
@@ -645,6 +693,7 @@ export const mockMatches = [
     status: 'scheduled' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-008',
@@ -659,6 +708,7 @@ export const mockMatches = [
     status: 'designated' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-009',
@@ -673,6 +723,7 @@ export const mockMatches = [
     status: 'scheduled' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
   {
     id: 'match-010',
@@ -687,6 +738,7 @@ export const mockMatches = [
     status: 'scheduled' as const,
     seasonId: 'season-001',
     matchday: 15,
+    courtId: null,
   },
 ]
 
@@ -986,6 +1038,11 @@ export const mockAvailabilities = generateAvailabilities()
 
 export function getMockVenue(venueId: string) {
   return mockVenues.find((v) => v.id === venueId)
+}
+
+export function getMockCourt(courtId: string | null | undefined) {
+  if (!courtId) return undefined
+  return mockCourts.find((c) => c.id === courtId)
 }
 
 export function getMockMatch(matchId: string) {
@@ -1388,6 +1445,7 @@ const INITIAL_PERSONS = [...mockPersons]
 const INITIAL_DESIGNATIONS: MockDesignation[] = [...mockDesignations]
 const INITIAL_AVAILABILITIES = [...mockAvailabilities]
 const INITIAL_INCOMPATIBILITIES = [...mockIncompatibilities]
+const INITIAL_COURTS = [...mockCourts]
 
 export function resetMockData() {
   mockMatches.length = 0
@@ -1400,6 +1458,8 @@ export function resetMockData() {
   mockAvailabilities.push(...INITIAL_AVAILABILITIES)
   mockIncompatibilities.length = 0
   mockIncompatibilities.push(...INITIAL_INCOMPATIBILITIES)
+  mockCourts.length = 0
+  mockCourts.push(...INITIAL_COURTS)
   mockAlertLog.length = 0
 }
 

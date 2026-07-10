@@ -142,6 +142,10 @@ export const venues = pgTable('venues', {
   latitude: numeric('latitude', { precision: 9, scale: 6 }),
   longitude: numeric('longitude', { precision: 9, scale: 6 }),
   postalCode: varchar('postal_code', { length: 10 }),
+  district: varchar('district', { length: 100 }),
+  metro: varchar('metro', { length: 200 }),
+  bus: varchar('bus', { length: 200 }),
+  observations: text('observations'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -151,6 +155,25 @@ export const venuesRelations = relations(venues, ({ one, many }) => ({
     references: [municipalities.id],
   }),
   matches: many(matches),
+  courts: many(courts),
+}))
+
+// ── Courts ─────────────────────────────────────────────────────────────────
+
+export const courts = pgTable('courts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  venueId: uuid('venue_id')
+    .references(() => venues.id)
+    .notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const courtsRelations = relations(courts, ({ one }) => ({
+  venue: one(venues, {
+    fields: [courts.venueId],
+    references: [venues.id],
+  }),
 }))
 
 // ── Competitions ───────────────────────────────────────────────────────────

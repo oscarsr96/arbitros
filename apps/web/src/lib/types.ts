@@ -13,6 +13,7 @@ export interface EnrichedMatch {
   status: string
   seasonId: string
   matchday: number
+  courtId?: string | null
   venue?: {
     id: string
     name: string
@@ -20,6 +21,15 @@ export interface EnrichedMatch {
     municipalityId: string
     postalCode: string
     municipalityName?: string
+    district?: string
+    metro?: string
+    bus?: string
+    observations?: string
+  }
+  court?: {
+    id: string
+    venueId: string
+    name: string
   }
   competition?: {
     id: string
