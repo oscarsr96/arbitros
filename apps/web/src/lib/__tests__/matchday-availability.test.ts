@@ -1,5 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { materializeToSlots } from '../matchday-availability'
+import {
+  materializeToSlots,
+  getMatchdaySlotFootprint,
+  getJornadaSaturdayForDate,
+} from '../matchday-availability'
 import { mockAvailabilities, isPersonAvailable } from '../mock-data'
 import type { MatchdayAvailability } from '../mock-data'
 
@@ -129,6 +133,70 @@ describe('materializeToSlots', () => {
       startTime: '17:30',
       endTime: '22:00',
     })
+  })
+})
+
+describe('getMatchdaySlotFootprint (bug 1: borrado cruzado entre jornadas vecinas)', () => {
+  it('la huella de la jornada B (S=2026-08-01) no toca los dias L-J (0-3) de la jornada A (S=2026-07-25), aunque compartan weekStart 2026-07-27', () => {
+    const personId = 'person-shared'
+    const SATURDAY_A = '2026-07-25'
+    const SATURDAY_B = '2026-08-01'
+
+    const recordA: MatchdayAvailability = {
+      id: 'jornada-a',
+      personId,
+      saturdayDate: SATURDAY_A,
+      saturdayMorning: false,
+      saturdayAfternoon: false,
+      sundayMorning: false,
+      sundayAfternoon: false,
+      weekdayDays: [0, 1, 2, 3], // lunes..jueves siguientes -> caen en la semana del 27/07
+      notes: null,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    // 1. Guardar jornada A: materializar e insertar sus slots en un array simulado
+    let simulatedAvailabilities = materializeToSlots(recordA).map((s, i) => ({
+      id: `a-${i}`,
+      ...s,
+    }))
+
+    expect(simulatedAvailabilities).toHaveLength(4)
+    expect(simulatedAvailabilities.every((s) => s.weekStart === '2026-07-27')).toBe(true)
+    expect(simulatedAvailabilities.map((s) => s.dayOfWeek).sort()).toEqual([0, 1, 2, 3])
+
+    // 2. Guardar jornada B para la MISMA persona: aplicar el borrado por huella de B
+    // (misma logica que el POST de la ruta) y comprobar que los slots L-J de A siguen ahi
+    const footprintB = getMatchdaySlotFootprint(SATURDAY_B)
+    const isInFootprintB = (weekStart: string, dayOfWeek: number) =>
+      footprintB.some((k) => k.weekStart === weekStart && k.dayOfWeek === dayOfWeek)
+
+    simulatedAvailabilities = simulatedAvailabilities.filter(
+      (s) => !(s.personId === personId && isInFootprintB(s.weekStart, s.dayOfWeek)),
+    )
+
+    // Los 4 slots L-J de la jornada A sobreviven: la huella de B (dias 4,5,6 en
+    // weekStart 2026-07-27 + dias 0-3 en weekStart 2026-08-03) es disjunta de ellos
+    expect(simulatedAvailabilities).toHaveLength(4)
+    expect(simulatedAvailabilities.map((s) => s.dayOfWeek).sort()).toEqual([0, 1, 2, 3])
+  })
+})
+
+describe('getJornadaSaturdayForDate (bug 2: sabado equivocado para partidos L-J)', () => {
+  it('miercoles (bloque entre-semana) -> sabado de la jornada ANTERIOR', () => {
+    expect(getJornadaSaturdayForDate('2026-07-29')).toBe('2026-07-25')
+  })
+
+  it('viernes (mismo fin de semana) -> sabado de esa misma semana', () => {
+    expect(getJornadaSaturdayForDate('2026-07-24')).toBe('2026-07-25')
+  })
+
+  it('sabado -> el mismo dia', () => {
+    expect(getJornadaSaturdayForDate('2026-07-25')).toBe('2026-07-25')
+  })
+
+  it('domingo -> sabado de esa misma jornada', () => {
+    expect(getJornadaSaturdayForDate('2026-07-26')).toBe('2026-07-25')
   })
 })
 

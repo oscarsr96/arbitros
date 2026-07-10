@@ -7,7 +7,7 @@ import {
 } from '@/lib/mock-data'
 import type { MatchdayAvailability } from '@/lib/mock-data'
 import { getAvailabilityDeadline } from '@/lib/availability-deadline'
-import { materializeToSlots, getAffectedWeekStarts } from '@/lib/matchday-availability'
+import { materializeToSlots, getMatchdaySlotFootprint } from '@/lib/matchday-availability'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
@@ -49,6 +49,10 @@ export async function POST(request: NextRequest) {
 
   if (!personId || !saturdayDate) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  if (weekdayDays !== undefined && !Array.isArray(weekdayDays)) {
+    return NextResponse.json({ error: 'weekdayDays debe ser un array' }, { status: 400 })
   }
 
   if (weekdayDays && weekdayDays.some((w) => !Number.isInteger(w) || w < 0 || w > 4)) {
@@ -100,12 +104,16 @@ export async function POST(request: NextRequest) {
     mockMatchdayAvailabilities.push(record)
   }
 
-  // Re-materializar: elimina los slots existentes de esta persona en las semanas
-  // afectadas por esta jornada (fin de semana + bloque entre semana) y escribe los
-  // derivados del registro actualizado.
-  const affectedWeekStarts = getAffectedWeekStarts(saturdayDate)
+  // Re-materializar: elimina los slots existentes de esta persona que caen en la
+  // huella exacta de esta jornada (fin de semana + bloque entre semana) y escribe
+  // los derivados del registro actualizado. Filtrar por (weekStart, dayOfWeek) en
+  // lugar de por weekStart entero evita borrar los dias 0-3 de la jornada anterior
+  // que comparte semana ISO con el fin de semana de esta jornada.
+  const footprint = getMatchdaySlotFootprint(saturdayDate)
+  const isInFootprint = (weekStart: string, dayOfWeek: number) =>
+    footprint.some((k) => k.weekStart === weekStart && k.dayOfWeek === dayOfWeek)
   const remaining = mockAvailabilities.filter(
-    (a) => !(a.personId === personId && affectedWeekStarts.includes(a.weekStart)),
+    (a) => !(a.personId === personId && isInFootprint(a.weekStart, a.dayOfWeek)),
   )
   mockAvailabilities.length = 0
   mockAvailabilities.push(...remaining)

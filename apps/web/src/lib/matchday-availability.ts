@@ -73,17 +73,46 @@ function weekdayDateInWindow(window: MatchdayWindow, weekday: number): string {
   }
 }
 
+export interface MatchdaySlotKey {
+  weekStart: string
+  dayOfWeek: number
+}
+
 /**
- * weekStarts (lunes) afectados por una jornada, independientemente de que franjas
- * esten marcadas: el fin de semana (viernes anterior + sabado + domingo) cae en una
- * unica semana ISO, y el bloque lunes..jueves siguiente cae en la semana ISO
- * siguiente. Se usa para limpiar mockAvailabilities antes de re-materializar, incluso
- * cuando el usuario desmarca todos los dias de un bloque.
+ * Huella exacta de claves (weekStart, dayOfWeek) que esta jornada puede producir en
+ * mockAvailabilities, independientemente de que franjas esten marcadas. El bloque
+ * lunes..jueves de la jornada N cae en la MISMA semana ISO (weekStart) que el fin de
+ * semana de la jornada N+1, asi que limpiar por weekStart entero borraria tambien los
+ * dias 0-3 de la jornada N al guardar la jornada N+1. Filtrando por la huella exacta
+ * (weekStart, dayOfWeek) los dos conjuntos quedan disjuntos: fin de semana usa dias
+ * {4,5,6}, entre-semana usa dias {0,1,2,3}.
  */
-export function getAffectedWeekStarts(saturdayDate: string): [string, string] {
+export function getMatchdaySlotFootprint(saturdayDate: string): MatchdaySlotKey[] {
   const weekendWeekStart = mondayOf(saturdayDate)
   const weekdayWeekStart = addDays(saturdayDate, 2) // lunes siguiente al domingo, ya es weekStart
-  return [weekendWeekStart, weekdayWeekStart]
+  return [
+    { weekStart: weekendWeekStart, dayOfWeek: 4 }, // viernes
+    { weekStart: weekendWeekStart, dayOfWeek: 5 }, // sabado
+    { weekStart: weekendWeekStart, dayOfWeek: 6 }, // domingo
+    { weekStart: weekdayWeekStart, dayOfWeek: 0 }, // lunes
+    { weekStart: weekdayWeekStart, dayOfWeek: 1 }, // martes
+    { weekStart: weekdayWeekStart, dayOfWeek: 2 }, // miercoles
+    { weekStart: weekdayWeekStart, dayOfWeek: 3 }, // jueves
+  ]
+}
+
+/**
+ * Inversa de getMatchdayWindow: dado un dia cualquiera, devuelve el saturdayDate de
+ * la jornada a la que pertenece segun la convencion de arriba. Viernes/sabado/domingo
+ * pertenecen a la jornada de esa misma semana ISO (su sabado); lunes..jueves
+ * pertenecen a la jornada de la semana ANTERIOR (el sabado antes de esa semana).
+ */
+export function getJornadaSaturdayForDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  const jsDay = d.getDay() // 0=domingo..6=sabado
+  const isWeekdayBlock = jsDay >= 1 && jsDay <= 4 // lunes..jueves
+  const monday = mondayOf(dateStr)
+  return isWeekdayBlock ? addDays(monday, -2) : addDays(monday, 5)
 }
 
 // ── Materializacion ──────────────────────────────────────────────────────────

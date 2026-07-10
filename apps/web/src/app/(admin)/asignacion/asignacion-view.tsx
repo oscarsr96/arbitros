@@ -25,8 +25,8 @@ import {
   getPersonIncompatibilities,
   getMockMunicipality,
   getMockVenue,
-  formatLocalDate,
 } from '@/lib/mock-data'
+import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
 
 interface PickerPerson {
   id: string
@@ -40,17 +40,6 @@ interface PickerPerson {
   matchesAssigned: number
   validation: AssignmentValidation
   matchdayNotes: string | null
-}
-
-// Sabado de la semana (lunes-domingo) a la que pertenece una fecha de partido,
-// para relacionar el partido con su MatchdayAvailability (mismo criterio que
-// getCurrentWeekStart/isPersonAvailable en mock-data.ts).
-function getSaturdayOfWeek(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  const day = d.getDay()
-  const mondayDiff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(mondayDiff + 5)
-  return formatLocalDate(d)
 }
 
 export function AsignacionView() {
@@ -301,7 +290,7 @@ export function AsignacionView() {
     if (!match) return []
 
     const venue = match.venue ? getMockVenue(match.venueId) : undefined
-    const saturdayDate = getSaturdayOfWeek(match.date)
+    const saturdayDate = getJornadaSaturdayForDate(match.date)
 
     return mockPersons
       .filter((p) => p.role === activeSlot.role && p.active)

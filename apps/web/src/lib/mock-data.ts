@@ -2451,6 +2451,7 @@ const INITIAL_AVAILABILITIES = [...mockAvailabilities]
 const INITIAL_MATCHDAY_AVAILABILITIES = [...mockMatchdayAvailabilities]
 const INITIAL_INCOMPATIBILITIES = [...mockIncompatibilities]
 const INITIAL_COURTS = [...mockCourts]
+const INITIAL_VENUES = [...mockVenues]
 
 export function resetMockData() {
   mockMatches.length = 0
@@ -2467,6 +2468,8 @@ export function resetMockData() {
   mockIncompatibilities.push(...INITIAL_INCOMPATIBILITIES)
   mockCourts.length = 0
   mockCourts.push(...INITIAL_COURTS)
+  mockVenues.length = 0
+  mockVenues.push(...INITIAL_VENUES)
   mockAlertLog.length = 0
 }
 

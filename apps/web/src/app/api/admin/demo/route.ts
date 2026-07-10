@@ -5,6 +5,7 @@ import {
   mockAvailabilities,
   mockDesignations,
   mockIncompatibilities,
+  mockMatchdayAvailabilities,
   mockMunicipalities,
   mockVenues,
   mockCompetitions,
@@ -294,6 +295,7 @@ export async function POST(request: Request) {
   mockDesignations.length = 0
   mockAvailabilities.length = 0
   mockIncompatibilities.length = 0
+  mockMatchdayAvailabilities.length = 0
 
   // 2. Generar árbitros
   for (let i = 0; i < numReferees; i++) {
