@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MapPin, AlertTriangle, Search } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { MapPin, AlertTriangle, Search, MessageSquare } from 'lucide-react'
 import type { AssignmentValidation } from '@/lib/types'
 
 interface PickerPerson {
@@ -19,6 +20,7 @@ interface PickerPerson {
   travelKm: number
   matchesAssigned: number
   validation: AssignmentValidation
+  matchdayNotes: string | null
 }
 
 interface PersonPickerProps {
@@ -126,7 +128,19 @@ export function PersonPicker({
                   .join('')}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">{person.name}</p>
+                <div className="flex items-center gap-1">
+                  <p className="truncate text-sm font-medium text-gray-900">{person.name}</p>
+                  {person.matchdayNotes && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex flex-shrink-0 text-gray-400">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">{person.matchdayNotes}</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
                   {person.category && (
                     <Badge variant="outline" className="text-xs">
