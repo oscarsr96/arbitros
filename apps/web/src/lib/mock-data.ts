@@ -1970,6 +1970,68 @@ function generateAvailabilities() {
 
 export const mockAvailabilities = generateAvailabilities()
 
+// ── Disponibilidad de jornada (formulario simplificado sabado/domingo/entre semana) ──
+
+export interface AvailabilitySlot {
+  personId: string
+  weekStart: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
+export interface MatchdayAvailability {
+  id: string
+  personId: string
+  saturdayDate: string // ISO YYYY-MM-DD, sabado de la jornada
+  saturdayMorning: boolean
+  saturdayAfternoon: boolean
+  sundayMorning: boolean
+  sundayAfternoon: boolean
+  weekdayDays: number[] // 0=lunes..4=viernes, franja alta 17:30-22:00
+  notes: string | null
+  updatedAt: string
+}
+
+export const mockMatchdayAvailabilities: MatchdayAvailability[] = [
+  {
+    id: 'matchday-avail-001',
+    personId: 'person-001',
+    saturdayDate: nextSaturday,
+    saturdayMorning: true,
+    saturdayAfternoon: true,
+    sundayMorning: true,
+    sundayAfternoon: false,
+    weekdayDays: [1, 3],
+    notes: null,
+    updatedAt: '2025-01-15T09:30:00.000Z',
+  },
+  {
+    id: 'matchday-avail-002',
+    personId: 'person-002',
+    saturdayDate: nextSaturday,
+    saturdayMorning: false,
+    saturdayAfternoon: true,
+    sundayMorning: true,
+    sundayAfternoon: true,
+    weekdayDays: [],
+    notes: 'Solo tarde el sabado',
+    updatedAt: '2025-01-16T18:00:00.000Z',
+  },
+  {
+    id: 'matchday-avail-003',
+    personId: 'person-006',
+    saturdayDate: nextSaturday,
+    saturdayMorning: true,
+    saturdayAfternoon: false,
+    sundayMorning: false,
+    sundayAfternoon: false,
+    weekdayDays: [4],
+    notes: null,
+    updatedAt: '2025-01-17T12:00:00.000Z',
+  },
+]
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 export function getMockVenue(venueId: string) {
@@ -2071,12 +2133,18 @@ export function isPersonAvailable(personId: string, date: string, time: string):
     (a) => a.personId === personId && a.weekStart === weekStartStr && a.dayOfWeek === dayOfWeek,
   )
 
-  // Check if the person has availability that covers the match time
-  const matchHour = parseInt(time.split(':')[0])
+  // Check if the person has availability that covers the match time.
+  // Comparacion en minutos (no en horas enteras): una franja 09:00-15:30 debe cubrir
+  // un partido a las 15:00 pero no uno a las 15:30 (cae en la franja de tarde).
+  const toMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+  const matchMin = toMinutes(time)
   return avails.some((a) => {
-    const availStart = parseInt(a.startTime.split(':')[0])
-    const availEnd = parseInt(a.endTime.split(':')[0])
-    return matchHour >= availStart && matchHour < availEnd
+    const availStart = toMinutes(a.startTime)
+    const availEnd = toMinutes(a.endTime)
+    return matchMin >= availStart && matchMin < availEnd
   })
 }
 
@@ -2380,6 +2448,7 @@ const INITIAL_MATCHES = [...mockMatches]
 const INITIAL_PERSONS = [...mockPersons]
 const INITIAL_DESIGNATIONS: MockDesignation[] = [...mockDesignations]
 const INITIAL_AVAILABILITIES = [...mockAvailabilities]
+const INITIAL_MATCHDAY_AVAILABILITIES = [...mockMatchdayAvailabilities]
 const INITIAL_INCOMPATIBILITIES = [...mockIncompatibilities]
 const INITIAL_COURTS = [...mockCourts]
 
@@ -2392,6 +2461,8 @@ export function resetMockData() {
   mockDesignations.push(...INITIAL_DESIGNATIONS)
   mockAvailabilities.length = 0
   mockAvailabilities.push(...INITIAL_AVAILABILITIES)
+  mockMatchdayAvailabilities.length = 0
+  mockMatchdayAvailabilities.push(...INITIAL_MATCHDAY_AVAILABILITIES)
   mockIncompatibilities.length = 0
   mockIncompatibilities.push(...INITIAL_INCOMPATIBILITIES)
   mockCourts.length = 0
