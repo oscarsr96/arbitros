@@ -4,6 +4,7 @@ import {
   mockDesignations,
   mockAvailabilities,
   getMockMunicipality,
+  getPersonTravelCost,
 } from '@/lib/mock-data'
 import type { EnrichedPerson } from '@/lib/types'
 
@@ -13,7 +14,11 @@ export async function GET() {
   const enriched: EnrichedPerson[] = mockPersons.map((person) => {
     const municipality = getMockMunicipality(person.municipalityId)
     const personDesigs = mockDesignations.filter((d) => d.personId === person.id)
-    const totalCost = personDesigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+    // Coste real por persona y día (regla FBM), no la suma de costes por partido.
+    const totalCost = getPersonTravelCost(
+      person.id,
+      personDesigs.map((d) => ({ matchId: d.matchId })),
+    ).totalCost
 
     return {
       id: person.id,
@@ -22,6 +27,8 @@ export async function GET() {
       phone: person.phone,
       role: person.role,
       category: person.category,
+      refereeLevel: person.refereeLevel ?? null,
+      nick: person.nick ?? null,
       address: person.address,
       postalCode: person.postalCode,
       municipalityId: person.municipalityId,

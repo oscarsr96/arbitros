@@ -76,6 +76,8 @@ export interface EnrichedPerson {
   phone: string
   role: 'arbitro' | 'anotador'
   category: string | null
+  refereeLevel?: string | null
+  nick?: string | null
   address: string
   postalCode: string
   municipalityId: string

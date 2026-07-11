@@ -5,6 +5,7 @@ import {
   mockPersons,
   mockAvailabilities,
   getMockDesignationsForMatch,
+  getPersonTravelCost,
 } from '@/lib/mock-data'
 import type { DashboardStats, DashboardAlert } from '@/lib/types'
 
@@ -42,7 +43,11 @@ export async function GET() {
     (p) => p.role === 'anotador' && personsWithAvail.has(p.id),
   ).length
 
-  const estimatedCost = mockDesignations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  // Coste estimado real por persona y día (no la suma de costes por partido).
+  const estimatedCost = mockPersons.reduce((sum, p) => {
+    const desigs = mockDesignations.filter((d) => d.personId === p.id)
+    return sum + getPersonTravelCost(p.id, desigs).totalCost
+  }, 0)
 
   const stats: DashboardStats = {
     totalMatches,

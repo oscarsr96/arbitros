@@ -7,9 +7,10 @@ import { MatchStatusBadge } from '@/components/match-status-badge'
 import { CoverageIndicator } from '@/components/coverage-indicator'
 import { CSVImportDialog } from '@/components/csv-import-dialog'
 import { XlsxImportDialog } from '@/components/xlsx-import-dialog'
+import { FbmCsvImportDialog } from '@/components/fbm-csv-import-dialog'
 import { MatchDetailRow } from './match-detail-row'
 import { useAdminStore } from '@/stores/admin-store'
-import { Upload, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrichedMatch, CSVMatchRow, ParsedXlsxMatch } from '@/lib/types'
 import { mockMunicipalities, mockCompetitions } from '@/lib/mock-data'
@@ -19,6 +20,7 @@ export function PartidosView() {
   const [loading, setLoading] = useState(true)
   const [csvOpen, setCsvOpen] = useState(false)
   const [xlsxOpen, setXlsxOpen] = useState(false)
+  const [fbmOpen, setFbmOpen] = useState(false)
   const { matchFilters, setMatchFilter, resetMatchFilters, expandedMatchIds, toggleExpandedMatch } =
     useAdminStore()
 
@@ -107,6 +109,18 @@ export function PartidosView() {
     return a.time.localeCompare(b.time)
   })
 
+  // Opciones de categoría: las del seed + las de los partidos ya cargados (las
+  // competiciones importadas no están en el mockCompetitions del bundle cliente,
+  // así que se derivan del fetch para poder filtrar lo importado).
+  const categoryOptions = (() => {
+    const byValue = new Map<string, string>()
+    for (const c of mockCompetitions) byValue.set(c.category, c.name)
+    for (const m of matches) {
+      if (m.competition?.category) byValue.set(m.competition.category, m.competition.name)
+    }
+    return Array.from(byValue, ([value, label]) => ({ value, label }))
+  })()
+
   const filterDefs = [
     {
       key: 'day',
@@ -119,7 +133,7 @@ export function PartidosView() {
     {
       key: 'category',
       label: 'Categoría',
-      options: mockCompetitions.map((c) => ({ value: c.category, label: c.name })),
+      options: categoryOptions,
     },
     {
       key: 'municipality',
@@ -154,6 +168,10 @@ export function PartidosView() {
           <Button onClick={() => setXlsxOpen(true)} className="gap-2">
             <Upload className="h-4 w-4" />
             Importar XLSX
+          </Button>
+          <Button onClick={() => setFbmOpen(true)} variant="outline" className="gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Importar calendario FBM
           </Button>
         </div>
       </div>
@@ -223,6 +241,7 @@ export function PartidosView() {
 
       <CSVImportDialog open={csvOpen} onOpenChange={setCsvOpen} onImport={handleImport} />
       <XlsxImportDialog open={xlsxOpen} onOpenChange={setXlsxOpen} onImport={handleImportXlsx} />
+      <FbmCsvImportDialog open={fbmOpen} onOpenChange={setFbmOpen} onImported={fetchMatches} />
     </div>
   )
 }

@@ -20,6 +20,7 @@ import {
   getMockDesignationsForMatch,
   calculateMockTravelCost,
   getMockVenue,
+  getPersonTravelCost,
 } from '@/lib/mock-data'
 import { solve } from '@/lib/solver'
 import type { EnrichedMatch, EnrichedPerson } from '@/lib/types'
@@ -468,6 +469,11 @@ export async function POST(request: Request) {
     .map((p) => {
       const municipality = getMockMunicipality(p.municipalityId)
       const personDesigs = mockDesignations.filter((d) => d.personId === p.id)
+      // Coste real por persona y día (regla FBM), no la suma de costes por partido.
+      const totalCost = getPersonTravelCost(
+        p.id,
+        personDesigs.map((d) => ({ matchId: d.matchId })),
+      ).totalCost
       return {
         id: p.id,
         name: p.name,
@@ -482,7 +488,7 @@ export async function POST(request: Request) {
         hasCar: p.hasCar,
         municipality,
         matchesAssigned: personDesigs.length,
-        totalCost: personDesigs.reduce((sum, d) => sum + parseFloat(d.travelCost), 0),
+        totalCost,
         hasAvailability: true,
       }
     })

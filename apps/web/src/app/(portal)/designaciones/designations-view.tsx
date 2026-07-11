@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { DesignationCard } from '@/components/designation-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { DEMO_PERSON_ID, getMockPerson } from '@/lib/mock-data'
+import { DEMO_PERSON_ID, getMockPerson, getPersonTravelCost } from '@/lib/mock-data'
 
 interface Designation {
   id: string
@@ -44,7 +44,13 @@ export function DesignationsView() {
   const pending = designations.filter((d) => d.status === 'pending' || d.status === 'notified')
   const completed = designations.filter((d) => d.status === 'completed')
 
-  const totalCost = designations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  // Coste real por persona y día (regla FBM), no la suma de costes por
+  // partido: cada travelCost individual (badges) sigue siendo una estimación
+  // por partido.
+  const totalCost = getPersonTravelCost(
+    DEMO_PERSON_ID,
+    designations.filter((d) => d.match).map((d) => ({ matchId: d.match!.id })),
+  ).totalCost
 
   if (loading) {
     return (

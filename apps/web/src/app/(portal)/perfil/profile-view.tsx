@@ -15,6 +15,7 @@ const categoryLabels: Record<string, string> = {
   autonomico: 'Autonómico',
   nacional: 'Nacional',
   feb: 'FEB',
+  escuela: 'Escuela',
 }
 
 interface PersonData {

@@ -1,6 +1,11 @@
 // Datos mock para desarrollo sin Supabase/PostgreSQL
 // Mismo formato que las tablas del schema Drizzle
 
+import { generateReferees, generateScorers, type MockPerson } from './referee-roster'
+// Seed de partidos derivado del CSV oficial de calendario FBM (solo Liga VIPS
+// Masculina + Junior Masculino ORO). Regenerar con scripts/generate-fbm-seed.ts.
+import fbmSeed from './fbm-calendar/fbm-seed.json'
+
 // ── Municipios ──────────────────────────────────────────────────────────────
 
 export const mockMunicipalities = [
@@ -34,6 +39,7 @@ export const mockMunicipalities = [
   { id: 'muni-028', name: 'Navalcarnero', province: 'Madrid' },
   { id: 'muni-029', name: 'Humanes de Madrid', province: 'Madrid' },
   { id: 'muni-030', name: 'Ciempozuelos', province: 'Madrid' },
+  { id: 'muni-031', name: 'Villaviciosa de Odón', province: 'Madrid' },
 ]
 
 // ── Distancias entre municipios ─────────────────────────────────────────────
@@ -70,6 +76,7 @@ const MUNI_COORDS: Record<string, { x: number; y: number }> = {
   'muni-028': { x: -25, y: -8 }, // Navalcarnero (suroeste lejano)
   'muni-029': { x: -12, y: -18 }, // Humanes de Madrid (sur)
   'muni-030': { x: 2, y: -32 }, // Ciempozuelos (sur lejano)
+  'muni-031': { x: -20, y: -5 }, // Villaviciosa de Odón (suroeste)
 }
 
 function generateDistances(): { originId: string; destId: string; distanceKm: number }[] {
@@ -104,7 +111,7 @@ export const mockSeason = {
 
 // ── Competiciones ───────────────────────────────────────────────────────────
 
-export const mockCompetitions = [
+const demoCompetitions = [
   {
     id: 'comp-001',
     name: 'Liga VIPS Masculina',
@@ -207,6 +214,12 @@ export const mockCompetitions = [
   },
 ]
 
+// Catálogo demo + competiciones reales importadas del calendario FBM.
+export const mockCompetitions = [
+  ...demoCompetitions,
+  ...(fbmSeed.competitions as Array<(typeof demoCompetitions)[number]>),
+]
+
 // ── Pabellones ──────────────────────────────────────────────────────────────
 
 export interface MockVenue {
@@ -221,7 +234,7 @@ export interface MockVenue {
   observations?: string
 }
 
-export const mockVenues: MockVenue[] = [
+const demoVenues: MockVenue[] = [
   {
     id: 'venue-001',
     name: 'BARAJAS, PDVO.',
@@ -1300,6 +1313,9 @@ export const mockVenues: MockVenue[] = [
   },
 ]
 
+// Catálogo demo + pabellones reales importados del calendario FBM.
+export const mockVenues: MockVenue[] = [...demoVenues, ...(fbmSeed.venues as MockVenue[])]
+
 // ── Pistas ──────────────────────────────────────────────────────────────────
 
 export interface MockCourt {
@@ -1316,9 +1332,10 @@ export const mockCourts: MockCourt[] = [
 
 // ── Personas ────────────────────────────────────────────────────────────────
 
-export const mockPersons = [
+const seedPersons: MockPerson[] = [
   {
     id: 'person-001',
+    nick: 'EL DECANO',
     name: 'Carlos Martínez López',
     email: 'carlos.martinez@email.com',
     phone: '612345678',
@@ -1335,6 +1352,7 @@ export const mockPersons = [
   },
   {
     id: 'person-002',
+    nick: 'LA JEFA',
     name: 'Laura García Fernández',
     email: 'laura.garcia@email.com',
     phone: '623456789',
@@ -1351,6 +1369,7 @@ export const mockPersons = [
   },
   {
     id: 'person-003',
+    nick: 'EL CATEDRÁTICO',
     name: 'Miguel Ángel Ruiz Torres',
     email: 'miguel.ruiz@email.com',
     phone: '634567890',
@@ -1367,6 +1386,7 @@ export const mockPersons = [
   },
   {
     id: 'person-004',
+    nick: 'LA CONDESA',
     name: 'Ana Belén Sánchez Díaz',
     email: 'anabelen.sanchez@email.com',
     phone: '645678901',
@@ -1383,11 +1403,12 @@ export const mockPersons = [
   },
   {
     id: 'person-005',
+    nick: 'EL CRONISTA',
     name: 'David Fernández Moreno',
     email: 'david.fernandez@email.com',
     phone: '656789012',
     role: 'anotador' as const,
-    category: 'provincial' as const,
+    category: 'escuela' as const,
     address: 'C/ Real 10, 28917 Leganés',
     postalCode: '28917',
     municipalityId: 'muni-004',
@@ -1399,6 +1420,7 @@ export const mockPersons = [
   },
   {
     id: 'person-006',
+    nick: 'EL COMENDADOR',
     name: 'Raúl Jiménez Navarro',
     email: 'raul.jimenez@email.com',
     phone: '667890123',
@@ -1415,6 +1437,7 @@ export const mockPersons = [
   },
   {
     id: 'person-007',
+    nick: 'LA VIRTUOSA',
     name: 'Patricia López Martín',
     email: 'patricia.lopez@email.com',
     phone: '678901234',
@@ -1431,6 +1454,7 @@ export const mockPersons = [
   },
   {
     id: 'person-008',
+    nick: 'LA SIBILA',
     name: 'Sofía Morales Vega',
     email: 'sofia.morales@email.com',
     phone: '689012345',
@@ -1447,6 +1471,7 @@ export const mockPersons = [
   },
   {
     id: 'person-009',
+    nick: 'EL ESCRIBANO',
     name: 'Javier Romero Díaz',
     email: 'javier.romero@email.com',
     phone: '690123456',
@@ -1461,6 +1486,14 @@ export const mockPersons = [
     authUserId: null,
     createdAt: new Date('2024-10-01'),
   },
+]
+
+// 9 personas seed (demo, con designaciones/incompatibilidades) + 770 árbitros +
+// 500 anotadores generados de forma determinista (roster FBM; ver referee-roster).
+export const mockPersons: MockPerson[] = [
+  ...seedPersons,
+  ...generateReferees(mockMunicipalities.map((m) => ({ id: m.id, name: m.name }))),
+  ...generateScorers(mockMunicipalities.map((m) => ({ id: m.id, name: m.name }))),
 ]
 
 // ── Incompatibilidades ──────────────────────────────────────────────────────
@@ -1525,158 +1558,10 @@ export interface MockMatch {
   courtId?: string | null
 }
 
-export const mockMatches: MockMatch[] = [
-  {
-    id: 'match-001',
-    date: nextSaturday,
-    time: '10:00',
-    venueId: 'venue-001',
-    competitionId: 'comp-001',
-    homeTeam: 'CB Vallecas',
-    awayTeam: 'Baloncesto Alcorcón',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-002',
-    date: nextSaturday,
-    time: '12:00',
-    venueId: 'venue-002',
-    competitionId: 'comp-001',
-    homeTeam: 'AD Alcorcón Basket',
-    awayTeam: 'CB Getafe',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-003',
-    date: nextSaturday,
-    time: '16:00',
-    venueId: 'venue-003',
-    competitionId: 'comp-002',
-    homeTeam: 'CB Getafe Femenino',
-    awayTeam: 'Baloncesto Leganés Fem.',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-004',
-    date: nextSunday,
-    time: '10:00',
-    venueId: 'venue-004',
-    competitionId: 'comp-003',
-    homeTeam: 'CB Leganés Junior',
-    awayTeam: 'CB Fuenlabrada Junior',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-005',
-    date: nextSunday,
-    time: '12:00',
-    venueId: 'venue-005',
-    competitionId: 'comp-001',
-    homeTeam: 'CB Móstoles',
-    awayTeam: 'CB Madrid Centro',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'scheduled' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-006',
-    date: nextSaturday,
-    time: '18:00',
-    venueId: 'venue-001',
-    competitionId: 'comp-002',
-    homeTeam: 'Vallekas Basket Fem.',
-    awayTeam: 'CB Alcorcón Femenino',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-007',
-    date: nextSunday,
-    time: '16:00',
-    venueId: 'venue-003',
-    competitionId: 'comp-003',
-    homeTeam: 'Getafe Junior',
-    awayTeam: 'CB Vallecas Junior',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'scheduled' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-008',
-    date: nextSaturday,
-    time: '20:00',
-    venueId: 'venue-005',
-    competitionId: 'comp-001',
-    homeTeam: 'Móstoles Basket',
-    awayTeam: 'AD Fuenlabrada',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'designated' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-009',
-    date: nextSunday,
-    time: '18:00',
-    venueId: 'venue-002',
-    competitionId: 'comp-002',
-    homeTeam: 'Alcorcón Femenino B',
-    awayTeam: 'CB Madrid Fem.',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'scheduled' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-  {
-    id: 'match-010',
-    date: nextSunday,
-    time: '20:00',
-    venueId: 'venue-004',
-    competitionId: 'comp-001',
-    homeTeam: 'CB Leganés',
-    awayTeam: 'Baloncesto Torrejón',
-    refereesNeeded: 2,
-    scorersNeeded: 1,
-    status: 'scheduled' as const,
-    seasonId: 'season-001',
-    matchday: 15,
-    courtId: null,
-  },
-]
+// Partidos por defecto = calendario FBM real (Liga VIPS Masculina + Junior
+// Masculino ORO), generado desde el CSV oficial (ver fbmSeed y
+// scripts/generate-fbm-seed.ts). Reemplaza a los antiguos partidos demo.
+export const mockMatches: MockMatch[] = [...(fbmSeed.matches as MockMatch[])]
 
 // ── Designaciones ───────────────────────────────────────────────────────────
 
@@ -1694,90 +1579,9 @@ interface MockDesignation {
   createdAt: Date
 }
 
-export const mockDesignations: MockDesignation[] = [
-  // match-001: 2 arbitros + 1 anotador (full)
-  {
-    id: 'desig-001',
-    matchId: 'match-001',
-    personId: 'person-002', // Laura (nacional) - Madrid
-    role: 'arbitro' as const,
-    travelCost: '3.00',
-    distanceKm: '0.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-05T10:00:00'),
-    createdAt: new Date('2025-03-05T09:00:00'),
-  },
-  {
-    id: 'desig-002',
-    matchId: 'match-001',
-    personId: 'person-006', // Raul (autonomico) - Mostoles
-    role: 'arbitro' as const,
-    travelCost: '2.50',
-    distanceKm: '25.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-05T10:00:00'),
-    createdAt: new Date('2025-03-05T09:00:00'),
-  },
-  {
-    id: 'desig-003',
-    matchId: 'match-001',
-    personId: 'person-004', // Ana Belen (anotador) - Getafe
-    role: 'anotador' as const,
-    travelCost: '1.50',
-    distanceKm: '15.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-05T10:00:00'),
-    createdAt: new Date('2025-03-05T09:00:00'),
-  },
-  // match-002: 1 arbitro only (partial)
-  {
-    id: 'desig-004',
-    matchId: 'match-002',
-    personId: 'person-001', // Carlos (autonomico) - Madrid
-    role: 'arbitro' as const,
-    travelCost: '1.30',
-    distanceKm: '13.0',
-    status: 'pending' as const,
-    notifiedAt: null,
-    createdAt: new Date('2025-03-05T09:00:00'),
-  },
-  // match-003: 1 arbitro (partial)
-  {
-    id: 'desig-005',
-    matchId: 'match-003',
-    personId: 'person-007', // Patricia (nacional) - Fuenlabrada
-    role: 'arbitro' as const,
-    travelCost: '1.00',
-    distanceKm: '10.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-06T08:00:00'),
-    createdAt: new Date('2025-03-06T07:00:00'),
-  },
-  // match-006: 1 arbitro (partial)
-  {
-    id: 'desig-006',
-    matchId: 'match-006',
-    personId: 'person-001', // Carlos (autonomico) - Madrid
-    role: 'arbitro' as const,
-    travelCost: '3.00',
-    distanceKm: '0.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-05T10:00:00'),
-    createdAt: new Date('2025-03-05T09:00:00'),
-  },
-  // match-008: 1 anotador (partial)
-  {
-    id: 'desig-007',
-    matchId: 'match-008',
-    personId: 'person-005', // David (anotador) - Leganes
-    role: 'anotador' as const,
-    travelCost: '1.40',
-    distanceKm: '14.0',
-    status: 'notified' as const,
-    notifiedAt: new Date('2025-03-06T10:00:00'),
-    createdAt: new Date('2025-03-06T09:00:00'),
-  },
-]
+// Sin designaciones demo: los partidos por defecto son el calendario FBM real
+// recién importado (sin asignar). Las designaciones se crean al designar.
+export const mockDesignations: MockDesignation[] = []
 
 // ── Disponibilidades de ejemplo ─────────────────────────────────────────────
 
@@ -2105,15 +1909,97 @@ export function getMockDistance(originId: string, destId: string): number {
   return d?.distanceKm ?? 35 // fallback for unknown pairs
 }
 
+// Tarifas de desplazamiento (regla FBM 2026-07-11): 0,26 €/km fuera del
+// municipio propio; día 100% en el municipio propio → fijo por día (Madrid 3€,
+// resto 2€).
+export const TRAVEL_RATE_PER_KM = 0.26
+export const TRAVEL_FLAT_MADRID = 3
+export const TRAVEL_FLAT_OTHER = 2
+
+function isMadridMunicipality(municipalityId: string): boolean {
+  return getMockMunicipality(municipalityId)?.name?.toLowerCase() === 'madrid'
+}
+
+// Estimación POR PARTIDO: para el solver y los badges de asignación (coste
+// marginal orientativo). NO es la liquidación real, que es por día: la fija
+// calculateDailyTravelCost. Mismo municipio → fijo del municipio; si no → km
+// × tarifa.
 export function calculateMockTravelCost(
   personMuniId: string,
   venueMuniId: string,
 ): { cost: number; km: number } {
   if (personMuniId === venueMuniId) {
-    return { cost: 3.0, km: 0 }
+    return {
+      cost: isMadridMunicipality(personMuniId) ? TRAVEL_FLAT_MADRID : TRAVEL_FLAT_OTHER,
+      km: 0,
+    }
   }
   const km = getMockDistance(personMuniId, venueMuniId)
-  return { cost: Number((km * 0.1).toFixed(2)), km }
+  return { cost: Number((km * TRAVEL_RATE_PER_KM).toFixed(2)), km }
+}
+
+// Liquidación REAL por persona y día (fuente de la verdad para reportes/pagos).
+// venueMunicipalityIds = municipios de TODOS los partidos de la persona ese día.
+// - Si hay salida a otro municipio → SOLO kilometraje: un trayecto por
+//   municipio de destino distinto × tarifa/km (sin fijo).
+// - Si todos los partidos son en su municipio → fijo por día (Madrid 3, resto 2).
+export function calculateDailyTravelCost(
+  personMuniId: string,
+  venueMunicipalityIds: string[],
+): { cost: number; km: number } {
+  if (venueMunicipalityIds.length === 0) return { cost: 0, km: 0 }
+  const awayMunis = [...new Set(venueMunicipalityIds)].filter((id) => id !== personMuniId)
+  if (awayMunis.length > 0) {
+    const km = awayMunis.reduce((sum, destId) => sum + getMockDistance(personMuniId, destId), 0)
+    return { cost: Number((km * TRAVEL_RATE_PER_KM).toFixed(2)), km: Number(km.toFixed(1)) }
+  }
+  return {
+    cost: isMadridMunicipality(personMuniId) ? TRAVEL_FLAT_MADRID : TRAVEL_FLAT_OTHER,
+    km: 0,
+  }
+}
+
+// Agrupa las designaciones de una persona por día y suma el coste real diario.
+// designations = [{ date, venueMunicipalityId }] de esa persona. Devuelve el
+// total y el desglose por día (para liquidaciones).
+export function calculatePersonTravelCost(
+  personMuniId: string,
+  designations: { date: string; venueMunicipalityId: string }[],
+): { totalCost: number; totalKm: number; byDay: { date: string; cost: number; km: number }[] } {
+  const byDate = new Map<string, string[]>()
+  for (const d of designations) {
+    if (!d.date) continue
+    const list = byDate.get(d.date) ?? []
+    list.push(d.venueMunicipalityId)
+    byDate.set(d.date, list)
+  }
+  const byDay = [...byDate.entries()]
+    .map(([date, munis]) => {
+      const { cost, km } = calculateDailyTravelCost(personMuniId, munis)
+      return { date, cost, km }
+    })
+    .sort((a, b) => a.date.localeCompare(b.date))
+  return {
+    totalCost: Number(byDay.reduce((s, d) => s + d.cost, 0).toFixed(2)),
+    totalKm: Number(byDay.reduce((s, d) => s + d.km, 0).toFixed(1)),
+    byDay,
+  }
+}
+
+// Conveniencia: coste real por día de una persona a partir de sus designaciones
+// (resuelve fecha del partido y municipio del pabellón). Fuente de la verdad
+// para dashboard, portal y reportes.
+export function getPersonTravelCost(
+  personId: string,
+  designations: { matchId: string }[],
+): { totalCost: number; totalKm: number; byDay: { date: string; cost: number; km: number }[] } {
+  const person = getMockPerson(personId)
+  const items = designations.map((d) => {
+    const match = getMockMatch(d.matchId)
+    const venue = match ? getMockVenue(match.venueId) : undefined
+    return { date: match?.date ?? '', venueMunicipalityId: venue?.municipalityId ?? '' }
+  })
+  return calculatePersonTravelCost(person?.municipalityId ?? '', items)
 }
 
 export function isPersonAvailable(personId: string, date: string, time: string): boolean {

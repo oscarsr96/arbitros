@@ -2,6 +2,27 @@ import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import type { EnrichedMatch } from './types'
+import { getPersonTravelCost } from './mock-data'
+
+// El coste de desplazamiento es POR PERSONA Y DÍA (regla FBM), no la suma de
+// costes por partido: los totales agrupan las designaciones por persona y
+// usan getPersonTravelCost. Las filas de detalle por partido siguen mostrando
+// el coste por partido como estimación informativa, sin sumarse como total.
+function computeGlobalTravelCost(matches: EnrichedMatch[]): number {
+  const byPerson = new Map<string, { matchId: string }[]>()
+  for (const m of matches) {
+    for (const d of m.designations) {
+      const list = byPerson.get(d.personId) ?? []
+      list.push({ matchId: d.matchId })
+      byPerson.set(d.personId, list)
+    }
+  }
+  let total = 0
+  for (const [personId, designs] of byPerson) {
+    total += getPersonTravelCost(personId, designs).totalCost
+  }
+  return Number(total.toFixed(2))
+}
 
 // ── Excel ─────────────────────────────────────────────────────────────────
 
@@ -80,7 +101,7 @@ export function exportDemoXlsx(matches: EnrichedMatch[]) {
   const totalMatches = matches.length
   const covered = matches.filter((m) => m.isCovered).length
   const totalDesigs = desigRows.length
-  const totalCost = desigRows.reduce((s, r) => s + (r['Coste (€)'] as number), 0)
+  const totalCost = computeGlobalTravelCost(matches)
 
   const summaryData = [
     { Concepto: 'Total partidos', Valor: totalMatches },
@@ -107,7 +128,7 @@ export function exportDemoPdf(matches: EnrichedMatch[]) {
   const totalMatches = matches.length
   const covered = matches.filter((m) => m.isCovered).length
   const allDesigs = matches.flatMap((m) => m.designations)
-  const totalCost = allDesigs.reduce((s, d) => s + parseFloat(d.travelCost), 0)
+  const totalCost = computeGlobalTravelCost(matches)
   const coveragePct = totalMatches > 0 ? Math.round((covered / totalMatches) * 100) : 0
 
   // Header

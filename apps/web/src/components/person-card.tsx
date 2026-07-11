@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge'
 import { MapPin } from 'lucide-react'
+import { refereeLevelLabel } from '@/lib/referee-eligibility'
 
 interface PersonCardProps {
   person: {
@@ -9,6 +10,8 @@ interface PersonCardProps {
     name: string
     role: 'arbitro' | 'anotador'
     category: string | null
+    refereeLevel?: string | null
+    nick?: string | null
     municipalityId: string
   }
   municipalityName?: string
@@ -22,6 +25,7 @@ const categoryLabels: Record<string, string> = {
   autonomico: 'Autonómico',
   nacional: 'Nacional',
   feb: 'FEB',
+  escuela: 'Escuela',
 }
 
 export function PersonCard({
@@ -53,7 +57,12 @@ export function PersonCard({
         <span className="text-xs font-semibold text-white">{initials}</span>
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">{person.name}</p>
+        <p className="truncate text-sm font-medium text-gray-900">
+          {person.name}
+          {person.nick && (
+            <span className="ml-1.5 text-xs font-normal text-gray-400">«{person.nick}»</span>
+          )}
+        </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
           <Badge
             variant="outline"
@@ -65,9 +74,10 @@ export function PersonCard({
           >
             {person.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
           </Badge>
-          {person.category && (
+          {(refereeLevelLabel(person.refereeLevel) ?? person.category) && (
             <Badge variant="outline" className="text-xs">
-              {categoryLabels[person.category] ?? person.category}
+              {refereeLevelLabel(person.refereeLevel) ??
+                (person.category ? (categoryLabels[person.category] ?? person.category) : '')}
             </Badge>
           )}
         </div>

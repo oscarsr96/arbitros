@@ -3,6 +3,7 @@ import {
   mockPersons,
   getMockDesignationsForPerson,
   getMockMunicipality,
+  getPersonTravelCost,
   DEMO_PERSON_ID,
 } from '@/lib/mock-data'
 
@@ -16,7 +17,8 @@ export async function GET() {
 
   const designations = getMockDesignationsForPerson(person.id)
   const completedDesignations = designations.filter((d) => d.status === 'completed')
-  const totalEarned = completedDesignations.reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
+  // Total cobrado = coste real por día (regla FBM), no la suma por partido.
+  const totalEarned = getPersonTravelCost(person.id, completedDesignations).totalCost
 
   return NextResponse.json({
     person: { ...person, municipalityName: municipality?.name ?? null },

@@ -5,6 +5,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { MapPin, Mail, Phone, Calendar, AlertTriangle } from 'lucide-react'
+import { getPersonTravelCost } from '@/lib/mock-data'
+import { refereeLevelLabel } from '@/lib/referee-eligibility'
 
 interface PersonDetail {
   person: {
@@ -14,6 +16,8 @@ interface PersonDetail {
     phone: string
     role: string
     category: string | null
+    refereeLevel?: string | null
+    nick?: string | null
     address: string
     municipalityId: string
     municipality?: { id: string; name: string }
@@ -45,6 +49,7 @@ const categoryLabels: Record<string, string> = {
   autonomico: 'Autonómico',
   nacional: 'Nacional',
   feb: 'FEB',
+  escuela: 'Escuela',
 }
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
@@ -73,6 +78,16 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
       .finally(() => setLoading(false))
   }, [personId])
 
+  // Coste real por persona y día (regla FBM), no la suma de costes por
+  // partido: cada d.travelCost individual sigue siendo una estimación por
+  // partido, informativa en la lista de arriba.
+  const totalTravelCost = data
+    ? getPersonTravelCost(
+        data.person.id,
+        data.designations.map((d) => ({ matchId: d.matchId })),
+      ).totalCost
+    : 0
+
   return (
     <Sheet
       open={!!personId}
@@ -82,7 +97,12 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
     >
       <SheetContent className="w-full overflow-auto sm:max-w-lg">
         <SheetHeader>
-          <SheetTitle>{data?.person.name ?? 'Cargando...'}</SheetTitle>
+          <SheetTitle>
+            {data?.person.name ?? 'Cargando...'}
+            {data?.person.nick && (
+              <span className="ml-2 text-sm font-normal text-gray-400">«{data.person.nick}»</span>
+            )}
+          </SheetTitle>
         </SheetHeader>
 
         {loading || !data ? (
@@ -106,9 +126,12 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                 >
                   {data.person.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
                 </Badge>
-                {data.person.category && (
+                {(refereeLevelLabel(data.person.refereeLevel) ?? data.person.category) && (
                   <Badge variant="outline">
-                    {categoryLabels[data.person.category] ?? data.person.category}
+                    {refereeLevelLabel(data.person.refereeLevel) ??
+                      (data.person.category
+                        ? (categoryLabels[data.person.category] ?? data.person.category)
+                        : '')}
                   </Badge>
                 )}
               </div>
@@ -247,12 +270,7 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                   <p className="text-xs text-gray-500">Completados</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-gray-900">
-                    {data.designations
-                      .reduce((sum, d) => sum + parseFloat(d.travelCost), 0)
-                      .toFixed(2)}{' '}
-                    €
-                  </p>
+                  <p className="text-lg font-bold text-gray-900">{totalTravelCost.toFixed(2)} €</p>
                   <p className="text-xs text-gray-500">Total coste</p>
                 </div>
               </div>
