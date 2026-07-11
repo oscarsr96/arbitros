@@ -62,6 +62,7 @@ export function AsignacionView() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [rangeInitialized, setRangeInitialized] = useState(false)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const { activeSlot, setActiveSlot, expandedMatchIds, toggleExpandedMatch } = useAdminStore()
 
   const {
@@ -123,14 +124,37 @@ export function AsignacionView() {
     }
   }
 
+  // Opciones de categoría derivadas de los partidos cargados (value = categoría de
+  // competición, label = nombre de competición), como en la vista de Partidos.
+  const categoryOptions = useMemo(() => {
+    const byValue = new Map<string, string>()
+    for (const m of matches) {
+      if (m.competition?.category) byValue.set(m.competition.category, m.competition.name)
+    }
+    return Array.from(byValue, ([value, label]) => ({ value, label })).sort((a, b) =>
+      a.label.localeCompare(b.label),
+    )
+  }, [matches])
+
+  const toggleCategory = (value: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(value) ? prev.filter((c) => c !== value) : [...prev, value],
+    )
+  }
+
   const filteredMatches = useMemo(() => {
-    if (!dateFrom && !dateTo) return matches
     return matches.filter((m) => {
       if (dateFrom && m.date < dateFrom) return false
       if (dateTo && m.date > dateTo) return false
+      if (
+        selectedCategories.length > 0 &&
+        !selectedCategories.includes(m.competition?.category ?? '')
+      ) {
+        return false
+      }
       return true
     })
-  }, [matches, dateFrom, dateTo])
+  }, [matches, dateFrom, dateTo, selectedCategories])
 
   // Derive active proposal
   const activeProposal = proposals.find((p) => p.id === activeProposalId) ?? null
@@ -239,6 +263,7 @@ export function AsignacionView() {
           numProposals: solverParameters.numProposals,
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
+          categories: selectedCategories.length > 0 ? selectedCategories : undefined,
         }),
       })
 
@@ -442,9 +467,9 @@ export function AsignacionView() {
       <div>
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Asignación</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Designar</h1>
             <p className="mt-1 text-sm text-gray-500">
-              Asignación manual y automática de árbitros y anotadores.
+              Designación manual y automática de árbitros y anotadores.
             </p>
           </div>
           <Button
@@ -501,6 +526,48 @@ export function AsignacionView() {
             Toda la temporada
           </Button>
         </div>
+
+        {/* Filtro por categoría (multi-selección) */}
+        {categoryOptions.length > 0 && (
+          <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-xs font-medium text-gray-500">Categorías a designar</label>
+              {selectedCategories.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategories([])}
+                  className="hover:text-fbm-orange text-xs font-medium text-gray-400"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {categoryOptions.map((opt) => {
+                const active = selectedCategories.includes(opt.value)
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => toggleCategory(opt.value)}
+                    className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      active
+                        ? 'border-fbm-orange bg-fbm-orange text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              {selectedCategories.length === 0
+                ? 'Todas las categorías: la asignación automática cubrirá todos los partidos del rango.'
+                : `La asignación automática solo cubrirá los partidos de ${selectedCategories.length} categoría${selectedCategories.length !== 1 ? 's' : ''} seleccionada${selectedCategories.length !== 1 ? 's' : ''}.`}
+            </p>
+          </div>
+        )}
 
         {/* Optimizer parameters */}
         <div className="mb-5 rounded-xl border border-gray-200 bg-white p-5">

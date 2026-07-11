@@ -87,7 +87,17 @@ export async function POST(request: Request) {
         }
       })
 
-    const input = { matches, persons, parameters }
+    // Acotar por categorías de competición seleccionadas (solo en modo global;
+    // `partial` ya está acotado a un único partido). Vacío/ausente = todas.
+    const categories = body.categories
+    const scopedByCategory =
+      !partial && categories && categories.length > 0
+        ? matches.filter(
+            (m) => m.competition?.category && categories.includes(m.competition.category),
+          )
+        : matches
+
+    const input = { matches: scopedByCategory, persons, parameters }
 
     // Generar N propuestas con seeds distintas
     const proposals: Proposal[] = []

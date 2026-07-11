@@ -11,7 +11,7 @@ const navLinks = [
   { href: '/calendario', label: 'Calendario', icon: '📅' },
   { href: '/partidos', label: 'Partidos', icon: '🏀' },
   { href: '/personal', label: 'Personal', icon: '👥' },
-  { href: '/asignacion', label: 'Asignación', icon: '📋' },
+  { href: '/asignacion', label: 'Designar', icon: '📋' },
   { href: '/reportes', label: 'Reportes', icon: '📈' },
   { href: '/wiki', label: 'Wiki', icon: '📖' },
 ]

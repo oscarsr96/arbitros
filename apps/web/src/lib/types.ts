@@ -170,8 +170,9 @@ export interface SolverInput {
 }
 
 // Body aceptado por POST /api/optimize. dateFrom/dateTo acotan el solve a un rango de
-// fechas (YYYY-MM-DD); partial acota el solve a un único partido+rol (re-optimización
-// de un slot concreto) e ignora dateFrom/dateTo.
+// fechas (YYYY-MM-DD); categories acota a las categorías de competición seleccionadas
+// (vacío/ausente = todas); partial acota el solve a un único partido+rol (re-optimización
+// de un slot concreto) e ignora dateFrom/dateTo y categories.
 export interface OptimizeRequestBody {
   costWeight?: number
   balanceWeight?: number
@@ -180,6 +181,7 @@ export interface OptimizeRequestBody {
   numProposals?: number
   dateFrom?: string
   dateTo?: string
+  categories?: string[]
   partial?: { matchId: string; role: 'arbitro' | 'anotador' }
 }
 
