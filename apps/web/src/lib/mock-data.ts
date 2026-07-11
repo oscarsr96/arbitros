@@ -5,6 +5,9 @@ import { generateReferees, generateScorers, type MockPerson } from './referee-ro
 // Seed de partidos derivado del CSV oficial de calendario FBM (solo Liga VIPS
 // Masculina + Junior Masculino ORO). Regenerar con scripts/generate-fbm-seed.ts.
 import fbmSeed from './fbm-calendar/fbm-seed.json'
+// Generador determinista de disponibilidad de temporada para las 1279 personas
+// (ver mini-spec Parte 1, tasks/todo.md). Módulo hoja: sin ciclo con mock-data.
+import { generateSeasonAvailability } from './availability-roster'
 
 // ── Municipios ──────────────────────────────────────────────────────────────
 
@@ -1772,7 +1775,17 @@ function generateAvailabilities() {
   return avails
 }
 
-export const mockAvailabilities = generateAvailabilities()
+// Disponibilidad de temporada 2025-26 para las 1279 personas (9 demo + 770
+// árbitros + 500 anotadores), generada por arquetipo determinista (ver
+// availability-roster.ts). Los 9 demo conservan ADEMÁS sus slots de semana
+// actual/siguiente de generateAvailabilities() (el portal /disponibilidad
+// sigue funcionando con esos datos hand-written).
+const seasonAvailability = generateSeasonAvailability(
+  mockPersons,
+  mockMatches.map((m) => m.date),
+)
+
+export const mockAvailabilities = [...generateAvailabilities(), ...seasonAvailability.slots]
 
 // ── Disponibilidad de jornada (formulario simplificado sabado/domingo/entre semana) ──
 
@@ -1834,6 +1847,10 @@ export const mockMatchdayAvailabilities: MatchdayAvailability[] = [
     notes: null,
     updatedAt: '2025-01-17T12:00:00.000Z',
   },
+  // Muestra determinista (~40 registros) de disponibilidad de jornada de
+  // temporada, coherente con los slots generados por arquetipo (badge de
+  // notas del picker). Ver availability-roster.ts.
+  ...seasonAvailability.matchdayRecords,
 ]
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -1899,14 +1916,19 @@ export function getMockAvailabilitiesForPerson(personId: string, weekStart: stri
   return mockAvailabilities.filter((a) => a.personId === personId && a.weekStart === weekStart)
 }
 
+// mockDistances nunca se muta en runtime (matriz precalculada de municipios):
+// indexar una vez a la carga del módulo evita el escaneo lineal de ~465 pares
+// en cada llamada (getMockDistance es un hot path del solver — se llama por
+// cada candidato evaluado con coste de desplazamiento).
+const distanceIndex = new Map<string, number>()
+for (const d of mockDistances) {
+  distanceIndex.set(`${d.originId}|${d.destId}`, d.distanceKm)
+  distanceIndex.set(`${d.destId}|${d.originId}`, d.distanceKm)
+}
+
 export function getMockDistance(originId: string, destId: string): number {
   if (originId === destId) return 0
-  const d = mockDistances.find(
-    (d) =>
-      (d.originId === originId && d.destId === destId) ||
-      (d.originId === destId && d.destId === originId),
-  )
-  return d?.distanceKm ?? 35 // fallback for unknown pairs
+  return distanceIndex.get(`${originId}|${destId}`) ?? 35 // fallback for unknown pairs
 }
 
 // Tarifas de desplazamiento (regla FBM 2026-07-11): 0,26 €/km fuera del
@@ -2002,36 +2024,98 @@ export function getPersonTravelCost(
   return calculatePersonTravelCost(person?.municipalityId ?? '', items)
 }
 
+// ── Índice O(1) de disponibilidad ────────────────────────────────────────────
+// mockAvailabilities puede llegar a ~40-50k registros (roster completo de
+// temporada); filtrar el array entero en cada llamada de isPersonAvailable
+// (picker con 1279 personas por render) sería jank severo. Se indexa de forma
+// lazy por clave `${personId}|${weekStart}|${dayOfWeek}` y se invalida en los
+// puntos que mutan mockAvailabilities.
+type AvailabilityIndexEntry = {
+  personId: string
+  weekStart: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+}
+
+let availabilityIndex: Map<string, AvailabilityIndexEntry[]> | null = null
+let availabilityIndexLength = -1
+
+function buildAvailabilityIndex(): Map<string, AvailabilityIndexEntry[]> {
+  const index = new Map<string, AvailabilityIndexEntry[]>()
+  for (const a of mockAvailabilities) {
+    const key = `${a.personId}|${a.weekStart}|${a.dayOfWeek}`
+    const list = index.get(key)
+    if (list) list.push(a)
+    else index.set(key, [a])
+  }
+  return index
+}
+
+// Export: llamar tras cualquier mutación de mockAvailabilities (push/length=0/
+// resetMockData). Belt-and-braces: aunque no se llame, una longitud distinta a
+// la indexada dispara la reconstrucción en la siguiente lectura.
+export function invalidateAvailabilityIndex(): void {
+  availabilityIndex = null
+}
+
+function getAvailabilityIndex(): Map<string, AvailabilityIndexEntry[]> {
+  if (availabilityIndex === null || availabilityIndexLength !== mockAvailabilities.length) {
+    availabilityIndex = buildAvailabilityIndex()
+    availabilityIndexLength = mockAvailabilities.length
+  }
+  return availabilityIndex
+}
+
+// Cache de (dayOfWeek, weekStart) por fecha: `date` → info. Pura función de la
+// fecha (sin estado mutable), así que no necesita invalidación. El solver
+// llama isPersonAvailable una vez POR CANDIDATO evaluado (cientos de miles de
+// veces con el roster completo) pero solo hay unas pocas decenas de fechas de
+// partido distintas — parsear el Date una vez por fecha en lugar de una vez
+// por llamada es la diferencia entre <1s y >10s con 1279 personas.
+const dateInfoCache = new Map<string, { dayOfWeek: number; weekStart: string }>()
+
+function getDateInfo(date: string): { dayOfWeek: number; weekStart: string } {
+  let info = dateInfoCache.get(date)
+  if (!info) {
+    const d = new Date(date + 'T00:00:00')
+    const jsDay = d.getDay() // 0=domingo..6=sabado
+    const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1 // 0=lunes..5=sabado,6=domingo
+    const diff = d.getDate() - jsDay + (jsDay === 0 ? -6 : 1)
+    d.setDate(diff)
+    info = { dayOfWeek, weekStart: formatLocalDate(d) }
+    dateInfoCache.set(date, info)
+  }
+  return info
+}
+
+// Sin cierres (closures) ni arrays por llamada: isPersonAvailable se llama
+// cientos de miles de veces por resolución del solver con el roster completo
+// (1279 personas), y una función/array nuevo en cada invocación genera presión
+// de GC medible a ese volumen. toMinutesOfDay es una función de módulo (se
+// crea una sola vez) y el recorrido de `avails` usa un for clásico en vez de
+// `.some()` con callback.
+function toMinutesOfDay(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+const NO_AVAILABILITY: AvailabilityIndexEntry[] = []
+
 export function isPersonAvailable(personId: string, date: string, time: string): boolean {
-  // Determine day of week from date (0=sunday, 1=monday... we need 5=saturday, 6=sunday)
-  const d = new Date(date + 'T00:00:00')
-  const jsDay = d.getDay() // 0=sun, 6=sat
-  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1 // convert to 0=mon, 5=sat, 6=sun
+  const { dayOfWeek, weekStart: weekStartStr } = getDateInfo(date)
 
-  // Get week start for the date (using local time, not UTC)
-  const dateObj = new Date(date + 'T00:00:00')
-  const dateDayOfWeek = dateObj.getDay()
-  const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
-  dateObj.setDate(diff)
-  const weekStartStr = formatLocalDate(dateObj)
+  const key = `${personId}|${weekStartStr}|${dayOfWeek}`
+  const avails = getAvailabilityIndex().get(key) ?? NO_AVAILABILITY
 
-  const avails = mockAvailabilities.filter(
-    (a) => a.personId === personId && a.weekStart === weekStartStr && a.dayOfWeek === dayOfWeek,
-  )
-
-  // Check if the person has availability that covers the match time.
   // Comparacion en minutos (no en horas enteras): una franja 09:00-15:30 debe cubrir
   // un partido a las 15:00 pero no uno a las 15:30 (cae en la franja de tarde).
-  const toMinutes = (t: string) => {
-    const [h, m] = t.split(':').map(Number)
-    return h * 60 + m
+  const matchMin = toMinutesOfDay(time)
+  for (let i = 0; i < avails.length; i++) {
+    const a = avails[i]
+    if (matchMin >= toMinutesOfDay(a.startTime) && matchMin < toMinutesOfDay(a.endTime)) return true
   }
-  const matchMin = toMinutes(time)
-  return avails.some((a) => {
-    const availStart = toMinutes(a.startTime)
-    const availEnd = toMinutes(a.endTime)
-    return matchMin >= availStart && matchMin < availEnd
-  })
+  return false
 }
 
 export function getPersonIncompatibilities(personId: string) {
@@ -2357,6 +2441,7 @@ export function resetMockData() {
   mockVenues.length = 0
   mockVenues.push(...INITIAL_VENUES)
   mockAlertLog.length = 0
+  invalidateAvailabilityIndex()
 }
 
 // ── Exports para generación demo ──────────────────────────────────────────

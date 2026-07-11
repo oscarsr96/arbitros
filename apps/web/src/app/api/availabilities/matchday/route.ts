@@ -4,6 +4,7 @@ import {
   mockMatchdayAvailabilities,
   mockPersons,
   DEMO_PERSON_ID,
+  invalidateAvailabilityIndex,
 } from '@/lib/mock-data'
 import type { MatchdayAvailability } from '@/lib/mock-data'
 import { getAvailabilityDeadline } from '@/lib/availability-deadline'
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
       ...slot,
     })),
   )
+  invalidateAvailabilityIndex()
 
   return NextResponse.json({ matchdayAvailability: record, slotsGenerated: newSlots.length })
 }

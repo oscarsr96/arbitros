@@ -12,12 +12,12 @@ import type {
   SolverMetrics,
 } from './types'
 import {
-  mockAvailabilities,
   mockIncompatibilities,
   mockDesignations,
   mockMatches,
   getMockDistance,
   getMockMunicipality,
+  isPersonAvailable,
 } from './mock-data'
 
 // ── PRNG con seed (Mulberry32) ────────────────────────────────────────────
@@ -50,40 +50,12 @@ const CATEGORY_RANK: Record<string, number> = {
   feb: 4,
 }
 
-// ── Helpers de fecha ────────────────────────────────────────────────────────
-
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // ── Helpers de restricciones ────────────────────────────────────────────────
-
-function isAvailable(personId: string, date: string, time: string): boolean {
-  const d = new Date(date + 'T00:00:00')
-  const jsDay = d.getDay()
-  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1
-
-  // Get week start using local time (not UTC via toISOString)
-  const dateObj = new Date(date + 'T00:00:00')
-  const dateDayOfWeek = dateObj.getDay()
-  const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
-  dateObj.setDate(diff)
-  const weekStartStr = formatLocalDate(dateObj)
-
-  const avails = mockAvailabilities.filter(
-    (a) => a.personId === personId && a.weekStart === weekStartStr && a.dayOfWeek === dayOfWeek,
-  )
-
-  const matchHour = parseInt(time.split(':')[0])
-  return avails.some((a) => {
-    const availStart = parseInt(a.startTime.split(':')[0])
-    const availEnd = parseInt(a.endTime.split(':')[0])
-    return matchHour >= availStart && matchHour < availEnd
-  })
-}
+// Disponibilidad: delega en mock-data (misma lógica que el picker del portal/
+// admin, comparación en minutos con intervalos semiabiertos). Antes este
+// módulo duplicaba el cálculo con granularidad de HORAS ENTERAS (parseInt),
+// lo que tenía un bug latente: una franja 15:30-22:00 daba disponible un
+// partido a las 15:00.
 
 function meetsMinCategory(personCategory: string | null, requiredCategory: string): boolean {
   if (!personCategory) return false
@@ -120,37 +92,73 @@ interface Assignment {
   time: string
 }
 
+// Micro-refactor de rendimiento: antes se recorrian TODOS los currentAssignments
+// (array plano) y TODAS las mockDesignations por cada candidato evaluado — con
+// 324 partidos x 1279 personas eso es cuadratico. Ahora ambas fuentes se indexan
+// por personId UNA vez por resolucion (`buildAssignmentIndex`/`buildDesignationIndex`
+// en `solve`/`solvePartial`) y aqui solo se recorre la lista (pequena, acotada por
+// maxMatchesPerPerson) de ESA persona.
 function hasTimeOverlapWith(
   personId: string,
   matchDate: string,
   matchTime: string,
-  currentAssignments: Assignment[],
-  existingDesignations: typeof mockDesignations,
+  assignmentsByPerson: Map<string, Assignment[]>,
+  designationsByPerson: Map<string, typeof mockDesignations>,
+  matchesById: Map<string, { date: string; time: string }>,
 ): boolean {
   const targetHour = parseInt(matchTime.split(':')[0])
 
   // Comprobar contra asignaciones ya propuestas en esta ejecucion
-  for (const a of currentAssignments) {
-    if (a.personId !== personId) continue
-    if (a.date !== matchDate) continue
-    const otherHour = parseInt(a.time.split(':')[0])
-    if (Math.abs(targetHour - otherHour) < 2) return true
+  const current = assignmentsByPerson.get(personId)
+  if (current) {
+    for (const a of current) {
+      if (a.date !== matchDate) continue
+      const otherHour = parseInt(a.time.split(':')[0])
+      if (Math.abs(targetHour - otherHour) < 2) return true
+    }
   }
 
   // Comprobar contra designaciones existentes en la BD (mock)
-  for (const d of existingDesignations) {
-    if (d.personId !== personId) continue
-    const match = getMockMatchLocal(d.matchId)
-    if (!match || match.date !== matchDate) continue
-    const otherHour = parseInt(match.time.split(':')[0])
-    if (Math.abs(targetHour - otherHour) < 2) return true
+  const existing = designationsByPerson.get(personId)
+  if (existing) {
+    for (const d of existing) {
+      const match = matchesById.get(d.matchId)
+      if (!match || match.date !== matchDate) continue
+      const otherHour = parseInt(match.time.split(':')[0])
+      if (Math.abs(targetHour - otherHour) < 2) return true
+    }
   }
 
   return false
 }
 
-function getMockMatchLocal(matchId: string) {
-  return mockMatches.find((m) => m.id === matchId)
+function buildDesignationIndex(
+  designations: typeof mockDesignations,
+): Map<string, typeof mockDesignations> {
+  const index = new Map<string, typeof mockDesignations>()
+  for (const d of designations) {
+    const list = index.get(d.personId)
+    if (list) list.push(d)
+    else index.set(d.personId, [d])
+  }
+  return index
+}
+
+function addAssignment(index: Map<string, Assignment[]>, assignment: Assignment): void {
+  const list = index.get(assignment.personId)
+  if (list) list.push(assignment)
+  else index.set(assignment.personId, [assignment])
+}
+
+// Indice matchId -> Set<personId> ya propuestos. Mismo motivo que el resto de
+// indices: "¿esta persona ya asignada a este partido?" se preguntaba antes con
+// proposedAssignments.some(...), un escaneo del array COMPLETO de asignaciones
+// (crece hasta ~totalSlots) por cada candidato evaluado — con el roster
+// completo (1279 personas x 324 partidos) eso dominaba el tiempo de resolucion.
+function markAssigned(index: Map<string, Set<string>>, matchId: string, personId: string): void {
+  const set = index.get(matchId)
+  if (set) set.add(personId)
+  else index.set(matchId, new Set([personId]))
 }
 
 // ── Solver principal ────────────────────────────────────────────────────────
@@ -159,11 +167,21 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   const startTime = performance.now()
   const { matches, persons, parameters } = input
   const { costWeight, balanceWeight, maxMatchesPerPerson, forceExisting } = parameters
+  // findBestCandidate recorre esta lista para CADA slot (hasta ~1000 con el
+  // roster completo): pre-filtrar por rol una vez evita iterar los ~1279
+  // completos (arbitros+anotadores) cuando solo un rol es relevante por slot.
+  const referees = persons.filter((p) => p.role === 'arbitro')
+  const scorers = persons.filter((p) => p.role === 'anotador')
   const rng = seed !== undefined ? mulberry32(seed) : null
 
   const assignments: ProposedAssignment[] = []
   const unassigned: UnassignedSlot[] = []
-  const currentAssignments: Assignment[] = []
+  // Indices por personId (ver comentario sobre hasTimeOverlapWith): evitan
+  // recorrer arrays completos por cada candidato evaluado.
+  const assignmentsByPerson = new Map<string, Assignment[]>()
+  const designationsByPerson = buildDesignationIndex(mockDesignations)
+  const matchesById = new Map(mockMatches.map((m) => [m.id, { date: m.date, time: m.time }]))
+  const assignedPersonsByMatch = new Map<string, Set<string>>()
 
   // Contar partidos asignados por persona (incluye existentes)
   const personLoadCount: Record<string, number> = {}
@@ -171,18 +189,24 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
     personLoadCount[p.id] = 0
   }
 
+  // La carga cuenta SOLO las designaciones dentro del conjunto de partidos acotado
+  // (rango/jornada activo, o el único partido en modo partial), no toda la temporada.
+  // Regla FBM / CLAUDE.md restricción 7: la carga máxima es POR JORNADA; contarla global
+  // excluiría de por vida a quien pite el máximo en una jornada al designar la siguiente.
+  const inScopeMatchIds = new Set(matches.map((m) => m.id))
+
   // Cargar designaciones existentes como asignaciones ya hechas
   const existingByMatch: Record<string, { personId: string; role: string }[]> = {}
   for (const d of mockDesignations) {
     if (!existingByMatch[d.matchId]) existingByMatch[d.matchId] = []
     existingByMatch[d.matchId].push({ personId: d.personId, role: d.role })
-    if (personLoadCount[d.personId] !== undefined) {
+    if (personLoadCount[d.personId] !== undefined && inScopeMatchIds.has(d.matchId)) {
       personLoadCount[d.personId]++
     }
-    // Registrar en currentAssignments para control de solapamiento
+    // Registrar en assignmentsByPerson para control de solapamiento
     const m = matches.find((m) => m.id === d.matchId)
     if (m) {
-      currentAssignments.push({
+      addAssignment(assignmentsByPerson, {
         matchId: d.matchId,
         personId: d.personId,
         role: d.role,
@@ -212,6 +236,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           isNew: false,
           municipalityName: municipality?.name ?? '',
         })
+        markAssigned(assignedPersonsByMatch, match.id, person.id)
       }
     }
   }
@@ -249,13 +274,15 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         match,
         'arbitro',
         venueMuni,
-        persons,
-        currentAssignments,
+        referees,
+        assignmentsByPerson,
+        designationsByPerson,
+        matchesById,
         personLoadCount,
         maxMatchesPerPerson,
         costWeight,
         balanceWeight,
-        assignments,
+        assignedPersonsByMatch,
         rng,
       )
 
@@ -272,13 +299,14 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           municipalityName: municipality?.name ?? '',
         }
         assignments.push(proposed)
-        currentAssignments.push({
+        addAssignment(assignmentsByPerson, {
           matchId: match.id,
           personId: candidate.person.id,
           role: 'arbitro',
           date: match.date,
           time: match.time,
         })
+        markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
         personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
       } else {
         unassigned.push({
@@ -289,11 +317,13 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           reason: getUnassignedReason(
             match,
             'arbitro',
-            persons,
-            currentAssignments,
+            referees,
+            assignmentsByPerson,
+            designationsByPerson,
+            matchesById,
             personLoadCount,
             maxMatchesPerPerson,
-            assignments,
+            assignedPersonsByMatch,
           ),
         })
       }
@@ -309,13 +339,15 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         match,
         'anotador',
         venueMuni,
-        persons,
-        currentAssignments,
+        scorers,
+        assignmentsByPerson,
+        designationsByPerson,
+        matchesById,
         personLoadCount,
         maxMatchesPerPerson,
         costWeight,
         balanceWeight,
-        assignments,
+        assignedPersonsByMatch,
         rng,
       )
 
@@ -332,13 +364,14 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           municipalityName: municipality?.name ?? '',
         }
         assignments.push(proposed)
-        currentAssignments.push({
+        addAssignment(assignmentsByPerson, {
           matchId: match.id,
           personId: candidate.person.id,
           role: 'anotador',
           date: match.date,
           time: match.time,
         })
+        markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
         personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
       } else {
         unassigned.push({
@@ -349,11 +382,13 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           reason: getUnassignedReason(
             match,
             'anotador',
-            persons,
-            currentAssignments,
+            scorers,
+            assignmentsByPerson,
+            designationsByPerson,
+            matchesById,
             personLoadCount,
             maxMatchesPerPerson,
-            assignments,
+            assignedPersonsByMatch,
           ),
         })
       }
@@ -392,18 +427,26 @@ function findBestCandidate(
   role: 'arbitro' | 'anotador',
   venueMuniId: string,
   persons: EnrichedPerson[],
-  currentAssignments: Assignment[],
+  assignmentsByPerson: Map<string, Assignment[]>,
+  designationsByPerson: Map<string, typeof mockDesignations>,
+  matchesById: Map<string, { date: string; time: string }>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
   costWeight: number,
   balanceWeight: number,
-  proposedAssignments: ProposedAssignment[],
+  assignedPersonsByMatch: Map<string, Set<string>>,
   rng: (() => number) | null = null,
 ): { person: EnrichedPerson; cost: number; km: number } | null {
   const candidates: { person: EnrichedPerson; cost: number; km: number; score: number }[] = []
 
-  // Encontrar max carga para normalizar
-  const maxLoad = Math.max(1, ...Object.values(personLoadCount))
+  // Encontrar max carga para normalizar. Bucle plano en vez de
+  // Math.max(1, ...Object.values(...)): esto se llama una vez POR SLOT (hasta
+  // ~1000 con el roster completo) sobre un Record de hasta 1279 entradas — el
+  // spread de argumentos de Math.max es notablemente más lento a este tamaño.
+  let maxLoad = 1
+  for (const key in personLoadCount) {
+    if (personLoadCount[key] > maxLoad) maxLoad = personLoadCount[key]
+  }
 
   for (const person of persons) {
     // Filtrar por rol
@@ -411,20 +454,26 @@ function findBestCandidate(
     if (!person.active) continue
 
     // Ya asignado a este partido?
-    const alreadyAssigned = proposedAssignments.some(
-      (a) => a.matchId === match.id && a.personId === person.id,
-    )
-    if (alreadyAssigned) continue
+    if (assignedPersonsByMatch.get(match.id)?.has(person.id)) continue
 
     // Carga maxima
     const currentLoad = personLoadCount[person.id] ?? 0
     if (currentLoad >= maxMatchesPerPerson) continue
 
-    // Disponibilidad
-    if (!isAvailable(person.id, match.date, match.time)) continue
+    // Disponibilidad (misma lógica minutos/semiabierto que el picker del portal/admin)
+    if (!isPersonAvailable(person.id, match.date, match.time)) continue
 
     // Solapamiento temporal
-    if (hasTimeOverlapWith(person.id, match.date, match.time, currentAssignments, mockDesignations))
+    if (
+      hasTimeOverlapWith(
+        person.id,
+        match.date,
+        match.time,
+        assignmentsByPerson,
+        designationsByPerson,
+        matchesById,
+      )
+    )
       continue
 
     // Categoria minima (solo arbitros)
@@ -501,10 +550,12 @@ function getUnassignedReason(
   match: EnrichedMatch,
   role: 'arbitro' | 'anotador',
   persons: EnrichedPerson[],
-  currentAssignments: Assignment[],
+  assignmentsByPerson: Map<string, Assignment[]>,
+  designationsByPerson: Map<string, typeof mockDesignations>,
+  matchesById: Map<string, { date: string; time: string }>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
-  proposedAssignments: ProposedAssignment[],
+  assignedPersonsByMatch: Map<string, Set<string>>,
 ): string {
   const candidatesOfRole = persons.filter((p) => p.role === role && p.active)
   if (candidatesOfRole.length === 0)
@@ -519,7 +570,7 @@ function getUnassignedReason(
   let noCarTooFar = 0
 
   for (const person of candidatesOfRole) {
-    if (proposedAssignments.some((a) => a.matchId === match.id && a.personId === person.id)) {
+    if (assignedPersonsByMatch.get(match.id)?.has(person.id)) {
       alreadyAssigned++
       continue
     }
@@ -527,12 +578,19 @@ function getUnassignedReason(
       maxLoad++
       continue
     }
-    if (!isAvailable(person.id, match.date, match.time)) {
+    if (!isPersonAvailable(person.id, match.date, match.time)) {
       noAvailability++
       continue
     }
     if (
-      hasTimeOverlapWith(person.id, match.date, match.time, currentAssignments, mockDesignations)
+      hasTimeOverlapWith(
+        person.id,
+        match.date,
+        match.time,
+        assignmentsByPerson,
+        designationsByPerson,
+        matchesById,
+      )
     ) {
       overlap++
       continue
@@ -586,14 +644,16 @@ export function solvePartial(
   const venueMuni = match.venue?.municipalityId ?? ''
 
   // Construir estado actual de asignaciones
-  const currentAssignments: Assignment[] = []
+  const assignmentsByPerson = new Map<string, Assignment[]>()
+  const designationsByPerson = buildDesignationIndex(mockDesignations)
+  const matchesById = new Map(mockMatches.map((m) => [m.id, { date: m.date, time: m.time }]))
   const personLoadCount: Record<string, number> = {}
   for (const p of persons) personLoadCount[p.id] = 0
 
   for (const d of mockDesignations) {
     const m = matches.find((m) => m.id === d.matchId)
     if (m) {
-      currentAssignments.push({
+      addAssignment(assignmentsByPerson, {
         matchId: d.matchId,
         personId: d.personId,
         role: d.role,
@@ -604,18 +664,23 @@ export function solvePartial(
     }
   }
 
-  const proposedAssignments: ProposedAssignment[] = []
+  // solvePartial evalúa un único slot: no hay asignaciones propuestas previas
+  // en esta misma resolución (mapa vacío, misma semántica que el array vacío
+  // que sustituye).
+  const assignedPersonsByMatch = new Map<string, Set<string>>()
   const candidate = findBestCandidate(
     match,
     role,
     venueMuni,
     persons,
-    currentAssignments,
+    assignmentsByPerson,
+    designationsByPerson,
+    matchesById,
     personLoadCount,
     parameters.maxMatchesPerPerson,
     parameters.costWeight,
     parameters.balanceWeight,
-    proposedAssignments,
+    assignedPersonsByMatch,
   )
 
   const endTime = performance.now()
@@ -667,10 +732,12 @@ export function solvePartial(
           match,
           role,
           persons,
-          currentAssignments,
+          assignmentsByPerson,
+          designationsByPerson,
+          matchesById,
           personLoadCount,
           parameters.maxMatchesPerPerson,
-          proposedAssignments,
+          assignedPersonsByMatch,
         ),
       },
     ],

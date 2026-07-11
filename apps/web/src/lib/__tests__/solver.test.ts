@@ -33,6 +33,37 @@ const mockDesignations: {
 
 const mockMatches: { id: string; date: string; time: string }[] = []
 
+// Misma semantica de minutos que mock-data.ts#isPersonAvailable (comparacion
+// en minutos, intervalos semiabiertos [start,end)), pero sobre el array local
+// de este test. El solver ya no calcula disponibilidad por su cuenta (bug de
+// horas enteras corregido: delega en esta funcion via ../mock-data).
+function localIsPersonAvailable(personId: string, date: string, time: string): boolean {
+  const dateObj = new Date(date + 'T00:00:00')
+  const dateDayOfWeek = dateObj.getDay()
+  const dayOfWeek = dateDayOfWeek === 0 ? 6 : dateDayOfWeek - 1
+  const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
+  dateObj.setDate(diff)
+  const year = dateObj.getFullYear()
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0')
+  const day = String(dateObj.getDate()).padStart(2, '0')
+  const weekStartStr = `${year}-${month}-${day}`
+
+  const toMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + m
+  }
+  const matchMin = toMinutes(time)
+
+  return mockAvailabilities.some(
+    (a) =>
+      a.personId === personId &&
+      a.weekStart === weekStartStr &&
+      a.dayOfWeek === dayOfWeek &&
+      matchMin >= toMinutes(a.startTime) &&
+      matchMin < toMinutes(a.endTime),
+  )
+}
+
 vi.mock('../mock-data', () => ({
   get mockAvailabilities() {
     return mockAvailabilities
@@ -51,6 +82,7 @@ vi.mock('../mock-data', () => ({
     return 20 // default 20km for any cross-municipality pair
   },
   getMockMunicipality: (id: string) => ({ id, name: `Municipality-${id}` }),
+  isPersonAvailable: localIsPersonAvailable,
 }))
 
 // Import solver AFTER mocking
@@ -379,5 +411,86 @@ describe('solve', () => {
     const ids1 = result1.assignments.map((a) => `${a.matchId}:${a.personId}`).sort()
     const hasDifference = ids0.some((id, i) => id !== ids1[i])
     expect(hasDifference).toBe(true)
+  })
+
+  it('regresion bug horas enteras: partido a las 15:00 con franja 15:30-22:00 -> NO disponible', () => {
+    const match = makeMatch({
+      id: 'm1',
+      time: '15:00',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+    })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro' })
+
+    // Franja de tarde 15:30-22:00: NO cubre las 15:00. Con el bug antiguo de
+    // horas enteras (parseInt) esto daba disponible (15 >= 15 && 15 < 22).
+    const dateObj = new Date(match.date + 'T00:00:00')
+    const dateDayOfWeek = dateObj.getDay()
+    const dayOfWeek = dateDayOfWeek === 0 ? 6 : dateDayOfWeek - 1
+    const diff = dateObj.getDate() - dateDayOfWeek + (dateDayOfWeek === 0 ? -6 : 1)
+    dateObj.setDate(diff)
+    const year = dateObj.getFullYear()
+    const monthStr = String(dateObj.getMonth() + 1).padStart(2, '0')
+    const dayStr = String(dateObj.getDate()).padStart(2, '0')
+    const weekStart = `${year}-${monthStr}-${dayStr}`
+
+    mockAvailabilities.push({
+      id: 'avail-regression-1',
+      personId: 'p1',
+      weekStart,
+      dayOfWeek,
+      startTime: '15:30',
+      endTime: '22:00',
+    })
+
+    const result = solve({
+      matches: [match],
+      persons: [p1],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('no_solution')
+    expect(result.assignments).toHaveLength(0)
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].reason).toContain('sin disponibilidad')
+  })
+
+  it('I2: la carga cuenta solo designaciones DENTRO del conjunto acotado, no las de otra jornada', () => {
+    const matchIn = makeMatch({
+      id: 'm_in',
+      date: '2025-03-15',
+      time: '10:00',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+    })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro' })
+    addAvailability('p1', matchIn.date, matchIn.time)
+
+    // Designación existente en un partido FUERA del conjunto que se optimiza (otra jornada).
+    mockMatches.push({ id: 'm_out', date: '2025-03-22', time: '10:00' })
+    mockDesignations.push({
+      id: 'd_out',
+      matchId: 'm_out',
+      personId: 'p1',
+      role: 'arbitro',
+      travelCost: '0.00',
+      distanceKm: '0.0',
+      status: 'confirmed',
+      notifiedAt: null,
+      createdAt: new Date(),
+    })
+
+    // maxMatchesPerPerson=1: si la carga contara GLOBAL, p1 (1 designación fuera del
+    // rango) estaría al tope y quedaría excluido. Con la carga acotada al conjunto,
+    // p1 tiene carga 0 dentro y sí se asigna.
+    const result = solve({
+      matches: [matchIn],
+      persons: [p1],
+      parameters: { ...defaultParams(), maxMatchesPerPerson: 1 },
+    })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments).toHaveLength(1)
+    expect(result.assignments[0].personId).toBe('p1')
   })
 })

@@ -21,6 +21,7 @@ import {
   calculateMockTravelCost,
   getMockVenue,
   getPersonTravelCost,
+  invalidateAvailabilityIndex,
 } from '@/lib/mock-data'
 import { solve } from '@/lib/solver'
 import type { EnrichedMatch, EnrichedPerson } from '@/lib/types'
@@ -297,6 +298,7 @@ export async function POST(request: Request) {
   mockAvailabilities.length = 0
   mockIncompatibilities.length = 0
   mockMatchdayAvailabilities.length = 0
+  invalidateAvailabilityIndex()
 
   // 2. Generar árbitros
   for (let i = 0; i < numReferees; i++) {
@@ -425,6 +427,7 @@ export async function POST(request: Request) {
       }
     }
   }
+  invalidateAvailabilityIndex()
 
   // 6. Generar incompatibilidades (~10% de personas)
   for (const person of mockPersons) {
