@@ -1,22 +1,16 @@
 # Lecciones — Sistema de Designaciones FBM
 
-## Fuentes de datos y scraping
+## Datos FBM: export oficial + importador existente, no infra nueva
 
-- **Regla:** antes de planificar scraping de una web, verificar `robots.txt` PRIMERO y preguntar si hay export oficial (CSV/XLSX/API).
-  - **Why:** fbm.es bloquea bots genéricos (`Disallow: /` para `User-agent: *`); el plan de scraping quedó cancelado y se pivotó a su export CSV oficial, más simple y sin deuda.
-  - **How to apply:** en tareas con scraping, poner el check de `robots.txt` como criterio de aceptación de la 1ª tarea y ofrecer la alternativa de export oficial antes de construir el scraper.
+- **Regla:** antes de scrapear, verificar `robots.txt` y preguntar por export oficial (CSV/XLSX/API); para fuentes nuevas del piloto (PDF, etc.), normalizarlas offline al CSV que ya acepta el importador FBM, no meter parser+ruta+dependencia en runtime.
+  - **Why:** fbm.es bloquea bots (`Disallow: /` para `User-agent: *`) → se pivotó a su export CSV oficial; y el usuario cortó el over-engineering ("nos estamos complicando"), reusando el pipeline probado (`parseCalendarCsv`→`materializeImport`) vía `scripts/fbm-pdf-to-csv.py` sin código frágil en runtime. La integración genérica se difiere.
+  - **How to apply:** check de `robots.txt` + oferta de export oficial como criterio de la 1ª tarea; normalizar fuentes nuevas al CSV existente offline; construir runtime solo cuando el usuario pida la integración general.
 
 ## Testing de imports sobre mock-data en Next dev
 
 - **Regla:** al smoke-testear una ruta que MUTA los arrays mock (import XLSX/CSV/FBM), calentar las rutas antes, o validar el pipeline puro con vitest.
   - **Why:** en Next dev la 1ª compilación on-demand de cada ruta reevalúa el módulo `mock-data`; una mutación hecha por la ruta de import ANTES de que la ruta de lectura esté compilada se pierde (parece no persistir). En caliente sí persiste. Afecta a todos los importadores.
   - **How to apply:** hacer una request de calentamiento a `/api/admin/matches` (o generar demo) antes del import, o testear `parseCalendarCsv`+`materializeImport` con vitest sin servidor.
-
-## Piloto: reusar el importador, no construir infra nueva
-
-- **Regla:** para el piloto, convertir la fuente (PDF u otra) offline al CSV que ya acepta el importador FBM y subirlo, en vez de meter un parser en runtime + ruta + dependencia.
-  - **Why:** el usuario cortó el over-engineering ("nos estamos complicando"); el enfoque offline (`scripts/fbm-pdf-to-csv.py`) reusó el pipeline probado (`parseCalendarCsv`→`materializeImport`) sin pdfjs en runtime ni código frágil commiteado. La integración genérica CSV/Excel se difiere.
-  - **How to apply:** ante una fuente nueva para el piloto, ver primero si se normaliza al CSV existente offline; construir runtime solo cuando el usuario pida la integración general.
 
 ## No borrar entregables del usuario en la limpieza
 
