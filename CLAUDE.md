@@ -143,26 +143,38 @@ enum MatchStatus {
 
 ## Lógica de Coste de Desplazamiento
 
+El coste de desplazamiento es POR PERSONA Y DÍA (regla FBM), no por partido: se agrupan
+todos los partidos de una persona en un mismo día y se aplica una única regla sobre ese
+conjunto. Un día con salida a otro municipio solo paga kilometraje (un trayecto por
+municipio de destino distinto, sin fijo); un día 100% en el municipio propio paga un fijo
+único por día (Madrid 3€, resto 2€), sin importar cuántos partidos haya ese día.
+
 ```typescript
-function calculateTravelCost(person: Person, venue: Venue): { cost: number; km: number } {
-  // Mismo municipio → tarifa fija
-  if (person.municipality_id === venue.municipality_id) {
-    return { cost: 3.0, km: 0 }
+// calculateDailyTravelCost(personMuniId, venueMunicipalityIds[]) — apps/web/src/lib/mock-data.ts
+function calculateDailyTravelCost(
+  personMuniId: string,
+  venueMunicipalityIds: string[],
+): { cost: number; km: number } {
+  const awayMunis = [...new Set(venueMunicipalityIds)].filter((id) => id !== personMuniId)
+
+  // Día con salida a otro municipio → solo kilometraje: un trayecto por
+  // municipio de destino distinto, sin fijo.
+  if (awayMunis.length > 0) {
+    const km = awayMunis.reduce((sum, destId) => sum + getDistanceKm(personMuniId, destId), 0)
+    return { cost: km * 0.26, km }
   }
 
-  // Distinto municipio → consultar matriz de distancias
-  const distance = await db.query(
-    `
-    SELECT distance_km FROM distances
-    WHERE origin_id = $1 AND dest_id = $2
-  `,
-    [person.municipality_id, venue.municipality_id],
-  )
-
-  const km = distance.rows[0].distance_km
-  return { cost: km * 0.1, km }
+  // Día 100% en el municipio propio → fijo por día (no por partido)
+  return { cost: isMadridMunicipality(personMuniId) ? 3 : 2, km: 0 }
 }
 ```
+
+`calculatePersonTravelCost` agrupa las designaciones de una persona por fecha y suma el
+coste diario resultante; `getPersonTravelCost` es la función de conveniencia (resuelve
+fecha y municipio a partir del `matchId`) y es la fuente de la verdad para dashboard,
+portal y reportes. `calculateMockTravelCost` aplica las mismas tarifas pero por partido:
+es solo una estimación orientativa para el solver y los badges de asignación del panel de
+administración, nunca para liquidaciones.
 
 ### Seed de la Matriz de Distancias
 
@@ -696,7 +708,7 @@ SENTRY_DSN=https://...
 
 # App
 NEXT_PUBLIC_APP_URL=https://designaciones.fbm.es
-TRAVEL_COST_PER_KM=0.10
+TRAVEL_COST_PER_KM=0.26
 TRAVEL_COST_SAME_MUNICIPALITY=3.00
 ```
 
@@ -704,6 +716,12 @@ TRAVEL_COST_SAME_MUNICIPALITY=3.00
 config por categoría en código (`apps/web/src/lib/availability-deadline.ts`,
 `AVAILABILITY_DEADLINE_DAYS`): provincial 7 días, autonómico 8, nacional 10, feb 12 (categoría
 desconocida → 12, el más restrictivo).
+
+**Nota**: `TRAVEL_COST_SAME_MUNICIPALITY` solo alimenta la ruta DB legacy
+(`apps/web/src/lib/travel-cost.ts`), una estimación por partido. La regla FBM real ya no
+tiene un único fijo por mismo municipio: es un fijo POR DÍA (Madrid 3€, resto 2€) que
+calcula `calculateDailyTravelCost` en `apps/web/src/lib/mock-data.ts` y no depende de
+variables de entorno.
 
 ---
 

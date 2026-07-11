@@ -49,6 +49,10 @@ __pycache__/
 # reports
 *.pdf
 
+# datos reales / material de referencia (PII, no se commitea)
+*.eml
+*.xlsx
+
 # build info
 tsconfig.tsbuildinfo
 **/tsconfig.tsbuildinfo
