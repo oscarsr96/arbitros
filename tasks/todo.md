@@ -30,8 +30,27 @@ hidratación, equivalencia del índice O(1), refactors del solver, huérfanos). 
 - Menores (no bloquean, anotados): M1 notas de la muestra matchday pueden no casar con sus flags (cosmético
   del badge); M4 `solvePartial` es código muerto preexistente; M2/M3/M5 sin camino de fallo hoy.
 
-Estado hidratación: error preexistente en `AdminSidebar` (`<aside>`), reproduce en `/dashboard` (contenido no
-tocado), ajeno a este trabajo. NO commiteado.
+Commiteado en 4 commits (f92898a disponibilidad+solver · ede9350 rango+re-optimización · b46f785 landing ·
+1672ef7 docs) y pusheado a origin/main.
+
+## Arreglos pendientes (anotados 2026-07-11, fuera del scope de esta tanda)
+
+1. **Error de hidratación preexistente** en `AdminSidebar` (`<aside>` vs `<div>`). Reproduce en `/dashboard`
+   y demás páginas admin (contenido no tocado por este trabajo) → ajeno a esta feature, ya venía de antes.
+   El header "Temporada 2024/25 · Jornada 15" (`app/(admin)/layout.tsx:15`) es texto hardcodeado y además
+   desactualizado (los datos son 2025/26). Pendiente: diagnosticar el mismatch del sidebar y refrescar el
+   header a datos reales.
+2. **`demo-view.tsx` huérfano**: tras quitar `<DemoView/>` de la landing (T8) el componente no se usa en
+   ningún sitio (grep confirmado). Pendiente: borrarlo o reubicar su contenido (lleva el badge "Cómo llegar"
+   que CLAUDE.md documenta como una de las 3 vistas). No se borró sin confirmación.
+3. **M1 (cosmético)**: en `availability-roster.ts` la nota de los ~40 registros matchday de muestra se asigna
+   round-robin, independiente de las franjas booleanas → el badge del picker puede mostrar "Solo disponible
+   por la tarde" en alguien con mañana marcada. Los flags/slots sí son coherentes (test lo cubre); solo el
+   texto del badge puede contradecir. Pendiente: derivar la nota del patrón real del registro.
+4. **Carga en modo `partial`**: al re-optimizar un hueco, la carga se cuenta solo sobre ese único partido
+   (consecuencia del acotado I2 + scope partial), no sobre toda la jornada. Improbable que importe (se
+   re-optimiza un slot suelto), pero si se quisiera respetar el tope por jornada en partial habría que pasar
+   el rango de la jornada además del matchId.
 
 ## Petición del usuario
 
