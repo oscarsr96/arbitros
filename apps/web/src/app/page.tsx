@@ -1,6 +1,5 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { DemoView } from '@/components/demo-view'
 
 export default function HomePage() {
   return (
@@ -33,20 +32,15 @@ export default function HomePage() {
             href="/disponibilidad"
             className="rounded-md border border-white/20 px-6 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
-            Demo página árbitros y anotadores
+            DISPONIBILIDAD
           </Link>
           <Link
             href="/dashboard"
             className="rounded-md border border-white/20 px-6 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
-            Demo Admin
+            DESIGNAR
           </Link>
         </div>
-      </div>
-
-      {/* Simulación de demo */}
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 lg:px-8">
-        <DemoView />
       </div>
     </main>
   )
