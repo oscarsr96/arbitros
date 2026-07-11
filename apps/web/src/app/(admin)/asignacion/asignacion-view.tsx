@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -28,6 +28,16 @@ import {
 } from '@/lib/mock-data'
 import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
 
+// Suma un día a una fecha YYYY-MM-DD (local, sin dependencias externas).
+function addOneDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + 1)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 interface PickerPerson {
   id: string
   name: string
@@ -49,6 +59,9 @@ export function AsignacionView() {
   const [sortBy, setSortBy] = useState<'cost' | 'load'>('cost')
   const [applying, setApplying] = useState(false)
   const [substitutionContext, setSubstitutionContext] = useState<SubstitutionContext | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [rangeInitialized, setRangeInitialized] = useState(false)
   const { activeSlot, setActiveSlot, expandedMatchIds, toggleExpandedMatch } = useAdminStore()
 
   const {
@@ -76,6 +89,48 @@ export function AsignacionView() {
   useEffect(() => {
     fetchMatches()
   }, [fetchMatches])
+
+  // Default del rango: primera jornada del calendario (fin de semana del primer
+  // partido). Solo se calcula una vez, la primera vez que llegan partidos; cambios
+  // posteriores del usuario no se sobrescriben en refetches subsiguientes.
+  useEffect(() => {
+    if (rangeInitialized || matches.length === 0) return
+    const minDate = matches.reduce((min, m) => (m.date < min ? m.date : min), matches[0].date)
+    const saturday = getJornadaSaturdayForDate(minDate)
+    setDateFrom(saturday)
+    setDateTo(addOneDay(saturday))
+    setRangeInitialized(true)
+  }, [matches, rangeInitialized])
+
+  // Rango normalizado: si desde > hasta, se intercambian silenciosamente.
+  const handleDateFromChange = (value: string) => {
+    if (dateTo && value > dateTo) {
+      setDateFrom(dateTo)
+      setDateTo(value)
+    } else {
+      setDateFrom(value)
+    }
+  }
+
+  const handleDateToChange = (value: string) => {
+    // Solo intercambiar con un valor real: vaciar "Hasta" (value === '') debe abrir
+    // el extremo superior, no invertir el rango (`'' < dateFrom` es true lexicográficamente).
+    if (value && dateFrom && value < dateFrom) {
+      setDateTo(dateFrom)
+      setDateFrom(value)
+    } else {
+      setDateTo(value)
+    }
+  }
+
+  const filteredMatches = useMemo(() => {
+    if (!dateFrom && !dateTo) return matches
+    return matches.filter((m) => {
+      if (dateFrom && m.date < dateFrom) return false
+      if (dateTo && m.date > dateTo) return false
+      return true
+    })
+  }, [matches, dateFrom, dateTo])
 
   // Derive active proposal
   const activeProposal = proposals.find((p) => p.id === activeProposalId) ?? null
@@ -182,6 +237,8 @@ export function AsignacionView() {
           maxMatchesPerPerson: solverParameters.maxMatchesPerPerson,
           forceExisting: solverParameters.forceExisting,
           numProposals: solverParameters.numProposals,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
         }),
       })
 
@@ -250,6 +307,8 @@ export function AsignacionView() {
           maxMatchesPerPerson: solverParameters.maxMatchesPerPerson,
           forceExisting: true,
           numProposals: 1,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
           partial: { matchId, role },
         }),
       })
@@ -282,8 +341,10 @@ export function AsignacionView() {
     }
   }
 
-  // Build person picker data for active slot
-  const getPickerPersons = (): PickerPerson[] => {
+  // Build person picker data for active slot. Memoizado: con ~1279 personas,
+  // recalcularlo en cada render (en vez de solo cuando cambian activeSlot/matches)
+  // provoca jank perceptible al abrir el picker.
+  const pickerPersons = useMemo((): PickerPerson[] => {
     if (!activeSlot) return []
 
     const match = matches.find((m) => m.id === activeSlot.matchId)
@@ -353,7 +414,7 @@ export function AsignacionView() {
           matchdayNotes,
         }
       })
-  }
+  }, [activeSlot, matches])
 
   // Get proposed assignments for a specific match slot from the active proposal
   const getProposedForSlot = (
@@ -364,14 +425,14 @@ export function AsignacionView() {
     return proposedAssignments.filter((a) => a.matchId === matchId && a.role === role && a.isNew)
   }
 
-  const totalMatches = matches.length
-  const coveredMatches = matches.filter((m) => m.isCovered).length
+  const totalMatches = filteredMatches.length
+  const coveredMatches = filteredMatches.filter((m) => m.isCovered).length
   const pendingDesigs = mockDesignations.filter((d) => d.status === 'pending').length
   const personsToNotify = new Set(
     mockDesignations.filter((d) => d.status === 'pending').map((d) => d.personId),
   ).size
 
-  const sorted = [...matches].sort((a, b) => {
+  const sorted = [...filteredMatches].sort((a, b) => {
     const dc = a.date.localeCompare(b.date)
     return dc !== 0 ? dc : a.time.localeCompare(b.time)
   })
@@ -397,6 +458,47 @@ export function AsignacionView() {
               <Zap className="h-4 w-4" />
             )}
             {optimizationState === 'running' ? 'Optimizando...' : 'Asignación automática'}
+          </Button>
+        </div>
+
+        {/* Rango de fechas */}
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500" htmlFor="asignacion-date-from">
+              Desde
+            </label>
+            <input
+              id="asignacion-date-from"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => handleDateFromChange(e.target.value)}
+              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500" htmlFor="asignacion-date-to">
+              Hasta
+            </label>
+            <input
+              id="asignacion-date-to"
+              type="date"
+              value={dateTo}
+              onChange={(e) => handleDateToChange(e.target.value)}
+              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm"
+            />
+          </div>
+          <span className="text-sm font-medium text-gray-700">
+            {totalMatches} partido{totalMatches !== 1 ? 's' : ''} en el rango
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setDateFrom('')
+              setDateTo('')
+            }}
+          >
+            Toda la temporada
           </Button>
         </div>
 
@@ -683,7 +785,7 @@ export function AsignacionView() {
           <div className="lg:col-span-2">
             <div className="sticky top-20">
               <PersonPicker
-                persons={getPickerPersons()}
+                persons={pickerPersons}
                 activeSlot={activeSlot}
                 onAssign={handleAssign}
                 sortBy={sortBy}

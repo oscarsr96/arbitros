@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { solve } from '@/lib/solver'
-import type { SolverParameters, EnrichedMatch, EnrichedPerson, Proposal } from '@/lib/types'
+import type {
+  SolverParameters,
+  EnrichedMatch,
+  EnrichedPerson,
+  Proposal,
+  OptimizeRequestBody,
+} from '@/lib/types'
 import {
   mockMatches,
   mockPersons,
@@ -10,21 +16,35 @@ import {
   getMockMunicipality,
   getMockDesignationsForMatch,
 } from '@/lib/mock-data'
+import { validateDateRange, filterMatchesByRange } from '@/lib/optimize-range'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const numProposals = Math.min(5, Math.max(1, body.numProposals ?? 1))
+    const body: OptimizeRequestBody = await request.json()
+
+    const rangeError = validateDateRange(body.dateFrom, body.dateTo)
+    if (rangeError) {
+      return NextResponse.json({ error: rangeError }, { status: 400 })
+    }
+
+    const partial = body.partial
+    const numProposals = partial ? 1 : Math.min(5, Math.max(1, body.numProposals ?? 1))
     const parameters: SolverParameters = {
       costWeight: body.costWeight ?? 0.7,
       balanceWeight: body.balanceWeight ?? 0.3,
       maxMatchesPerPerson: body.maxMatchesPerPerson ?? 3,
-      forceExisting: body.forceExisting ?? true,
+      forceExisting: partial ? true : (body.forceExisting ?? true),
       numProposals,
     }
 
+    // Partidos a considerar: `partial` acota a UN único partido (ignora dateFrom/dateTo);
+    // si no, se filtra por el rango de fechas activo (sin rango = temporada completa).
+    const scopedMatches = partial
+      ? mockMatches.filter((m) => m.id === partial.matchId)
+      : filterMatchesByRange(mockMatches, body.dateFrom, body.dateTo)
+
     // Enrich matches
-    const matches: EnrichedMatch[] = mockMatches.map((m) => {
+    const matches: EnrichedMatch[] = scopedMatches.map((m) => {
       const venue = mockVenues.find((v) => v.id === m.venueId)
       const competition = mockCompetitions.find((c) => c.id === m.competitionId)
       const designations = getMockDesignationsForMatch(m.id)
@@ -74,13 +94,27 @@ export async function POST(request: Request) {
     for (let i = 0; i < numProposals; i++) {
       const seed = numProposals === 1 ? undefined : i
       const result = solve(input, seed)
+      // En modo partial, acotar la respuesta a las asignaciones/huecos de ESE
+      // matchId+role (el solve puede haber intentado cubrir otros slots del mismo
+      // partido, p. ej. asignaciones existentes marcadas por forceExisting).
+      const assignments = partial
+        ? result.assignments.filter(
+            // `a.isNew`: en partial con forceExisting=true el solver incluye las
+            // designaciones YA existentes del partido; sin este filtro el cliente
+            // tomaría assignments[0] (una persona ya designada) y crearía un duplicado.
+            (a) => a.matchId === partial.matchId && a.role === partial.role && a.isNew,
+          )
+        : result.assignments
+      const unassigned = partial
+        ? result.unassigned.filter((u) => u.matchId === partial.matchId && u.role === partial.role)
+        : result.unassigned
       proposals.push({
         id: crypto.randomUUID(),
         label: `Propuesta ${i + 1}`,
         status: result.status,
-        assignments: result.assignments,
+        assignments,
         metrics: result.metrics,
-        unassigned: result.unassigned,
+        unassigned,
       })
     }
 
