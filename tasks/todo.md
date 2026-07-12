@@ -37,8 +37,8 @@ de Tanda 2: virtualizar el picker de 1279 personas y/o paginar/filtrar partidos 
 
 ## Pendiente Tanda 1
 
-- `pnpm build` cuando el usuario pare el dev server.
-- Commit (el working tree arrastra cambios sin commitear de sesiones previas; decidir alcance con el usuario).
+- `pnpm build` cuando el usuario pare el dev server (build+dev comparten `.next`).
+- Commit ✅ **765106e** (un commit del conjunto verificado; arrastró trabajo previo entrelazado en mock-data / designations-route / asignacion-view / substitution-panel / proposal-selector, imposible separar limpio sin romper compilación) + **push a origin/main** ✅.
 
 ---
 
