@@ -26,17 +26,7 @@ import {
   getMockMunicipality,
   getMockVenue,
 } from '@/lib/mock-data'
-import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
-
-// Suma un día a una fecha YYYY-MM-DD (local, sin dependencias externas).
-function addOneDay(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + 1)
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { getJornadaSaturdayForDate, getMatchdayWindow } from '@/lib/matchday-availability'
 
 interface PickerPerson {
   id: string
@@ -91,15 +81,17 @@ export function AsignacionView() {
     fetchMatches()
   }, [fetchMatches])
 
-  // Default del rango: primera jornada del calendario (fin de semana del primer
-  // partido). Solo se calcula una vez, la primera vez que llegan partidos; cambios
+  // Default del rango: la primera JORNADA COMPLETA del calendario (viernes→jueves, vía
+  // getMatchdayWindow), no solo el fin de semana. El piloto tiene partidos entre semana
+  // (lunes→jueves) que deben entrar en la designación y contar para el tope de carga por
+  // jornada. Solo se calcula una vez, la primera vez que llegan partidos; cambios
   // posteriores del usuario no se sobrescriben en refetches subsiguientes.
   useEffect(() => {
     if (rangeInitialized || matches.length === 0) return
     const minDate = matches.reduce((min, m) => (m.date < min ? m.date : min), matches[0].date)
-    const saturday = getJornadaSaturdayForDate(minDate)
-    setDateFrom(saturday)
-    setDateTo(addOneDay(saturday))
+    const jornadaWindow = getMatchdayWindow(getJornadaSaturdayForDate(minDate))
+    setDateFrom(jornadaWindow.friday)
+    setDateTo(jornadaWindow.thursday)
     setRangeInitialized(true)
   }, [matches, rangeInitialized])
 

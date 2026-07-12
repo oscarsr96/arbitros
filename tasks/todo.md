@@ -1,3 +1,18 @@
+# Follow-up: default de Asignación = jornada completa viernes→jueves (2026-07-12)
+
+Estado: ✅ EJECUTADO Y VERIFICADO · tamaño S · ejecutor: sesión.
+Contexto: el usuario confirmó que el piloto real tiene partidos ENTRE SEMANA (lunes→jueves), menos que en
+finde. La jornada se mantiene viernes→jueves (el usuario descartó cambiarla a jueves→miércoles). El default
+de rango en Asignación era solo `[sábado, domingo]`, así que los partidos entre semana quedaban fuera de la
+designación por defecto y el tope "máx. partidos por jornada" (carga acotada al rango, decisión I2) no
+abarcaba la jornada completa.
+Cambio: `asignacion-view.tsx` — el default pasa a la jornada COMPLETA vía `getMatchdayWindow(sábado)` →
+`[window.friday, window.thursday]`. Eliminado el helper huérfano `addOneDay`. Gate: typecheck 0 · build OK
+(`/asignacion` compila). El coste NO se toca (es por día, independiente de la jornada). Sin commitear aún → se
+commitea junto con este follow-up.
+
+---
+
 # Plan: Coste REAL por día en el solver (marginal por persona/día) (2026-07-12)
 
 Estado: ✅ EJECUTADO Y VERIFICADO (sin commitear) · project-claude · tipo modificar · tamaño M · ejecutor: MIXTO (sonnet impl + fable review)
@@ -36,6 +51,31 @@ Ejecución: subagente sonnet (T1+T2), doc por la sesión (T3), review adversaria
   la regla real está testeada aparte en `travel-cost-daily.test.ts`); F6 (badge de propuesta puede mostrar
   marginal negativo "-1,22 €" — cosmético, el total regrupa bien); F7 (`solvePartial` sigue siendo código
   muerto preexistente, actualizado por coherencia).
+
+### Review adversarial de F2 (fable, 2º pase, post-commit 27c07fa) → LISTO CON RESERVAS
+
+Mecanismo F2 confirmado correcto (out-of-scope robusto ante datos inconsistentes; `totalCost` incremental
+independiente del orden; carga in-scope respetada; modo partial —el caso que motivaba F2— cubierto; umbral
+rng aditivo y F1 confirmados). Reservas, ninguna bloquea, ninguna corregida (menores/cosméticas/preexistentes):
+
+- **[IMPORTANTE, PREEXISTENTE, ajeno a este commit] → ticket aparte**: aplicar una propuesta con
+  `forceExisting=false` solo hace POST de las nuevas designaciones sin borrar las reemplazadas, y el POST no
+  deduplica (`asignacion-view.tsx:296`, `api/admin/designations/route.ts`). Como el solver no marca las
+  existentes cuando `!forceExisting`, puede re-proponer a la MISMA persona en el MISMO partido → designación
+  duplicada / sobre-cobertura al aplicar, y el `totalCost` mostrado diverge del real en BD. No lo introduce
+  esta tanda.
+- [MENOR, nuevo F2, presentación] `metrics.totalCost` puede ser NEGATIVO (base fuera de scope = día 100% en
+  casa con fijo, la propuesta añade un away barato → incremental < 0) y `proposal-selector` lo muestra como
+  "Coste" con `toFixed(0)` ("-0 €"/"-1 €"), sin indicar que es incremental. Correcto matemáticamente, feo.
+- [MENOR, nuevo F2] los badges de las existentes MANTENIDAS dependen del orden de `mockDesignations` (su
+  marginal se calcula al insertar) → suma de badges ≠ `totalCost` (que sí es orden-independiente). No afecta a
+  la optimización.
+- [MENOR] `solvePartial` NO recibió F2 y sigue sin llamadores (código muerto): borrar o revivir con F2.
+- [MENOR, mixto] venue con municipio sin resolver ('') → 35 km fallback = 9,10 € fantasma y exclusión de
+  sin-coche in-scope (preexistente); dos venues '' distintos el mismo día se dedupen como uno (nuevo, solo con
+  datos sucios; el seed FBM resuelve todos).
+- [COSMÉTICO] metrics no recalculadas en modo partial (cliente no las consume); solape doblemente comprobado;
+  `find` O(D×M)/O(D×P) por designación (preexistente, aceptable a la escala actual).
 
 ## Problema
 
