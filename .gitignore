@@ -56,3 +56,8 @@ __pycache__/
 # build info
 tsconfig.tsbuildinfo
 **/tsconfig.tsbuildinfo
+
+# datos mock persistidos a disco (designation-persistence.ts), cubre ambos
+# cwd posibles del monorepo (raíz y apps/web)
+.fbm-data/
+apps/web/.fbm-data/

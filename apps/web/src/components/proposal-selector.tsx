@@ -141,10 +141,18 @@ export function ProposalSelector({
           const coveragePct = proposal.metrics.coverage
 
           return (
-            <button
+            <div
               key={proposal.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onSelect(proposal.id)}
-              className={`relative rounded-xl border-2 p-5 text-left transition-all ${
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelect(proposal.id)
+                }
+              }}
+              className={`relative cursor-pointer rounded-xl border-2 p-5 text-left transition-all ${
                 isActive
                   ? `${config.bg} ${config.border} ring-2 ${config.ring} shadow-sm`
                   : `border-gray-200 bg-white ${config.bgHover} hover:border-gray-300 hover:shadow-sm`
@@ -258,7 +266,7 @@ export function ProposalSelector({
                   Seleccionada
                 </div>
               )}
-            </button>
+            </div>
           )
         })}
       </div>

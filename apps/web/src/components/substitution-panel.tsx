@@ -7,7 +7,6 @@ import { MapPin, Check, X, AlertTriangle } from 'lucide-react'
 import type { EnrichedMatch, AssignmentValidation } from '@/lib/types'
 import {
   mockPersons,
-  mockDesignations,
   calculateMockTravelCost,
   isPersonAvailable,
   hasTimeOverlap,
@@ -42,8 +41,19 @@ interface SubstitutionPanelProps {
   onSubstitute: (personId: string) => void
 }
 
-function getCandidates(match: EnrichedMatch, role: 'arbitro' | 'anotador'): CandidatePerson[] {
+function getCandidates(
+  match: EnrichedMatch,
+  role: 'arbitro' | 'anotador',
+  matches: EnrichedMatch[],
+): CandidatePerson[] {
   const venue = match.venue ? getMockVenue(match.venueId) : undefined
+
+  const assignedCounts = new Map<string, number>()
+  for (const m of matches) {
+    for (const d of m.designations) {
+      assignedCounts.set(d.personId, (assignedCounts.get(d.personId) ?? 0) + 1)
+    }
+  }
 
   return mockPersons
     .filter((p) => p.role === role && p.active)
@@ -53,7 +63,7 @@ function getCandidates(match: EnrichedMatch, role: 'arbitro' | 'anotador'): Cand
         person.municipalityId,
         venue?.municipalityId ?? '',
       )
-      const assigned = mockDesignations.filter((d) => d.personId === person.id).length
+      const assigned = assignedCounts.get(person.id) ?? 0
 
       const alreadyAssigned = match.designations.some((d) => d.personId === person.id)
 
@@ -113,7 +123,7 @@ export function SubstitutionPanel({
   onSubstitute,
 }: SubstitutionPanelProps) {
   const match = context ? matches.find((m) => m.id === context.matchId) : null
-  const candidates = match && context ? getCandidates(match, context.role) : []
+  const candidates = match && context ? getCandidates(match, context.role, matches) : []
   const validCount = candidates.filter((c) => c.validation.valid).length
 
   return (

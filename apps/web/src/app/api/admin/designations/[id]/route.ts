@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { mockDesignations } from '@/lib/mock-data'
+import { persistDesignations } from '@/lib/designation-persistence'
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   const index = mockDesignations.findIndex((d) => d.id === params.id)
@@ -18,6 +19,7 @@ export async function DELETE(_request: Request, { params }: { params: { id: stri
   }
 
   mockDesignations.splice(index, 1)
+  persistDesignations()
 
   return NextResponse.json({ success: true })
 }

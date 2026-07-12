@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { mockDesignations } from '@/lib/mock-data'
+import { persistDesignations } from '@/lib/designation-persistence'
 
 export async function POST() {
   let published = 0
@@ -11,6 +12,8 @@ export async function POST() {
       published++
     }
   }
+
+  persistDesignations()
 
   return NextResponse.json({
     published,

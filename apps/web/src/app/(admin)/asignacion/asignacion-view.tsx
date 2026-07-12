@@ -11,12 +11,11 @@ import { PublishDialog } from '@/components/publish-dialog'
 import { ProposalSelector } from '@/components/proposal-selector'
 import { SubstitutionPanel, type SubstitutionContext } from '@/components/substitution-panel'
 import { useAdminStore } from '@/stores/admin-store'
-import { Send, Zap, Loader2, MapPin, RotateCcw } from 'lucide-react'
+import { Send, Zap, Loader2, MapPin, RotateCcw, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrichedMatch, AssignmentValidation, ProposedAssignment, Proposal } from '@/lib/types'
 import {
   mockPersons,
-  mockDesignations,
   mockMatchdayAvailabilities,
   calculateMockTravelCost,
   isPersonAvailable,
@@ -46,6 +45,8 @@ export function AsignacionView() {
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
   const [loading, setLoading] = useState(true)
   const [publishOpen, setPublishOpen] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [saving, setSaving] = useState(false)
   const [sortBy, setSortBy] = useState<'cost' | 'load'>('cost')
   const [applying, setApplying] = useState(false)
   const [substitutionContext, setSubstitutionContext] = useState<SubstitutionContext | null>(null)
@@ -233,6 +234,23 @@ export function AsignacionView() {
     }
   }
 
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch('/api/admin/designations/persist', { method: 'POST' })
+      if (res.ok) {
+        toast.success('Designaciones guardadas ✓')
+        setLastSavedAt(new Date())
+      } else {
+        toast.error('Error al guardar')
+      }
+    } catch {
+      toast.error('Error al guardar')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handlePublish = async () => {
     const res = await fetch('/api/admin/designations/publish', { method: 'POST' })
     const data = await res.json()
@@ -282,31 +300,37 @@ export function AsignacionView() {
     if (newAssignments.length === 0) return
 
     setApplying(true)
-    let success = 0
-    let failed = 0
-
-    for (const assignment of newAssignments) {
+    try {
       const res = await fetch('/api/admin/designations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          matchId: assignment.matchId,
-          personId: assignment.personId,
-          role: assignment.role,
+          assignments: newAssignments.map((a) => ({
+            matchId: a.matchId,
+            personId: a.personId,
+            role: a.role,
+          })),
         }),
       })
-      if (res.ok) success++
-      else failed++
-    }
 
-    setApplying(false)
-    clearAllProposals()
-    fetchMatches()
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? 'Error al aplicar la propuesta')
+      }
 
-    if (failed === 0) {
-      toast.success(`${success} asignaciones aplicadas correctamente`)
-    } else {
-      toast.warning(`${success} aplicadas, ${failed} fallidas`)
+      const { applied, failed } = await res.json()
+      clearAllProposals()
+      fetchMatches()
+
+      if (failed === 0) {
+        toast.success(`${applied} asignaciones aplicadas correctamente`)
+      } else {
+        toast.warning(`${applied} aplicadas, ${failed} fallidas`)
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al aplicar la propuesta')
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -370,6 +394,17 @@ export function AsignacionView() {
     const venue = match.venue ? getMockVenue(match.venueId) : undefined
     const saturdayDate = getJornadaSaturdayForDate(match.date)
 
+    // Carga actual por persona a partir del estado `matches` (datos reales del
+    // servidor), NO del `mockDesignations` importado (copia estática del seed en
+    // cliente, siempre 0). Se precomputa una vez (O(designaciones)) en vez de
+    // recontar por persona (O(matches×personas)) dentro del map de abajo.
+    const assignedByPerson = new Map<string, number>()
+    for (const m of matches) {
+      for (const d of m.designations) {
+        assignedByPerson.set(d.personId, (assignedByPerson.get(d.personId) ?? 0) + 1)
+      }
+    }
+
     return mockPersons
       .filter((p) => p.role === activeSlot.role && p.active)
       .map((person) => {
@@ -379,7 +414,7 @@ export function AsignacionView() {
           venue?.municipalityId ?? '',
         )
 
-        const assigned = mockDesignations.filter((d) => d.personId === person.id).length
+        const assigned = assignedByPerson.get(person.id) ?? 0
 
         const matchdayAvail = mockMatchdayAvailabilities.find(
           (a) => a.personId === person.id && a.saturdayDate === saturdayDate,
@@ -444,9 +479,14 @@ export function AsignacionView() {
 
   const totalMatches = filteredMatches.length
   const coveredMatches = filteredMatches.filter((m) => m.isCovered).length
-  const pendingDesigs = mockDesignations.filter((d) => d.status === 'pending').length
+  // Pendientes de publicar: se derivan del estado `matches` (datos reales del
+  // servidor vía fetchMatches), NO del `mockDesignations` importado, que en el
+  // cliente es la copia estática del seed y nunca refleja lo que se ha aplicado
+  // → si no, "Publicar designaciones" quedaría siempre deshabilitado.
+  const allDesignations = matches.flatMap((m) => m.designations)
+  const pendingDesigs = allDesignations.filter((d) => d.status === 'pending').length
   const personsToNotify = new Set(
-    mockDesignations.filter((d) => d.status === 'pending').map((d) => d.personId),
+    allDesignations.filter((d) => d.status === 'pending').map((d) => d.personId),
   ).size
 
   const sorted = [...filteredMatches].sort((a, b) => {
@@ -875,14 +915,29 @@ export function AsignacionView() {
                 </Badge>
               )}
             </div>
-            <Button
-              onClick={() => setPublishOpen(true)}
-              disabled={pendingDesigs === 0}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Publicar designaciones
-            </Button>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400">
+                {lastSavedAt
+                  ? `Guardado ✓ ${lastSavedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Se guarda automáticamente al asignar'}
+              </span>
+              <Button variant="outline" onClick={handleSave} disabled={saving} className="gap-2">
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Guardar
+              </Button>
+              <Button
+                onClick={() => setPublishOpen(true)}
+                disabled={pendingDesigs === 0}
+                className="gap-2"
+              >
+                <Send className="h-4 w-4" />
+                Publicar designaciones
+              </Button>
+            </div>
           </div>
         </div>
 

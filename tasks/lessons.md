@@ -11,6 +11,8 @@
 - **Regla:** al smoke-testear una ruta que MUTA los arrays mock (import XLSX/CSV/FBM), calentar las rutas antes, o validar el pipeline puro con vitest.
   - **Why:** en Next dev la 1ª compilación on-demand de cada ruta reevalúa el módulo `mock-data`; una mutación hecha por la ruta de import ANTES de que la ruta de lectura esté compilada se pierde (parece no persistir). En caliente sí persiste. Afecta a todos los importadores.
   - **How to apply:** hacer una request de calentamiento a `/api/admin/matches` (o generar demo) antes del import, o testear `parseCalendarCsv`+`materializeImport` con vitest sin servidor.
+  - **Corolario (visto en vivo):** NO añadir una ruta NUEVA para mutar los arrays mock (una designación batch en `/api/.../apply`): la ruta fría re-evalúa `mock-data` y tiene su propio array AISLADO del que leen las rutas ya calientes → reporta éxito pero no persiste. Plegar la mutación en una ruta EXISTENTE que ya comparte módulo con el lector.
+  - **Corolario cliente (bug "Publicar" deshabilitado):** un componente `'use client'` que importa un array mock MUTABLE (`mockDesignations`) lee la copia ESTÁTICA del bundle de cliente (el seed, casi siempre vacío), NUNCA lo que mutan las rutas API en el server. Derivar contadores de UI (pendientes, carga, cobertura) del estado que viene de `fetch` (`matches[].designations`), no del array importado. Fix de fondo pendiente: mover los arrays mock a `globalThis` (patrón singleton Next dev) para que HMR/rutas frías no los reseteen.
 
 ## No borrar entregables del usuario en la limpieza
 

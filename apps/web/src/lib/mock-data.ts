@@ -7,7 +7,54 @@ import { generateReferees, generateScorers, type MockPerson } from './referee-ro
 import fbmSeed from './fbm-calendar/fbm-seed.json'
 // Generador determinista de disponibilidad de temporada para las 1279 personas
 // (ver mini-spec Parte 1, tasks/todo.md). Módulo hoja: sin ciclo con mock-data.
-import { generateSeasonAvailability } from './availability-roster'
+import { generateSeasonAvailability, type GeneratedAvailabilitySlot } from './availability-roster'
+
+// ── Store compartido en globalThis (fix HMR / rutas frías, ver CLAUDE.md) ───
+//
+// En `next dev`, cada HMR o compilación de una ruta "fría" reevalúa este
+// módulo desde cero, lo que crearía una copia aislada de cada array mutable
+// (`export const mockDesignations = []` volvería a ser `[]`). Todas las
+// evaluaciones del módulo comparten `globalThis`, así que respaldamos cada
+// array mutable (y su snapshot `INITIAL_*`) ahí con `??=`: la primera
+// evaluación crea el valor a partir de su inicializador real, las siguientes
+// reutilizan la MISMA instancia. Este archivo se importa desde componentes
+// cliente: prohibido importar `fs`/`path`/APIs de Node aquí (ver
+// designation-persistence.ts para el I/O de disco).
+interface FbmMockStore {
+  persons?: MockPerson[]
+  matches?: MockMatch[]
+  designations?: MockDesignation[]
+  availabilities?: GeneratedAvailabilitySlot[]
+  matchdayAvailabilities?: MatchdayAvailability[]
+  incompatibilities?: MockIncompatibility[]
+  courts?: MockCourt[]
+  venues?: MockVenue[]
+  competitions?: Array<(typeof demoCompetitions)[number]>
+  alertLog?: MockAlert[]
+  initialPersons?: MockPerson[]
+  initialMatches?: MockMatch[]
+  initialDesignations?: MockDesignation[]
+  initialAvailabilities?: GeneratedAvailabilitySlot[]
+  initialMatchdayAvailabilities?: MatchdayAvailability[]
+  initialIncompatibilities?: MockIncompatibility[]
+  initialCourts?: MockCourt[]
+  initialVenues?: MockVenue[]
+  designationsHydrated?: boolean
+}
+
+const __fbmGlobal = globalThis as unknown as { __fbmMockStore?: FbmMockStore }
+const __fbmStore: FbmMockStore = (__fbmGlobal.__fbmMockStore ??= {})
+
+// Flag de hidratación de designaciones desde disco: vive en el store de
+// globalThis para sobrevivir a HMR y no releer el fichero en cada request.
+// Lo usa exclusivamente designation-persistence.ts (server-only).
+export function isDesignationsHydrated(): boolean {
+  return !!__fbmStore.designationsHydrated
+}
+
+export function markDesignationsHydrated(): void {
+  __fbmStore.designationsHydrated = true
+}
 
 // ── Municipios ──────────────────────────────────────────────────────────────
 
@@ -218,10 +265,14 @@ const demoCompetitions = [
 ]
 
 // Catálogo demo + competiciones reales importadas del calendario FBM.
-export const mockCompetitions = [
-  ...demoCompetitions,
-  ...(fbmSeed.competitions as Array<(typeof demoCompetitions)[number]>),
-]
+// Respaldado en el store de globalThis: import-csv-fbm añade competiciones
+// nuevas en runtime; sin esto, tras un HMR los partidos importados
+// sobrevivirían (store) pero sus competiciones se perderían (re-seed).
+export const mockCompetitions: Array<(typeof demoCompetitions)[number]> =
+  (__fbmStore.competitions ??= [
+    ...demoCompetitions,
+    ...(fbmSeed.competitions as Array<(typeof demoCompetitions)[number]>),
+  ])
 
 // ── Pabellones ──────────────────────────────────────────────────────────────
 
@@ -1317,7 +1368,10 @@ const demoVenues: MockVenue[] = [
 ]
 
 // Catálogo demo + pabellones reales importados del calendario FBM.
-export const mockVenues: MockVenue[] = [...demoVenues, ...(fbmSeed.venues as MockVenue[])]
+export const mockVenues: MockVenue[] = (__fbmStore.venues ??= [
+  ...demoVenues,
+  ...(fbmSeed.venues as MockVenue[]),
+])
 
 // ── Pistas ──────────────────────────────────────────────────────────────────
 
@@ -1327,11 +1381,11 @@ export interface MockCourt {
   name: string
 }
 
-export const mockCourts: MockCourt[] = [
+export const mockCourts: MockCourt[] = (__fbmStore.courts ??= [
   { id: 'court-001', venueId: 'venue-001', name: 'Pista 1' },
   { id: 'court-002', venueId: 'venue-001', name: 'Pista 2' },
   { id: 'court-003', venueId: 'venue-007', name: 'Pista Central' },
-]
+])
 
 // ── Personas ────────────────────────────────────────────────────────────────
 
@@ -1493,15 +1547,22 @@ const seedPersons: MockPerson[] = [
 
 // 9 personas seed (demo, con designaciones/incompatibilidades) + 770 árbitros +
 // 500 anotadores generados de forma determinista (roster FBM; ver referee-roster).
-export const mockPersons: MockPerson[] = [
+export const mockPersons: MockPerson[] = (__fbmStore.persons ??= [
   ...seedPersons,
   ...generateReferees(mockMunicipalities.map((m) => ({ id: m.id, name: m.name }))),
   ...generateScorers(mockMunicipalities.map((m) => ({ id: m.id, name: m.name }))),
-]
+])
 
 // ── Incompatibilidades ──────────────────────────────────────────────────────
 
-export const mockIncompatibilities = [
+export interface MockIncompatibility {
+  id: string
+  personId: string
+  teamName: string
+  reason: string
+}
+
+export const mockIncompatibilities: MockIncompatibility[] = (__fbmStore.incompatibilities ??= [
   {
     id: 'incompat-001',
     personId: 'person-001',
@@ -1520,7 +1581,7 @@ export const mockIncompatibilities = [
     teamName: 'CB Móstoles',
     reason: 'Familiar en directiva',
   },
-]
+])
 
 // ── Helpers de fecha (local timezone, sin UTC shift) ────────────────────────
 
@@ -1564,13 +1625,15 @@ export interface MockMatch {
 // Partidos por defecto = calendario FBM real (Liga VIPS Masculina + Junior
 // Masculino ORO), generado desde el CSV oficial (ver fbmSeed y
 // scripts/generate-fbm-seed.ts). Reemplaza a los antiguos partidos demo.
-export const mockMatches: MockMatch[] = [...(fbmSeed.matches as MockMatch[])]
+export const mockMatches: MockMatch[] = (__fbmStore.matches ??= [
+  ...(fbmSeed.matches as MockMatch[]),
+])
 
 // ── Designaciones ───────────────────────────────────────────────────────────
 
 type DesignationStatus = 'pending' | 'notified' | 'completed'
 
-interface MockDesignation {
+export interface MockDesignation {
   id: string
   matchId: string
   personId: string
@@ -1584,7 +1647,9 @@ interface MockDesignation {
 
 // Sin designaciones demo: los partidos por defecto son el calendario FBM real
 // recién importado (sin asignar). Las designaciones se crean al designar.
-export const mockDesignations: MockDesignation[] = []
+// Persistidas a disco (designation-persistence.ts) e hidratadas al arranque
+// del server (instrumentation.ts) para sobrevivir a reinicios.
+export const mockDesignations: MockDesignation[] = (__fbmStore.designations ??= [])
 
 // ── Disponibilidades de ejemplo ─────────────────────────────────────────────
 
@@ -1785,7 +1850,10 @@ const seasonAvailability = generateSeasonAvailability(
   mockMatches.map((m) => m.date),
 )
 
-export const mockAvailabilities = [...generateAvailabilities(), ...seasonAvailability.slots]
+export const mockAvailabilities: GeneratedAvailabilitySlot[] = (__fbmStore.availabilities ??= [
+  ...generateAvailabilities(),
+  ...seasonAvailability.slots,
+])
 
 // ── Disponibilidad de jornada (formulario simplificado sabado/domingo/entre semana) ──
 
@@ -1810,48 +1878,49 @@ export interface MatchdayAvailability {
   updatedAt: string
 }
 
-export const mockMatchdayAvailabilities: MatchdayAvailability[] = [
-  {
-    id: 'matchday-avail-001',
-    personId: 'person-001',
-    saturdayDate: nextSaturday,
-    saturdayMorning: true,
-    saturdayAfternoon: true,
-    sundayMorning: true,
-    sundayAfternoon: false,
-    weekdayDays: [1, 3],
-    notes: null,
-    updatedAt: '2025-01-15T09:30:00.000Z',
-  },
-  {
-    id: 'matchday-avail-002',
-    personId: 'person-002',
-    saturdayDate: nextSaturday,
-    saturdayMorning: false,
-    saturdayAfternoon: true,
-    sundayMorning: true,
-    sundayAfternoon: true,
-    weekdayDays: [],
-    notes: 'Solo tarde el sabado',
-    updatedAt: '2025-01-16T18:00:00.000Z',
-  },
-  {
-    id: 'matchday-avail-003',
-    personId: 'person-006',
-    saturdayDate: nextSaturday,
-    saturdayMorning: true,
-    saturdayAfternoon: false,
-    sundayMorning: false,
-    sundayAfternoon: false,
-    weekdayDays: [4],
-    notes: null,
-    updatedAt: '2025-01-17T12:00:00.000Z',
-  },
-  // Muestra determinista (~40 registros) de disponibilidad de jornada de
-  // temporada, coherente con los slots generados por arquetipo (badge de
-  // notas del picker). Ver availability-roster.ts.
-  ...seasonAvailability.matchdayRecords,
-]
+export const mockMatchdayAvailabilities: MatchdayAvailability[] =
+  (__fbmStore.matchdayAvailabilities ??= [
+    {
+      id: 'matchday-avail-001',
+      personId: 'person-001',
+      saturdayDate: nextSaturday,
+      saturdayMorning: true,
+      saturdayAfternoon: true,
+      sundayMorning: true,
+      sundayAfternoon: false,
+      weekdayDays: [1, 3],
+      notes: null,
+      updatedAt: '2025-01-15T09:30:00.000Z',
+    },
+    {
+      id: 'matchday-avail-002',
+      personId: 'person-002',
+      saturdayDate: nextSaturday,
+      saturdayMorning: false,
+      saturdayAfternoon: true,
+      sundayMorning: true,
+      sundayAfternoon: true,
+      weekdayDays: [],
+      notes: 'Solo tarde el sabado',
+      updatedAt: '2025-01-16T18:00:00.000Z',
+    },
+    {
+      id: 'matchday-avail-003',
+      personId: 'person-006',
+      saturdayDate: nextSaturday,
+      saturdayMorning: true,
+      saturdayAfternoon: false,
+      sundayMorning: false,
+      sundayAfternoon: false,
+      weekdayDays: [4],
+      notes: null,
+      updatedAt: '2025-01-17T12:00:00.000Z',
+    },
+    // Muestra determinista (~40 registros) de disponibilidad de jornada de
+    // temporada, coherente con los slots generados por arquetipo (badge de
+    // notas del picker). Ver availability-roster.ts.
+    ...seasonAvailability.matchdayRecords,
+  ])
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -2410,18 +2479,28 @@ export interface MockAlert {
   sentAt: Date
 }
 
-export const mockAlertLog: MockAlert[] = []
+export const mockAlertLog: MockAlert[] = (__fbmStore.alertLog ??= [])
 
 // ── Snapshots iniciales para reset ────────────────────────────────────────
 
-const INITIAL_MATCHES = [...mockMatches]
-const INITIAL_PERSONS = [...mockPersons]
-const INITIAL_DESIGNATIONS: MockDesignation[] = [...mockDesignations]
-const INITIAL_AVAILABILITIES = [...mockAvailabilities]
-const INITIAL_MATCHDAY_AVAILABILITIES = [...mockMatchdayAvailabilities]
-const INITIAL_INCOMPATIBILITIES = [...mockIncompatibilities]
-const INITIAL_COURTS = [...mockCourts]
-const INITIAL_VENUES = [...mockVenues]
+// `??=` captura el SEED en la PRIMERA evaluación del módulo (arrays recién
+// creados desde su inicializador real), no un estado mutado de una
+// reevaluación posterior por HMR: las siguientes evaluaciones reutilizan el
+// snapshot ya guardado en el store de globalThis.
+const INITIAL_MATCHES = (__fbmStore.initialMatches ??= [...mockMatches])
+const INITIAL_PERSONS = (__fbmStore.initialPersons ??= [...mockPersons])
+const INITIAL_DESIGNATIONS: MockDesignation[] = (__fbmStore.initialDesignations ??= [
+  ...mockDesignations,
+])
+const INITIAL_AVAILABILITIES = (__fbmStore.initialAvailabilities ??= [...mockAvailabilities])
+const INITIAL_MATCHDAY_AVAILABILITIES = (__fbmStore.initialMatchdayAvailabilities ??= [
+  ...mockMatchdayAvailabilities,
+])
+const INITIAL_INCOMPATIBILITIES = (__fbmStore.initialIncompatibilities ??= [
+  ...mockIncompatibilities,
+])
+const INITIAL_COURTS = (__fbmStore.initialCourts ??= [...mockCourts])
+const INITIAL_VENUES = (__fbmStore.initialVenues ??= [...mockVenues])
 
 export function resetMockData() {
   mockMatches.length = 0

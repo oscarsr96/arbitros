@@ -1,3 +1,230 @@
+# Plan: Simplificar y mejorar designaciones — Tanda 1 (bug + persistencia + Guardar) (2026-07-12)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (gate estático + review adversarial fable) · SIN COMMITEAR · project-claude · tipo modificar · tamaño L · ejecutor: MIXTO (sonnet impl T1-T4 + fable review T5)
+
+## Fase 4 — resultado (2026-07-12)
+
+Gate: **pnpm typecheck 0 · 173 tests verdes** (172 + 1 nuevo de descarte de huérfanas). `build` NO ejecutado a
+propósito (dev server del usuario en :3001; build+dev comparten `.next`). Verificación runtime end-to-end
+(visibilidad cruzada + durabilidad a reinicio) = MANUAL del usuario (no puedo levantar un 2º server sin
+chocar con el suyo ni mutar sus designaciones reales del piloto).
+
+Ejecución: T1 (store+persistencia+instrumentation) y T3 (fuga substitution-panel) en paralelo (sonnet); luego
+T2 (persist en 5 rutas) y T4 (botón Guardar) en paralelo (sonnet); T5 gate + review adversarial (fable) →
+**LISTO CON RESERVAS, 0 blockers**. Reservas corregidas por la sesión:
+
+- **[IMPORTANTE] Huérfanas tras reinicio**: `ensureDesignationsHydrated` ahora descarta designaciones cuyo
+  `matchId`/`personId` no resuelva (Sets sobre `mockMatches`/`mockPersons`). Test nuevo.
+- **[IMPORTANTE] Fichero corrupto = pérdida silenciosa**: `persistDesignations` escribe atómico (tmp+rename);
+  si el JSON no parsea al hidratar, se respalda a `.bak` en vez de sobrescribirlo al primer persist.
+- **[MENOR] `mockCompetitions` y `mockAlertLog`** añadidos al store globalThis (misma clase de bug).
+- **[MENOR] `handleSave`** con try/catch (toast de error en fallo de red) + botón deshabilitado/spinner al guardar.
+- No corregidas (anotadas): recomputación eager de `generateSeasonAvailability` en HMR (preexistente, solo
+  coste, resultado descartado); redundancia cosmética en `.gitignore`.
+
+### Verificación runtime (2026-07-12) — ✅ CONFIRMADA POR EL USUARIO
+
+Tras reiniciar el dev server, el usuario confirma "ya están los partidos designados": las 90 designaciones
+persisten en `apps/web/.fbm-data/designations.json` (22,7 KB) y salen CONSISTENTES en todas las rutas
+(verificado por API con server respondiendo: matches=90 embebidas, dashboard=18 cubiertos, designations=90
+estable). El temido caveat de transición NO se materializó: los datos estaban en disco y se rehidrataron al
+reiniciar. Bug original resuelto de punta a punta.
+
+Nota operativa observada: bajo ráfaga de peticiones pesadas (matches 292 KB + dashboard/persons con 1279
+personas) el dev server de un solo hilo se satura y deja de responder (HTTP 000). Es peso PREEXISTENTE de las
+páginas admin, no lo introduce Tanda 1 (el SSR renderiza limpio, incl. el botón Guardar). Candidato a quick-win
+de Tanda 2: virtualizar el picker de 1279 personas y/o paginar/filtrar partidos en servidor.
+
+## Pendiente Tanda 1
+
+- `pnpm build` cuando el usuario pare el dev server.
+- Commit (el working tree arrastra cambios sin commitear de sesiones previas; decidir alcance con el usuario).
+
+---
+
+## Plan original (referencia)
+
+Decisiones del usuario (AskUserQuestion 2026-07-12):
+
+1. **Persistencia** = `globalThis` (array compartido por todas las páginas/rutas) **+ fichero JSON** en disco (sobrevive a reinicios/HMR). NO se migra a Supabase ahora (fase aparte).
+2. **Posiciones** = slots nombrados que elige el designador; se guarda la posición en la designación. Mesa = **Anotador / Cronometrador / 24"**. (→ Tanda 2, feature B.)
+3. **Entrega** = bug + persistencia PRIMERO (esta Tanda 1), verificar y entregar; luego B-F (Tanda 2).
+
+## Diagnóstico (confirmado por 3 agentes de exploración)
+
+- **Bug A "las designaciones publicadas no salen en el resto de páginas"**: causa raíz = `mock-data.ts` NO usa `globalThis`. En `next dev`, cada HMR/ruta fría reevalúa el módulo y crea su propia copia aislada de `mockDesignations = []`. El portal las ve porque su ruta estaba "caliente" al publicar; las demás vieron un array recién reseteado. Estructuralmente TODAS las páginas top-level (dashboard, partidos, personal, asignación, reportes, calendario) leen vía `fetch` a rutas API que usan el array vivo → con un único array compartido, todas lo ven. (`mock-data.ts:1567,1587,1496`; INITIAL\_\* y `resetMockData` en `mock-data.ts:2417-2442`.)
+- **Fuga secundaria**: `substitution-panel.tsx:10,56` importa `mockDesignations` ESTÁTICO en un `'use client'` (siempre `[]` en el bundle cliente) para el contador `matchesAssigned` de cada candidato → dato erróneo. El resto del panel usa la prop `match.designations` (correcto).
+- **Footgun (no es el bug de hoy, se ANOTA)**: `api/admin/matches/import-csv-fbm/route.ts:53` hace `mockDesignations.length = 0` al reimportar el calendario → borra designaciones publicadas. Se documenta; no se cambia el comportamiento en Tanda 1.
+- **Feature F "Guardar"**: hoy toda designación ya se persiste en memoria al crearse (`status:'pending'`); no hay estado "borrador" separado (`pending`=trabajo en curso Y guardado; `notified`=publicado). Lo que falta es DURABILIDAD (memoria se pierde al reiniciar) y el botón explícito. El fichero JSON aporta la durabilidad; el botón, la confirmación.
+
+### Límite conocido (documentar al usuario)
+
+El fichero JSON persiste en el disco LOCAL (piloto en local, dev :3001). En Vercel el FS es efímero/solo-lectura → la durabilidad de producción real requeriría la migración a Supabase (opción diferida). Para el piloto local es suficiente.
+
+## Diseño de la persistencia
+
+1. **`globalThis` singleton** en `mock-data.ts`: respaldar los arrays MUTABLES y sus snapshots `INITIAL_*` en un contenedor `(globalThis as any).__fbmMockStore ??= {}` con patrón `??=`, de modo que HMR/ruta fría reutilicen SIEMPRE la misma instancia.
+   - Arrays: `mockDesignations` (crítico, con estado de usuario) + por consistencia `mockMatches`, `mockPersons`, `mockAvailabilities`, `mockMatchdayAvailabilities`, `mockIncompatibilities`, `mockCourts`, `mockVenues`.
+   - **INITIAL\_\* también en el store** (`??=`): deben capturar el SEED en la primera evaluación, no el estado mutado de una reevaluación posterior (si no, `resetMockData()` restauraría datos ya mutados). Verificarlo con test.
+   - Seguridad cliente: `globalThis` existe en el navegador; el bundle cliente obtiene su propia copia vacía, inocuo (nadie del cliente debe depender de `mockDesignations`; la única fuga se corrige en T3). NO importar `fs` en `mock-data.ts` (se importa desde componentes cliente).
+2. **Módulo server-only `lib/designation-persistence.ts`** (`import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'`; solo lo importan rutas API, nunca componentes cliente):
+   - `ensureDesignationsHydrated()`: idempotente vía flag en `__fbmMockStore`. Si no hidratado y existe el fichero → parsea y hace `mockDesignations.push(...revividos)` (revivir `notifiedAt`/`createdAt` a `Date`). En proceso nuevo (reinicio) el flag está limpio → carga de disco; en HMR el flag persiste en globalThis → no recarga (evita doble carga).
+   - `persistDesignations()`: `writeFileSync` del array a JSON (fechas → ISO). Ruta `apps/web/.fbm-data/designations.json` (crear dir si falta).
+3. **Hidratación al arrancar**: `apps/web/src/instrumentation.ts` con `register()` que llama `ensureDesignationsHydrated()` una vez al iniciar el server (evita esparcir la llamada por 13 rutas). Si `instrumentation` diera problemas en esta versión de Next 14 → fallback: llamar `ensureDesignationsHydrated()` al inicio de las rutas que leen designaciones. Añadir `experimental.instrumentationHook` en `next.config` si la versión lo requiere.
+4. **Persistir tras cada mutación** (solo ~4 rutas, server-only): `POST /api/admin/designations` (crear + batch apply, tras el/los push), `POST /api/admin/designations/publish` (tras mutar status), `DELETE /api/admin/designations/[id]` (tras splice), `api/admin/demo/route.ts` (reset/push) e `import-csv-fbm` (tras el wipe, para que disco = memoria). `resetMockData()` vive en mock-data (no fs) → la ruta que lo llama persiste después.
+5. **`.gitignore`**: añadir `apps/web/.fbm-data/`.
+
+## Task breakdown (Tanda 1)
+
+**T1. Store `globalThis` + módulo de persistencia + hidratación** · ejecutor: `sonnet` · esfuerzo: `xhigh`
+(a) `mock-data.ts` (arrays + INITIAL\__ al `__fbmMockStore` con `??=`); nuevo `lib/designation-persistence.ts`; nuevo `apps/web/src/instrumentation.ts`; `next.config._`si hace falta el flag;`.gitignore`.
+(b) Aceptación: typecheck 0; `mockDesignations`es la MISMA referencia entre dos`require`/evaluaciones del módulo (test); `INITIAL_DESIGNATIONS`sigue siendo el seed tras mutar el array (test de`resetMockData`verde);`mock-data.ts`NO importa`node:fs`(grep); hidratar dos veces no duplica (idempotente, test); persistir → el JSON existe con los datos y revive fechas a`Date`(test del módulo persistencia con fichero temporal).
+Justificación etiqueta: bien especificado pero sutil (identidad de arrays, orden de captura de INITIAL, seguridad de bundle cliente, idempotencia) y el fallo = pérdida de estado (el dolor del usuario) →`sonnet xhigh`, escalar a fable si falla 2 veces.
+
+**T2. Cablear persist en las rutas mutadoras** · ejecutor: `sonnet` · esfuerzo: `high`
+(a) `api/admin/designations/route.ts`, `.../publish/route.ts`, `.../[id]/route.ts`, `api/admin/demo/route.ts`, `api/admin/matches/import-csv-fbm/route.ts`.
+(b) Llamar `persistDesignations()` tras cada mutación; en demo/reset persistir tras `resetMockData()`. `route.ts` solo exporta handlers/config (lección lessons.md); helpers en `lib/`. Comentario `// FOOTGUN` en el wipe del csv-import (comportamiento intacto, solo documentado).
+(c) Aceptación: typecheck 0; smoke API (§gate) demuestra visibilidad cruzada y fichero escrito.
+
+**T3. Quitar la fuga estática de `substitution-panel.tsx`** · ejecutor: `sonnet` · esfuerzo: `low`
+(a) `components/substitution-panel.tsx`.
+(b) `matchesAssigned` de cada candidato se deriva de la prop `matches` (`matches.flatMap(m=>m.designations).filter(d=>d.personId===person.id).length`), no del import estático `mockDesignations`. Eliminar el import huérfano.
+(c) Aceptación: 0 imports de `mockDesignations` en componentes cliente (grep); el contador refleja las designaciones reales; typecheck 0.
+
+**T4. Botón "Guardar designaciones" + indicador de guardado** · ejecutor: `sonnet` · esfuerzo: `high`
+(a) `asignacion-view.tsx`; nuevo `api/admin/designations/persist/route.ts` (POST → `persistDesignations()` → `{ saved: n }`).
+(b) Botón "Guardar" en la barra de acciones junto a "Publicar"; al pulsar, POST al endpoint y toast "Guardado ✓ HH:MM"; texto sutil "Se guarda automáticamente al asignar" para dejar claro que el trabajo está a salvo toda la semana. Publicar sigue siendo la acción de jueves (pending→notified). NO se inventa un estado nuevo del enum: `pending`=borrador guardado, `notified`=publicado.
+(c) Aceptación: el botón guarda y confirma; publicar sigue funcionando; typecheck 0; la semántica borrador/publicado queda clara en la UI.
+
+**T5. Gate + review adversarial (Fase 4)** · ejecutor: PLANNER (fable, juez) · esfuerzo: `max`
+(a) Todo el diff de Tanda 1.
+(b) `pnpm typecheck` + `pnpm test` + `pnpm build`. Smoke runtime por API (rutas calientes, patrón de lessons.md): crear designación vía `POST /api/admin/designations` → leerla desde OTRA ruta (`GET /api/admin/matches` y `/api/admin/dashboard`) → visible (prueba el array compartido); verificar `apps/web/.fbm-data/designations.json` escrito con los datos; publicar → status notified en todas las lecturas. Restart real = manual (el usuario reinicia y confirma que persisten). Review adversarial: identidad de arrays, captura de INITIAL, seguridad del bundle cliente (sin `fs` en cliente), idempotencia de hidratación, huérfanos, surgical changes.
+(c) Aceptación: ver criterios globales.
+
+## Criterios de aceptación globales (Tanda 1)
+
+- `pnpm typecheck` 0; `pnpm test` verde (existentes + nuevos de T1); `pnpm build` OK.
+- Una designación creada es visible en dashboard, partidos, personal, asignación, reportes y portal SIN necesidad de "calentar" rutas (array único compartido).
+- El fichero JSON se escribe al crear/publicar/borrar; al reiniciar el server las designaciones siguen ahí (verificación manual del usuario).
+- `substitution-panel` ya no lee el array estático; 0 imports de `mockDesignations` en cliente.
+- Botón "Guardar" operativo; "Publicar" intacto.
+- Sin regresión en `resetMockData()` ni en el índice de disponibilidad.
+
+## Fuera de scope de Tanda 1 (anotado)
+
+- Footgun del wipe en import-csv-fbm (solo documentado).
+- Migración a Supabase (diferida por decisión del usuario).
+- Features B-F → Tanda 2 (abajo).
+
+---
+
+## Esbozo Tanda 2 (features B-F; se detalla y verifica con el usuario tras entregar Tanda 1)
+
+- **B. Nick + categoría + posición en cada partido**: añadir campo de posición a la designación (árbitro: `principal|auxiliar`; anotador: `anotador|cronometrador|24`), propagar `nick`/`refereeLevel` en `getMockDesignationsForMatch` + `EnrichedDesignation.person` (hoy no lo hacen, `mock-data.ts:1894-1913`, `types.ts:60-68`); slots nombrados en el picker (`assignment-slot.tsx`, `person-picker.tsx`, `asignacion-view.tsx`); render en las 3 tarjetas (match-detail-row, assignment-slot, demo-view). Reutilizar el precedente `person-card.tsx:60-82` (nick «…» + badge categoría). Considerar conectar la matriz `referee-eligibility.ts` (principal/auxiliar) ya existente para validar/sugerir.
+- **C. Nicks de una palabra sin determinantes**: reescribir `buildNickPool()` (quitar compuestos "X DE Y" y artículos EL/LA) y los 9 demo (`mock-data.ts:1341-1477`). TENSIÓN: ~200 palabras sueltas < 1279 personas y sin sufijos → ampliar el pool a ≥1300 palabras sueltas curadas (topónimos + apodos sin artículo + más), determinista.
+- **D. Disponibilidad visible en Asignación**: badge positivo/negativo de disponibilidad en los slots YA asignados (`assignment-slot.tsx` hoy no muestra nada) usando `isPersonAvailable`; el picker ya marca "No disponible" (negativo).
+- **E. Panel de verificación pre-publicación**: por persona designada, comprobar (1) dentro de disponibilidad; (2) sin solape real ni hueco insuficiente entre partidos (usar MINUTOS + duración de partido, no hora entera; umbrales: <2h aviso, <1h30 error, solape=error) con EXCEPCIÓN "mismo pabellón + misma categoría → mismo cuerpo arbitral esperado (OK)". Sustituye/extiende `PublishDialog`. Necesita una función de solape NUEVA correcta (la actual `hasTimeOverlap` es no-op en cliente y trunca a hora). Umbrales a confirmar con el usuario.
+- **F. (parcial en Tanda 1)** El botón Guardar se hace en Tanda 1; en Tanda 2 solo se pule si hiciera falta.
+
+---
+
+# Fix: "Aplicar propuesta no designa" — hidratación rota + robustez batch (2026-07-12)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (sin commitear) · project-claude · tipo modificar · tamaño M · ejecutor: sesión
+Decisión usuario (AskUserQuestion 2026-07-12): "Hidratación + robustez batch"; simplificación DESPUÉS.
+
+## Resultado (Fase 4)
+
+Gate: typecheck 0 · 163 tests verdes. Build NO ejecutado a propósito (dev server del usuario corriendo en
+:3001; build+dev comparten `.next` → riesgo de corromper su sesión). Verificación de runtime por API (lo que
+importa): batch aplica 90 → **18/18 partidos cubiertos, 90 designaciones persistidas y visibles en
+/api/admin/matches**; re-aplicar el mismo lote → applied=0, conflicts=90 (idempotente, sin duplicados/
+sobre-cobertura); modo unitario intacto (404 en datos inválidos). Consola: el warning de `<button>` anidado
+DESAPARECIÓ tras T1.
+
+- **T1 (ProposalSelector) ✅**: tarjeta `<button>`→`<div role="button" tabIndex onKeyDown>`. Elimina el HTML
+  inválido (botón anidado) que rompía la hidratación del panel de propuestas. Verificado en consola.
+- **T2 (batch) ✅ con corrección de diseño**: PRIMER intento con ruta NUEVA `/api/admin/designations/apply`
+  → reportaba applied=90 pero NO persistía (0/18) y re-aplicar daba applied=90 otra vez. Causa: una ruta
+  NUEVA y "fría" en Next dev re-evalúa `mock-data` y tiene su propio `mockDesignations` AISLADO del que lee
+  `/api/admin/matches` (lección de lessons.md). Fix: borrar la ruta nueva y **plegar el batch en la ruta
+  EXISTENTE `/api/admin/designations`** (ya caliente, comparte módulo con el lector). Rama por
+  `assignments[]` = lote; `{matchId,personId,role}` = unitario. Cliente postea el lote a esa ruta.
+- **T3 (AdminSidebar) — NO es bug de código**: el mismatch `<aside>` vs `<div>` NO se toca. El HTML del SSR
+  emite `<div class="...flex min-h-screen"><aside ...>` correcto (verificado por curl) → el mismatch lo
+  induce una **extensión del navegador** que inyecta DOM antes de la hidratación (el harness lleva la
+  extensión de Claude; por eso las congelaciones de 30s+ en dev). En un navegador limpio no ocurre. Cambiar
+  AdminSidebar sería a ciegas y contra surgical-changes. Anotado.
+- Limitación de verificación: el navegador de test se congela por esa extensión → no pude hacer el clic
+  end-to-end; verificado por API en su lugar. El usuario puede recargar /asignacion (hot-reload) y reintentar.
+
+### Seguimiento: "Publicar designaciones" deshabilitado (mismo día)
+
+Reporte usuario: "ahora sí sale bien [aplicar] pero no deja Publicar designaciones".
+
+- **Causa**: `asignacion-view.tsx` calculaba `pendingDesigs`/`personsToNotify` (y el "asignados" del
+  picker) desde el `mockDesignations` IMPORTADO, que en el cliente es la copia estática del seed (siempre 0)
+  → el botón `disabled={pendingDesigs === 0}` quedaba siempre deshabilitado. La lista de partidos sí reflejaba
+  el server (via fetchMatches); solo esos contadores leían la copia stale.
+- **Fix ✅**: derivar `pendingDesigs`/`personsToNotify` de `matches.flatMap(m => m.designations)` (estado real
+  del server, `EnrichedDesignation` trae `status`+`personId`). Igual para la carga del picker (`assignedByPerson`
+  precomputado O(designaciones), evita O(matches×personas) en el hot path). Eliminado el import huérfano
+  `mockDesignations`.
+- **Verificado por API (rutas calientes)**: aplicar → pending 90 → botón habilitado; publicar → "90 publicadas",
+  notified 90 / pending 0 → botón deshabilitado. typecheck 0 · 163 tests.
+- **Fragilidad de Next dev observada (PREEXISTENTE, no la introduce el fix)**: el primer hit de una ruta FRÍA
+  (p. ej. `publish` recién usada) re-evalúa `mock-data` y puede PERDER las mutaciones en memoria (en el test,
+  publicar en frío borró los 90). Una vez caliente persiste. Mitigado calentando las rutas en el server del
+  usuario. **Candidato para la fase de simplificación/robustez: guardar los arrays mock en `globalThis`
+  (patrón singleton Next dev) para que HMR/recompilación no los resetee — eliminaría toda esta clase de bugs
+  que ya está en lessons.md y ha mordido 2 veces hoy.**
+
+Pendiente: commit; que el usuario reconfirme Publicar en su navegador; build cuando pare el dev server;
+proponer el singleton `globalThis` en la fase de simplificación.
+
+## Diagnóstico (systematic-debugging, reproducido)
+
+- Backend OK (probado por API con 25/09–02/10, 1ª Nac + Junior ORO): optimizar → aplicar 90 → 90/90
+  aplicadas, 18/18 partidos cubiertos y persistidos. `POST /api/admin/designations` + `GET
+/api/admin/matches` comparten el módulo mock en :3001.
+- En navegador, "Aplicar seleccionada" NO lanza ningún POST a `/api/admin/designations` (traza de red) →
+  0 designaciones. Reproducido 2x. La pestaña se congela 30s+.
+- Causa raíz (consola): `ProposalSelector` renderiza `<button>` DENTRO de `<button>` (tarjeta = botón,
+  con la "X" de borrar y el toggle de "slots sin cubrir" como botones internos) → HTML inválido → el
+  parser cierra el botón exterior antes de tiempo → hidratación de React falla → re-render de toda la raíz
+  en cliente, con jank/congelación y clics perdidos. 2º foco: `AdminSidebar` (`<aside>` vs `<div>`),
+  page-wide, preexistente.
+- "Nuevas" = nº de designaciones nuevas (isNew) que crearía la propuesta. Las 3 propuestas NO son idénticas
+  por dentro (P1≠P2≠P3), solo comparten métricas visibles (coste≈189,8 · 100% · 90 · tiempo).
+
+## Tareas
+
+**T1. ProposalSelector: quitar botones anidados (raíz)** · sesión · esfuerzo: high
+(a) `components/proposal-selector.tsx`: tarjeta exterior `<button>` → `<div role="button" tabIndex={0}>`
+con onClick + onKeyDown (Enter/Space). Botones internos intactos.
+(b) Aceptación: 0 `<button>` dentro de `<button>`; consola sin warning de nested button; seleccionar
+propuesta funciona; clics fiables.
+
+**T2. Endpoint batch + wire cliente (robustez)** · sesión · esfuerzo: high
+(a) Nuevo `app/api/admin/designations/apply/route.ts`: POST `{ assignments: {matchId,personId,role}[] }`,
+valida cada una con `checkDesignationConflict` contra `mockDesignations` VIVO (ve las que va insertando
+→ sin duplicados/sobre-cobertura intra-lote), inserta las válidas, devuelve `{applied, failed, conflicts}`.
+(b) `asignacion-view.tsx#handleApplyProposal`: una sola llamada al batch (en vez de N POST secuenciales),
+luego clearAllProposals()+fetchMatches(), toast con applied/failed. Manual/sustitución/re-optimizar
+siguen usando el POST unitario (no se tocan).
+(c) Aceptación: aplicar propuesta = 1 request; designaciones creadas; feedback correcto.
+
+**T3. AdminSidebar hidratación** · sesión · esfuerzo: medium
+(a) Diagnóstico empírico tras T1 (consola en recarga limpia). Fix quirúrgico si la causa es clara; si
+resulta ambiental (extensión/primer paint), reportar honesto sin parche ciego.
+
+**T4. Verificar (Fase 4)** · sesión · esfuerzo: high
+(a) `pnpm typecheck` + `pnpm test` (designation-validation + suite) + `pnpm build`.
+(b) Smoke navegador: reset → optimizar → aplicar → designaciones creadas, slots pintados, sin congelación,
+consola sin el warning de nested button.
+
+---
+
 # Follow-up: fix duplicados / sobre-cobertura en el POST de designaciones (2026-07-12)
 
 Estado: ✅ EJECUTADO Y VERIFICADO · tamaño S · ejecutor: sesión.

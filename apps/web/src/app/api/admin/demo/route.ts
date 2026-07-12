@@ -25,6 +25,7 @@ import {
 } from '@/lib/mock-data'
 import { solve } from '@/lib/solver'
 import type { EnrichedMatch, EnrichedPerson } from '@/lib/types'
+import { persistDesignations } from '@/lib/designation-persistence'
 
 // ── Pools de datos ────────────────────────────────────────────────────────
 
@@ -284,6 +285,7 @@ export async function POST(request: Request) {
 
   if (action === 'reset') {
     resetMockData()
+    persistDesignations()
     return NextResponse.json({ reset: true })
   }
 
@@ -731,6 +733,8 @@ export async function POST(request: Request) {
       isCovered: refereesAssigned >= m.refereesNeeded && scorersAssigned >= m.scorersNeeded,
     }
   })
+
+  persistDesignations()
 
   return NextResponse.json({
     generated: {

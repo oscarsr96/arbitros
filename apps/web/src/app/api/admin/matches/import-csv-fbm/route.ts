@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { mockMatches, mockVenues, mockCompetitions, mockDesignations } from '@/lib/mock-data'
 import { parseCalendarCsv, type ParsedCsvMatch } from '@/lib/fbm-calendar/parse-calendar-csv'
 import { materializeImport } from '@/lib/fbm-calendar/materialize-import'
+import { persistDesignations } from '@/lib/designation-persistence'
 
 // Importador del CSV oficial de calendario de partidos de la FBM. El fichero
 // llega en cp1252/latin1 (tildes se corrompen si se lee como UTF-8): se
@@ -50,7 +51,10 @@ export async function POST(request: Request) {
 
     // Las designaciones referenciaban partidos que ya no existen tras vaciar
     // mockMatches: quedarían huérfanas.
+    // FOOTGUN: reimportar el CSV borra TODAS las designaciones (incluidas publicadas).
+    // Comportamiento intencionado al cambiar de calendario; documentado, no se cambia.
     mockDesignations.length = 0
+    persistDesignations()
 
     const existingVenueIds = new Set(mockVenues.map((v) => v.id))
     for (const venue of venues) {
