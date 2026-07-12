@@ -1,3 +1,154 @@
+# Plan: Coste REAL por día en el solver (marginal por persona/día) (2026-07-12)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (sin commitear) · project-claude · tipo modificar · tamaño M · ejecutor: MIXTO (sonnet impl + fable review)
+Elección del usuario (AskUserQuestion 2026-07-12): "Coste real por día" como primer eje de mejora del modelo
+de designaciones.
+
+## Fase 4 — resultado
+
+Gate: **pnpm typecheck 0 · 154 tests verdes · build OK**. Archivos: `solver.ts`, `solver.test.ts`, `CLAUDE.md`.
+Ejecución: subagente sonnet (T1+T2), doc por la sesión (T3), review adversarial fable (T4).
+
+- **Bug encontrado por la sesión (no lo cazaron los tests del subagente) — CORREGIDO**: al permitir coste
+  marginal NEGATIVO (día que pasa de fijo en casa a salida barata), la selección con rng usaba umbral
+  multiplicativo `base·1.05`, que con `base<0` vaciaba el filtro → `topCandidates[0]` undefined → slot sin
+  cubrir (solo con numProposals≥2 + costWeight alto). Fix: umbral aditivo `base + 0.05·|base|` + test de
+  regresión.
+- **F1 (importante, review fable) — CORREGIDO**: con `forceExisting=false` + designaciones existentes en
+  rango, `metrics.totalCost` contaba doble el slot (existente descartada + sustituta). Fix: el total se
+  regrupa sobre `assignments` (la solución propuesta), no sobre `assignmentsByPerson` (acumulador de solape).
+  Test de regresión añadido.
+- **F4 (menor, latente) — CORREGIDO**: la penalización sin-coche ×2 podría premiar viajes largos si en el
+  futuro un marginal saliera negativo con directKm>15 (hoy imposible con las tarifas actuales). Guarda
+  `Math.max(0, normalizedCost)`.
+- **F2 (importante) — CORREGIDO (profundizar, decisión usuario)**: el coste marginal (y `metrics.totalCost`)
+  ahora ven el día COMPLETO de cada persona, incluidas designaciones cuyo partido cae FUERA del scope
+  (otra categoría o fuera del rango). `solver.ts` resuelve fecha+municipio de esas designaciones vía
+  `mockMatchById`+`getMockVenue` y las añade al acumulador de coste (NO a la carga, que sigue acotada al
+  scope por I2, ni a la salida `assignments`). `totalCost` = coste INCREMENTAL sobre el día real:
+  `dia(base ∪ propuesto) − dia(base)`, con `base` = municipios fuera de scope. El modo `partial` de
+  `/api/optimize` va por `solve` (matches=[1 partido]) → queda cubierto por F2 automáticamente. Test F2
+  añadido; I2 y F1 siguen verdes (sin regresión). Decisión de coherencia: la CARGA se mantiene acotada al
+  scope (I2), solo el COSTE ve el día completo (el coste es dinero y debe ser exacto; la carga es un tope
+  configurable por tanda). Anotado como asimetría deliberada.
+- Menores anotados (no bloquean): F3 (coste de designación de persona inactiva se excluye del total, caso
+  raro); F5 (el test replica `calculateDailyTravelCost` a mano → puede quedar obsoleto si cambia la regla;
+  la regla real está testeada aparte en `travel-cost-daily.test.ts`); F6 (badge de propuesta puede mostrar
+  marginal negativo "-1,22 €" — cosmético, el total regrupa bien); F7 (`solvePartial` sigue siendo código
+  muerto preexistente, actualizado por coherencia).
+
+## Problema
+
+El solver (`apps/web/src/lib/solver.ts`) optimiza un coste que la FBM no paga:
+
+- `calculateTravelCost` (solver) = `3€` fijo mismo-muni + `km × 0,10`, **POR PARTIDO**. Hardcodeado.
+- Regla real (`calculateDailyTravelCost`, mock-data) = **POR PERSONA Y DÍA**: si hay salida a otro municipio →
+  solo km × **0,26** (un trayecto por municipio destino distinto, sin fijo); si todo el día es en el municipio
+  propio → fijo por día (Madrid 3 / resto 2).
+- Consecuencias: (1) tarifa km errónea (0,10 vs 0,26); (2) el "óptimo" del solver ignora la **sinergia por
+  día** (dar a una persona varios partidos el mismo día y mismo municipio destino es casi gratis tras el primer
+  trayecto, pero el solver le cobra km por cada uno); (3) el badge de la propuesta (solver, 0,10) diverge del
+  badge del picker manual (`calculateMockTravelCost`, 0,26).
+- Revisa D1 del plan archivado (se dejó el solver por-partido a propósito); decisión del usuario lo supersede.
+
+## Modelo de coste marginal (contrato)
+
+Para puntuar un candidato en un slot, el coste es el **incremento** que añade a la liquidación del día de esa
+persona, no un fijo por partido:
+
+```
+munisBefore = municipios de venue ya asignados a ESA persona en ESA fecha (designaciones en scope + propuestas
+              ya hechas en este solve)
+marginal(home, munisBefore, v) = calculateDailyTravelCost(home, munisBefore ∪ {v})
+                               − calculateDailyTravelCost(home, munisBefore)
+```
+
+Propiedades que da gratis (mismo día / mismo municipio destino → 0; primer trayecto away → km×0,26; día
+solo-casa → fijo 3/2; primer away en un día que era solo-casa → el fijo desaparece y se paga km):
+
+- 2º partido misma fecha y mismo municipio away que el 1º → marginal **0**.
+- Partido en el municipio propio en un día con salida away → marginal **0**.
+- Primer partido away del día → **km(home,v) × 0,26**.
+- Día 100% en municipio propio → **fijo** (Madrid 3 / resto 2), una sola vez.
+
+### Reglas de implementación (para no rederivar)
+
+1. **Fuente de la verdad**: usar `calculateDailyTravelCost` de `mock-data.ts` (no reimplementar la fórmula) para
+   que solver y liquidación no puedan divergir. Añadirla al `vi.mock('../mock-data')` de `solver.test.ts` con
+   una implementación local fiel + las constantes `TRAVEL_RATE_PER_KM/FLAT_MADRID/FLAT_OTHER`.
+2. **Tracking**: añadir `venueMuniId` al `Assignment` interno del solver. Enrutar TODA alta de asignación
+   (existentes cargadas por `forceExisting` + picks nuevos) por un único acumulador `Map<personId, Map<fecha,
+string[]>>`; calcular el marginal contra el acumulado ANTES de añadir el nuevo municipio. Cuidado con no
+   contar dos veces las existentes (hoy se tocan en el bucle de carga L199-217 y en el de `forceExisting`
+   L220-242): una sola vía de acumulación.
+3. **Feasibility usa distancia DIRECTA, no marginal**: el hard-cut sin coche `>30 km` y la penalización sin
+   coche `15-30 km ×2` usan `getMockDistance(home, v)` (la persona conduce igual aunque el marginal sea 0). La
+   penalización ×2 multiplica el coste marginal usando el umbral sobre la km directa.
+4. **`ProposedAssignment.travelCost`** = coste marginal del pick; **`distanceKm`** = km directa al venue
+   (0 si mismo municipio). El badge de la propuesta mostrará el incremento real (un 2º partido del día puede
+   salir 0,00 €, que es lo correcto).
+5. **`metrics.totalCost`** = total real agrupado por persona/día sobre TODAS las asignaciones en scope
+   (existentes + nuevas), calculado al final regrupando con `calculateDailyTravelCost` (orden-independiente),
+   NO sumando los `travelCost` por asignación. Así el titular = euros reales.
+6. Aplicar el mismo modelo en `solve`, en el bloque `forceExisting` y en `solvePartial`.
+7. Manual picker (`calculateMockTravelCost`) se deja como estimación por-partido (fuera de scope; se anota la
+   divergencia de método: picker estima por partido, solver optimiza el marginal real).
+
+## Task breakdown
+
+**T1. Coste marginal en el solver** · ejecutor: `sonnet` · esfuerzo: `xhigh`
+(a) `apps/web/src/lib/solver.ts`.
+(b) Eliminar `calculateTravelCost` (3€/0,10). Añadir `venueMuniId` al `Assignment` interno y el acumulador
+único por persona/fecha. Puntuar con el marginal (regla 1-3). Reportar `travelCost`=marginal y
+`distanceKm`=km directa (regla 4). `metrics.totalCost` regrupado real (regla 5). Cubrir `solve`,
+`forceExisting` y `solvePartial` (regla 6). Importar `calculateDailyTravelCost` de mock-data.
+(c) Aceptación: typecheck 0; sin restos del 3€/0,10; feasibility usa km directa; el marginal de un 2º partido
+mismo día/municipio es 0. Justificación etiqueta: bien especificado pero fiddly (acumulador, doble conteo
+de existentes, reconciliación de métricas) → `sonnet xhigh`, no PLANNER.
+
+**T2. Tests del coste marginal** · ejecutor: `sonnet` · esfuerzo: `high`
+(a) `apps/web/src/lib/__tests__/solver.test.ts` (ampliar el `vi.mock` con `calculateDailyTravelCost` fiel +
+constantes; añadir un municipio cuyo nombre sea 'Madrid' para el caso del fijo Madrid).
+(b) Tests: (1) 2 partidos misma persona/fecha/municipio away → 2º marginal 0 y total = un solo trayecto;
+(2) partido en municipio propio en día con away → marginal 0; (3) 1er away → km×0,26;
+(4) día solo-casa → fijo (Madrid 3, resto 2); (5) `metrics.totalCost` == total real agrupado en un
+escenario pequeño; (6) sin coche y venue >30 km directa → descartado aunque el marginal fuese 0.
+(c) Aceptación: `pnpm test` verde; suite solver existente intacta (los fixtures actuales usan `getMockDistance`
+20 km → recalcular los importes esperados que dependían de 0,10).
+
+**T3. Doc** · ejecutor: `sonnet` · esfuerzo: `low`
+(a) `CLAUDE.md` (sección "Lógica de Coste de Desplazamiento" y la nota de `TRAVEL_COST_SAME_MUNICIPALITY`).
+(b) Actualizar la afirmación de que `calculateMockTravelCost` es "la estimación para el solver": el solver ya
+optimiza el marginal real por día; `calculateMockTravelCost` queda solo para los badges del picker manual.
+(c) Aceptación: la doc describe el objetivo real del solver; sin contradicciones con el código.
+
+**T4. Gate + review adversarial (Fase 4)** · ejecutor: PLANNER (fable, juez) · esfuerzo: `max`
+(a) Todo el diff.
+(b) `pnpm typecheck` + `pnpm test` + `pnpm build`; smoke runtime en Asignación (una jornada con alguien con
+2 partidos el mismo día en el mismo municipio → 2º pick a 0,00 €; `totalCost` de la propuesta = euros
+reales). Review adversarial: doble conteo de existentes en el acumulador, feasibility con km directa,
+coherencia `solve`/`solvePartial`, `metrics.totalCost` = regrupado, huérfanos, surgical changes.
+(c) Aceptación: criterios globales abajo.
+
+## Criterios de aceptación globales
+
+- `pnpm typecheck` 0; `pnpm test` verde (existentes recalculados + nuevos de T2); `pnpm build` OK.
+- El solver deja de usar 0,10 €/km y el fijo por partido; puntúa por marginal diario 0,26 €/km + fijo 3/2 por
+  día, con sinergia (2º partido mismo día/municipio = 0).
+- `metrics.totalCost` de una propuesta coincide con la liquidación real agrupada por persona/día.
+- Smoke: en una jornada, un árbitro con 2 partidos el mismo día en el mismo municipio away no paga el trayecto
+  dos veces en la propuesta.
+
+## Fuera de scope (anotado, no se toca)
+
+- Picker manual sigue con estimación por partido (`calculateMockTravelCost`).
+- Sinergia de días con partidos FUERA del scope filtrado (categoría/rango): se mantiene la consistencia con el
+  conteo de carga (solo in-scope), como ya hace `personLoadCount`. Anotado.
+- Ejes #2 (motor global OR-Tools), #3 (solapamiento con viaje), #4 (equidad temporada), #5 (categorías reales):
+  siguientes tandas.
+
+---
+
 # Plan: Disponibilidad de temporada para todo el roster + rango de fechas en Asignación + landing DESIGNAR/DISPONIBILIDAD (2026-07-11)
 
 Estado: ✅ EJECUTADO Y VERIFICADO · project-claude · tipo ampliar+modificar · tamaño M · ejecutor: MIXTO (sonnet + fable)

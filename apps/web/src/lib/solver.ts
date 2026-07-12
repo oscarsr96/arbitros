@@ -17,7 +17,9 @@ import {
   mockMatches,
   getMockDistance,
   getMockMunicipality,
+  getMockVenue,
   isPersonAvailable,
+  calculateDailyTravelCost,
 } from './mock-data'
 
 // ── PRNG con seed (Mulberry32) ────────────────────────────────────────────
@@ -71,17 +73,6 @@ function hasIncompatibility(personId: string, homeTeam: string, awayTeam: string
   )
 }
 
-function calculateTravelCost(
-  personMuniId: string,
-  venueMuniId: string,
-): { cost: number; km: number } {
-  if (personMuniId === venueMuniId) {
-    return { cost: 3.0, km: 0 }
-  }
-  const km = getMockDistance(personMuniId, venueMuniId)
-  return { cost: Number((km * 0.1).toFixed(2)), km }
-}
-
 // ── Estructura interna para tracking de asignaciones durante la resolucion ──
 
 interface Assignment {
@@ -90,6 +81,7 @@ interface Assignment {
   role: 'arbitro' | 'anotador'
   date: string
   time: string
+  venueMuniId: string
 }
 
 // Micro-refactor de rendimiento: antes se recorrian TODOS los currentAssignments
@@ -150,6 +142,29 @@ function addAssignment(index: Map<string, Assignment[]>, assignment: Assignment)
   else index.set(assignment.personId, [assignment])
 }
 
+// Coste MARGINAL de anadir `venueMuniId` a las asignaciones YA acumuladas de
+// `personId` ese `date`. La regla FBM es por persona y dia (no por partido):
+// delega en calculateDailyTravelCost (mock-data.ts, fuente de la verdad) y
+// resta el coste del dia SIN este partido del coste CON el. El resultado es
+// 0 cuando el partido no anade nada nuevo (mismo municipio away que otro ya
+// contado ese dia, o partido en el municipio propio en un dia que ya sale
+// fuera) y puede incluso ser negativo si anadir un desplazamiento sustituye
+// un fijo de "dia 100% en casa" por un kilometraje menor.
+function calculateMarginalTravelCost(
+  assignmentsByPerson: Map<string, Assignment[]>,
+  personId: string,
+  homeMuniId: string,
+  date: string,
+  venueMuniId: string,
+): number {
+  const munisBefore = (assignmentsByPerson.get(personId) ?? [])
+    .filter((a) => a.date === date)
+    .map((a) => a.venueMuniId)
+  const before = calculateDailyTravelCost(homeMuniId, munisBefore).cost
+  const after = calculateDailyTravelCost(homeMuniId, [...munisBefore, venueMuniId]).cost
+  return Number((after - before).toFixed(2))
+}
+
 // Indice matchId -> Set<personId> ya propuestos. Mismo motivo que el resto de
 // indices: "¿esta persona ya asignada a este partido?" se preguntaba antes con
 // proposedAssignments.some(...), un escaneo del array COMPLETO de asignaciones
@@ -181,6 +196,11 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
   const matchesById = new Map(mockMatches.map((m) => [m.id, { date: m.date, time: m.time }]))
+  // Índice completo por id (incluye partidos FUERA del scope): necesario para resolver
+  // fecha y municipio del venue de designaciones existentes de la persona ese día que
+  // caen fuera del rango/categoría solucionados (ver F2 — el coste marginal ve el día
+  // completo, no solo el trozo en scope).
+  const mockMatchById = new Map(mockMatches.map((m) => [m.id, m]))
   const assignedPersonsByMatch = new Map<string, Set<string>>()
 
   // Contar partidos asignados por persona (incluye existentes)
@@ -195,7 +215,16 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   // excluiría de por vida a quien pite el máximo en una jornada al designar la siguiente.
   const inScopeMatchIds = new Set(matches.map((m) => m.id))
 
-  // Cargar designaciones existentes como asignaciones ya hechas
+  // Cargar designaciones existentes como asignaciones ya hechas. UN SOLO
+  // recorrido (antes había uno para carga+solapamiento y otro para
+  // forceExisting, que podían pisarse/duplicar trabajo): aquí se acumula cada
+  // designación en `assignmentsByPerson` (para solapamiento Y para el coste
+  // marginal) exactamente una vez, y si forceExisting está activo se reporta
+  // en `assignments[]` con su coste marginal calculado contra las OTRAS
+  // designaciones de esa persona/día ya acumuladas EN ESE MOMENTO. El orden
+  // entre designaciones del mismo día no afecta al total (la suma de
+  // marginales telescopa al coste real del conjunto completo, ver
+  // metrics.totalCost más abajo).
   const existingByMatch: Record<string, { personId: string; role: string }[]> = {}
   for (const d of mockDesignations) {
     if (!existingByMatch[d.matchId]) existingByMatch[d.matchId] = []
@@ -203,42 +232,63 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
     if (personLoadCount[d.personId] !== undefined && inScopeMatchIds.has(d.matchId)) {
       personLoadCount[d.personId]++
     }
-    // Registrar en assignmentsByPerson para control de solapamiento
-    const m = matches.find((m) => m.id === d.matchId)
-    if (m) {
-      addAssignment(assignmentsByPerson, {
-        matchId: d.matchId,
-        personId: d.personId,
-        role: d.role,
-        date: m.date,
-        time: m.time,
-      })
-    }
-  }
 
-  // Si forceExisting, marcar asignaciones existentes como propuestas (isNew=false)
-  if (forceExisting) {
-    for (const match of matches) {
-      const existing = existingByMatch[match.id] ?? []
-      for (const e of existing) {
-        const person = persons.find((p) => p.id === e.personId)
-        if (!person) continue
-        const venueMuni = match.venue?.municipalityId ?? ''
-        const { cost, km } = calculateTravelCost(person.municipalityId, venueMuni)
+    // Resolver fecha + municipio del venue de esta designación, ESTÉ O NO en scope.
+    // El coste marginal debe ver el día COMPLETO de la persona (F2): un partido ya
+    // designado ese día en otra categoría o fuera del rango también "gasta" el
+    // trayecto, así que su municipio cuenta como contexto aunque no se solucione aquí.
+    const inScopeMatch = matches.find((mm) => mm.id === d.matchId)
+    let date: string
+    let time: string
+    let venueMuniId: string
+    if (inScopeMatch) {
+      date = inScopeMatch.date
+      time = inScopeMatch.time
+      venueMuniId = inScopeMatch.venue?.municipalityId ?? ''
+    } else {
+      const gm = mockMatchById.get(d.matchId)
+      if (!gm) continue
+      date = gm.date
+      time = gm.time
+      venueMuniId = getMockVenue(gm.venueId)?.municipalityId ?? ''
+    }
+
+    // forceExisting sólo MANTIENE en la salida las designaciones EN SCOPE; las de
+    // fuera pertenecen a otra tanda de designación y aquí solo aportan contexto de coste.
+    if (forceExisting && inScopeMatch) {
+      const person = persons.find((p) => p.id === d.personId)
+      if (person) {
+        const travelCost = calculateMarginalTravelCost(
+          assignmentsByPerson,
+          person.id,
+          person.municipalityId,
+          date,
+          venueMuniId,
+        )
+        const distanceKm = getMockDistance(person.municipalityId, venueMuniId)
         const municipality = getMockMunicipality(person.municipalityId)
         assignments.push({
-          matchId: match.id,
+          matchId: d.matchId,
           personId: person.id,
           personName: person.name,
-          role: e.role as 'arbitro' | 'anotador',
-          travelCost: cost,
-          distanceKm: km,
+          role: d.role,
+          travelCost,
+          distanceKm,
           isNew: false,
           municipalityName: municipality?.name ?? '',
         })
-        markAssigned(assignedPersonsByMatch, match.id, person.id)
+        markAssigned(assignedPersonsByMatch, d.matchId, person.id)
       }
     }
+
+    addAssignment(assignmentsByPerson, {
+      matchId: d.matchId,
+      personId: d.personId,
+      role: d.role,
+      date,
+      time,
+      venueMuniId,
+    })
   }
 
   // Ordenar partidos por prioridad:
@@ -305,6 +355,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           role: 'arbitro',
           date: match.date,
           time: match.time,
+          venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
         personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
@@ -370,6 +421,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           role: 'anotador',
           date: match.date,
           time: match.time,
+          venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
         personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
@@ -400,8 +452,71 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   const totalSlots = matches.reduce((sum, m) => sum + m.refereesNeeded + m.scorersNeeded, 0)
   const coveredSlots = totalSlots - unassigned.length
 
+  // totalCost = coste INCREMENTAL que la solución en scope añade a la liquidación real
+  // de cada persona, contando su día COMPLETO (F2): para cada persona/día,
+  //   dia(base ∪ propuesto) − dia(base)
+  // donde `propuesto` = municipios de la SALIDA (`assignments`: existentes mantenidas por
+  // forceExisting + picks nuevos) y `base` = municipios de designaciones de esa persona
+  // ese día FUERA de scope. Propiedades:
+  //  - No usa `assignmentsByPerson` (acumulador de solape): con forceExisting=false ese
+  //    acumulador conserva las existentes descartadas y contaría el slot dos veces (F1).
+  //  - Restar la base evita cobrar dos veces un municipio ya visitado fuera de scope
+  //    (coherente con el coste marginal, que ya ve el día completo).
+  //  - Sin designaciones fuera de scope (caso por defecto), base=[] y queda el coste
+  //    real agrupado de la solución.
+  const personMuniById = new Map(persons.map((p) => [p.id, p.municipalityId]))
+  const matchInfoById = new Map(
+    matches.map((m) => [m.id, { date: m.date, venueMuniId: m.venue?.municipalityId ?? '' }]),
+  )
+
+  // Municipios FUERA de scope por persona/día (contexto del día real).
+  const outOfScopeByPersonDate = new Map<string, Map<string, string[]>>()
+  for (const d of mockDesignations) {
+    if (inScopeMatchIds.has(d.matchId)) continue
+    if (!personMuniById.has(d.personId)) continue
+    const gm = mockMatchById.get(d.matchId)
+    if (!gm) continue
+    const muni = getMockVenue(gm.venueId)?.municipalityId ?? ''
+    let byDate = outOfScopeByPersonDate.get(d.personId)
+    if (!byDate) {
+      byDate = new Map<string, string[]>()
+      outOfScopeByPersonDate.set(d.personId, byDate)
+    }
+    const list = byDate.get(gm.date)
+    if (list) list.push(muni)
+    else byDate.set(gm.date, [muni])
+  }
+
+  // Municipios PROPUESTOS (solución en scope) por persona/día.
+  const proposedByPersonDate = new Map<string, Map<string, string[]>>()
+  for (const a of assignments) {
+    const info = matchInfoById.get(a.matchId)
+    if (!info) continue
+    let byDate = proposedByPersonDate.get(a.personId)
+    if (!byDate) {
+      byDate = new Map<string, string[]>()
+      proposedByPersonDate.set(a.personId, byDate)
+    }
+    const list = byDate.get(info.date)
+    if (list) list.push(info.venueMuniId)
+    else byDate.set(info.date, [info.venueMuniId])
+  }
+
+  let totalCost = 0
+  for (const [personId, byDate] of proposedByPersonDate) {
+    const home = personMuniById.get(personId)
+    if (home === undefined) continue
+    const outByDate = outOfScopeByPersonDate.get(personId)
+    for (const [date, proposedMunis] of byDate) {
+      const base = outByDate?.get(date) ?? []
+      const withProposed = calculateDailyTravelCost(home, [...base, ...proposedMunis]).cost
+      const baseCost = calculateDailyTravelCost(home, base).cost
+      totalCost += withProposed - baseCost
+    }
+  }
+
   const metrics: SolverMetrics = {
-    totalCost: Number(newAssignments.reduce((sum, a) => sum + a.travelCost, 0).toFixed(2)),
+    totalCost: Number(totalCost.toFixed(2)),
     coverage: totalSlots > 0 ? Number(((coveredSlots / totalSlots) * 100).toFixed(1)) : 100,
     coveredSlots,
     totalSlots,
@@ -484,20 +599,40 @@ function findBestCandidate(
     // Incompatibilidades
     if (hasIncompatibility(person.id, match.homeTeam, match.awayTeam)) continue
 
-    // Calcular coste y score
-    const { cost, km } = calculateTravelCost(person.municipalityId, venueMuniId)
+    // Distancia DIRECTA persona↔pabellón (no marginal): decide la restricción
+    // de coche y es lo que se reporta como distanceKm (la persona conduce
+    // esos km igual, sea o no el primer partido del día).
+    const directKm = getMockDistance(person.municipalityId, venueMuniId)
 
-    // Hard constraint: sin coche y >30km → descartado
-    if (!person.hasCar && km > 30) continue
+    // Hard constraint: sin coche y >30km directos → descartado
+    if (!person.hasCar && directKm > 30) continue
 
-    let normalizedCost = cost / 10 // normalizar a rango ~0-1
-    if (!person.hasCar && km > 15) {
-      normalizedCost *= 2.0
+    // Coste MARGINAL (no por partido): lo que este partido añade al coste
+    // real del día de esta persona, dados los partidos que ya tiene ese día.
+    const marginalCost = calculateMarginalTravelCost(
+      assignmentsByPerson,
+      person.id,
+      person.municipalityId,
+      match.date,
+      venueMuniId,
+    )
+
+    // normalizedCost = marginal/26 preserva la escala previa: antes era
+    // (0.1·km)/10 = km/100; ahora (0.26·km)/26 = km/100 en el caso típico del
+    // primer desplazamiento del día — así el trade-off costWeight/balanceWeight
+    // conserva su significado.
+    let normalizedCost = marginalCost / 26
+    if (!person.hasCar && directKm > 15) {
+      // `Math.max(0, ...)` protege un invariante: con las tarifas actuales un trayecto
+      // directo >15km siempre añade coste (marginal ≥ 0), pero si en el futuro cambian
+      // (constantes en mock-data.ts), un marginal negativo × 2 PREMIARÍA el viaje largo
+      // sin coche en vez de penalizarlo. La penalización nunca reduce el score.
+      normalizedCost = Math.max(0, normalizedCost) * 2.0
     }
     const normalizedLoad = currentLoad / maxLoad
 
     const score = costWeight * normalizedCost + balanceWeight * normalizedLoad
-    candidates.push({ person, cost, km, score })
+    candidates.push({ person, cost: marginalCost, km: directKm, score })
   }
 
   if (candidates.length === 0) return null
@@ -505,9 +640,17 @@ function findBestCandidate(
   // Ordenar por score (menor = mejor)
   candidates.sort((a, b) => a.score - b.score)
 
-  // Con rng: seleccionar aleatoriamente entre candidatos dentro de un umbral del 5%
+  // Con rng: seleccionar aleatoriamente entre candidatos dentro de un umbral del 5%.
+  // Umbral ADITIVO (`base + 0.05·|base|`), no multiplicativo: el coste marginal puede ser
+  // negativo (un día que pasa de "100% en casa" con fijo a "con salida" barata → el fijo
+  // desaparece), y entonces `score` puede ser negativo con costWeight alto. Con el viejo
+  // `base·1.05` un `base` negativo daba un umbral MÁS negativo que el propio mejor
+  // candidato → el filtro quedaba vacío → `topCandidates[0]` undefined → slot sin cubrir
+  // por error. La forma aditiva siempre incluye al mejor y a los que están dentro del 5%
+  // de su magnitud, para base positivo, negativo o cero.
   if (rng && candidates.length > 1) {
-    const threshold = candidates[0].score * 1.05
+    const base = candidates[0].score
+    const threshold = base + 0.05 * Math.abs(base)
     const topCandidates = candidates.filter((c) => c.score <= threshold)
     const idx = Math.floor(rng() * topCandidates.length)
     return topCandidates[idx]
@@ -608,9 +751,9 @@ function getUnassignedReason(
       continue
     }
 
-    // Comprobar hard constraint coche para diagnóstico
+    // Comprobar hard constraint coche para diagnóstico (distancia directa)
     const venueMuni = match.venue?.municipalityId ?? ''
-    const { km } = calculateTravelCost(person.municipalityId, venueMuni)
+    const km = getMockDistance(person.municipalityId, venueMuni)
     if (!person.hasCar && km > 30) {
       noCarTooFar++
       continue
@@ -659,6 +802,7 @@ export function solvePartial(
         role: d.role,
         date: m.date,
         time: m.time,
+        venueMuniId: m.venue?.municipalityId ?? '',
       })
       if (personLoadCount[d.personId] !== undefined) personLoadCount[d.personId]++
     }

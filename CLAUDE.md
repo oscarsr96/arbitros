@@ -172,9 +172,20 @@ function calculateDailyTravelCost(
 `calculatePersonTravelCost` agrupa las designaciones de una persona por fecha y suma el
 coste diario resultante; `getPersonTravelCost` es la función de conveniencia (resuelve
 fecha y municipio a partir del `matchId`) y es la fuente de la verdad para dashboard,
-portal y reportes. `calculateMockTravelCost` aplica las mismas tarifas pero por partido:
-es solo una estimación orientativa para el solver y los badges de asignación del panel de
-administración, nunca para liquidaciones.
+portal y reportes.
+
+El **solver** (`apps/web/src/lib/solver.ts`) también optimiza el coste real por día: puntúa
+cada candidato por su **coste marginal** (lo que ese partido añade a la liquidación del día
+de esa persona vía `calculateDailyTravelCost`), de modo que un 2º partido el mismo día y
+mismo municipio de destino cuesta 0 (ya viaja allí). La feasibility del coche (hard-cut
+
+> 30 km, penalización 15-30 km) usa la distancia DIRECTA persona→pabellón, no el marginal.
+> `metrics.totalCost` de una propuesta es el total real agrupado por persona/día, no la suma
+> por partido.
+
+`calculateMockTravelCost` aplica las mismas tarifas pero por partido: es solo una
+estimación orientativa para los badges del picker manual del panel de administración,
+nunca para liquidaciones ni para el objetivo del solver.
 
 ### Seed de la Matriz de Distancias
 
