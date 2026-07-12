@@ -7,6 +7,7 @@ import {
   getMockVenue,
   calculateMockTravelCost,
 } from '@/lib/mock-data'
+import { checkDesignationConflict } from '@/lib/designation-validation'
 
 export async function GET() {
   const enriched = mockDesignations.map((d) => {
@@ -32,6 +33,14 @@ export async function POST(request: Request) {
 
   if (!person || !match) {
     return NextResponse.json({ error: 'Persona o partido no encontrado' }, { status: 404 })
+  }
+
+  // Evitar duplicados (misma persona dos veces en el partido) y sobre-cobertura
+  // (más de los que el partido necesita). Protege todos los flujos que crean
+  // designaciones (manual, sustitución, re-optimizar, aplicar propuesta).
+  const conflict = checkDesignationConflict(mockDesignations, match, personId, role)
+  if (!conflict.ok) {
+    return NextResponse.json({ error: conflict.reason }, { status: 409 })
   }
 
   const venue = getMockVenue(match.venueId)

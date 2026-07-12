@@ -1,3 +1,18 @@
+# Follow-up: fix duplicados / sobre-cobertura en el POST de designaciones (2026-07-12)
+
+Estado: ✅ EJECUTADO Y VERIFICADO · tamaño S · ejecutor: sesión.
+Origen: hallazgo IMPORTANTE del 2º review de F2 (preexistente): el POST de `api/admin/designations` hacía
+`push` sin validar → la misma persona podía quedar dos veces en un partido (duplicado) y un rol podía superar
+lo necesario (sobre-cobertura), sobre todo al aplicar una propuesta con "Mantener existentes" desactivado.
+Fix (raíz, en el endpoint → protege manual, sustitución, re-optimizar y aplicar): nuevo helper puro
+`lib/designation-validation.ts#checkDesignationConflict(existing, match, personId, role)` (persona ya en el
+partido → conflicto; rol ya completo → conflicto), invocado en el POST que devuelve **409** con motivo.
+8 tests unitarios del helper. Gate: typecheck 0 · 163 tests · build OK. Los flujos por defecto solo rellenan
+huecos vacíos → no se ven afectados. Pendiente aparte (no corrupción, UX): que aplicar con forceExisting=false
+BORRE las reemplazadas en vez de que los POST sobrantes fallen con 409.
+
+---
+
 # Follow-up: default de Asignación = jornada completa viernes→jueves (2026-07-12)
 
 Estado: ✅ EJECUTADO Y VERIFICADO · tamaño S · ejecutor: sesión.
