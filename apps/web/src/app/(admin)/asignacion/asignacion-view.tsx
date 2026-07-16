@@ -24,9 +24,16 @@ import {
   getPersonIncompatibilities,
   getMockMunicipality,
   getMockVenue,
+  getMockPerson,
+  getMockDistance,
 } from '@/lib/mock-data'
 import { getJornadaSaturdayForDate, getMatchdayWindow } from '@/lib/matchday-availability'
 import { mapDesignationsToSlots, positionForSlot } from '@/lib/designation-positions'
+import {
+  getPublishConflicts,
+  type PublishConflictHelpers,
+  type ScheduleConflict,
+} from '@/lib/schedule-conflicts'
 
 interface PickerPerson {
   id: string
@@ -489,11 +496,57 @@ export function AsignacionView() {
   // servidor vía fetchMatches), NO del `mockDesignations` importado, que en el
   // cliente es la copia estática del seed y nunca refleja lo que se ha aplicado
   // → si no, "Publicar designaciones" quedaría siempre deshabilitado.
-  const allDesignations = matches.flatMap((m) => m.designations)
+  // Memoizado: `matches.flatMap` recorre todas las designaciones, y esta lista
+  // alimenta tanto los contadores de abajo como el cálculo de conflictos (E2); sin
+  // memo se recalcularía en cada render (p. ej. al mover un slider del solver).
+  const allDesignations = useMemo(() => matches.flatMap((m) => m.designations), [matches])
   const pendingDesigs = allDesignations.filter((d) => d.status === 'pending').length
   const personsToNotify = new Set(
     allDesignations.filter((d) => d.status === 'pending').map((d) => d.personId),
   ).size
+
+  // Conflictos de horario para el panel de verificación pre-publicación (E2, Tanda 2).
+  // Misma fuente de designaciones que el resto del diálogo (`allDesignations`) y MISMA
+  // fuente de partidos (`matches`, del servidor): un partido importado (CSV) no existe
+  // en la copia cliente de mock-data, así que resolverlo con getMockMatch lo saltaría
+  // silenciosamente. Personas y distancias sí son estáticas (roster determinista +
+  // matriz fija), por eso esos helpers siguen usando mock-data.
+  const conflicts = useMemo<ScheduleConflict[]>(() => {
+    const matchById = new Map(matches.map((m) => [m.id, m]))
+    const muniByVenue = new Map<string, string>()
+    for (const m of matches) {
+      if (m.venue?.municipalityId) muniByVenue.set(m.venueId, m.venue.municipalityId)
+    }
+    const helpers: PublishConflictHelpers = {
+      getMatch: (matchId) => {
+        const match = matchById.get(matchId)
+        return match ? { date: match.date, time: match.time, venueId: match.venueId } : undefined
+      },
+      getVenueMunicipality: (venueId) =>
+        muniByVenue.get(venueId) ?? getMockVenue(venueId)?.municipalityId,
+      getPerson: (personId) => {
+        const person = getMockPerson(personId)
+        return person
+          ? {
+              name: person.name,
+              nick: person.nick,
+              hasCar: person.hasCar,
+              municipalityId: person.municipalityId,
+            }
+          : undefined
+      },
+      getDistanceKm: getMockDistance,
+    }
+    return getPublishConflicts(allDesignations, helpers)
+  }, [matches, allDesignations])
+
+  // Etiquetas legibles ("Local vs Visitante (hora)") para los partidos citados en las
+  // filas de conflicto del diálogo de publicación.
+  const conflictMatchLabels = useMemo(() => {
+    const labels: Record<string, string> = {}
+    for (const m of matches) labels[m.id] = `${m.homeTeam} vs ${m.awayTeam} (${m.time})`
+    return labels
+  }, [matches])
 
   const sorted = [...filteredMatches].sort((a, b) => {
     const dc = a.date.localeCompare(b.date)
@@ -980,6 +1033,8 @@ export function AsignacionView() {
             pendingDesignations: pendingDesigs,
             personsToNotify: personsToNotify,
           }}
+          conflicts={conflicts}
+          matchLabels={conflictMatchLabels}
         />
 
         <SubstitutionPanel

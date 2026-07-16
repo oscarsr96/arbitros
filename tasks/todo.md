@@ -1076,3 +1076,280 @@ T2 ∥ T3 (ficheros disjuntos). T5 tras T2 (comparten assignment-slot.tsx y asig
   pabellón + misma categoría → mismo cuerpo arbitral OK** (encadenar partidos seguidos en la misma
   pista es práctica deseada, no error). UI: panel/diálogo antes de publicar con errores (bloquean) y
   avisos (no bloquean).
+
+---
+
+# Plan: Tanda 2 — Feature C (nicks de una palabra) + Feature E (panel de verificación pre-publicación) (2026-07-16)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (gate + review adversarial fable) · project-claude · tipo ampliar · tamaño M · ejecutor: MIXTO (fable C1 xhigh + sonnet C2/C3/E1/E2 + fable review G1)
+
+## Fase 4 — resultado (2026-07-16)
+
+Gate: **pnpm typecheck 0 · 234 tests verdes** (220 previos + 14 nuevos: 11 de `schedule-conflicts.test.ts`
+
+- 3 de formato de nick en `referee-roster.test.ts`). `pnpm build` NO ejecutado a propósito (dev server
+  del usuario en :3001 comparte `.next`). Runtime navegador no fiable (extensión) → verificación end-to-end
+  = MANUAL del usuario.
+
+Ejecución: C1 (fable, xhigh) ∥ C2 (sonnet) ∥ E1 (sonnet) → C3 (sonnet) ∥ E2 (sonnet) → G1 (fable, max)
+review adversarial → **LISTO CON RESERVAS, 0 blockers vivos** (el juez corrigió 3 defectos y re-verificó).
+
+- **C**: pool de **1470 palabras sueltas únicas** (≥1300, `pool[1269]`='LAGO' definido, 0 fuera de la regex
+  de una palabra, 0 colisión con las 9 demo, 0 nicks vacíos); compuestos "APODO DE LUGAR" eliminados;
+  `buildNickPool` exportada; 9 demo sin artículo (DECANO/JEFA/...); determinismo intacto (semilla
+  `0x5eed_a17b`); unicidad 1279; `resetMockData`/`INITIAL_*` sin regresión. **Los 1270 nicks generados
+  cambian TODOS de valor** (shuffle sobre otro array); nada persistido los referencia (designations.json
+  usa personId).
+- **E**: `lib/schedule-conflicts.ts` (hoja pura, minutos, duración 90 + margen 30 + viaje entre pabellones);
+  `estimateTravelMinutes` exportada de `utils.ts`; panel en `PublishDialog` (errores rojos / avisos ámbar,
+  agrupado por persona, "Nombre «NICK»", etiqueta "Local vs Visitante (hora)"); botón "Publicar con N
+  conflictos" (N = solo errores) que **NO bloquea**. `hasTimeOverlap` (mock-data), `solver.ts` y
+  `publish/route.ts` SIN diff.
+
+### Defectos corregidos por el juez (G1)
+
+- **[IMPORTANTE] Falso negativo con partidos importados**: `getMatch` usaba `getMockMatch` (copia cliente
+  del seed) → designaciones sobre partidos importados por CSV (la vía real de datos) se saltaban la
+  detección en silencio. Corregido: resuelve desde el estado `matches` del servidor (Map por id +
+  venue→municipio del enriquecido, fallback `getMockVenue`); import huérfano eliminado; deps del `useMemo`
+  a `[matches, allDesignations]`.
+- **[MENOR] Etiqueta de conflicto**: `matchId` en bruto → "Local vs Visitante (hora)" vía prop `matchLabels`.
+- **[MENOR] Botón fuera de spec**: contaba avisos → ahora N = errores; cabecera de persona "Nombre «NICK»".
+
+### Reservas anotadas (no corregidas)
+
+- **[MENOR]** Orden dentro de persona no estrictamente por hora (solapes antes que huecos); irrelevante con
+  carga máx. 3 partidos/día.
+- **[MENOR]** Las filas no muestran la FECHA del conflicto (solo horas); `ScheduleConflict.date` está
+  disponible si se quiere añadir.
+- **[PREEXISTENTE]** El panel evalúa solo los partidos cargados en la vista (rango fetched), coherente con
+  los contadores del diálogo.
+- **[MENOR, follow-up ya en plan]** Unificar la semántica de solape solver (horas enteras) vs panel
+  (minutos + distancia): el solver sigue con `hasTimeOverlapWith` de horas. Fuera de esta tanda.
+
+### Pendiente
+
+- Verificación runtime end-to-end del usuario (nicks de una palabra en Personal/Asignación; panel de
+  conflictos al publicar una jornada con solapes).
+- `pnpm build` cuando el usuario pare el dev server.
+- Commit + push (esta sesión).
+
+Decisiones de diseño CERRADAS por el usuario (no reabrir). Tracks C y E tocan ficheros
+DISJUNTOS: se pueden ejecutar en paralelo. Contexto verificado contra el código el 2026-07-16.
+
+## Mini-spec C: nicks de una sola palabra
+
+Hoy `buildNickPool` (`apps/web/src/lib/referee-roster.ts:426-442`) baraja 200 singles
+(130 `LUGARES` L207-338 + 70 `APODOS` L342-413) y les concatena 9100 compuestos "APODO DE
+LUGAR". Los árbitros consumen `pool[0..769]` (L490) y los anotadores `pool[770..1269]`
+(L564): todos los anotadores y 570 árbitros llevan hoy nick compuesto.
+
+Cambios decididos:
+
+1. `buildNickPool` pasa a devolver SOLO palabras sueltas: se elimina el bucle de compuestos
+   (L428-431). Se conserva PRNG (`mulberry32(0x5eed_a17b)`), shuffle y dedup con Set. Los
+   tramos disjuntos árbitro/anotador (offset `REFEREE_TOTAL=770`) no cambian.
+2. Pool ampliado a ≥1300 palabras únicas post-dedup (objetivo raw ~1450 para holgura).
+   Consumo real: 1270 (770+500). Estilo actual: MAYÚSCULAS con tildes, sin artículos, sin
+   "DE", sin espacios, sin dígitos ni ordinales romanos.
+3. Normalizar los 7 apodos actuales con artículo: 'EL FLACO'→'FLACO', 'EL RUBIO'→'RUBIO',
+   'EL LARGO'→'LARGO', 'EL CHATO'→'CHATO', 'EL ZURDO'→'ZURDO', 'EL GRECO'→'GRECO',
+   'EL CID'→'CID'.
+4. Los 9 demo hardcoded (`mock-data.ts:1398-1534`) pierden el artículo: DECANO, JEFA,
+   CATEDRÁTICO, CONDESA, CRONISTA, COMENDADOR, VIRTUOSA, SIBILA, ESCRIBANO. Esas 9 palabras
+   quedan EXCLUIDAS del pool (disjunción demo/generados garantizada por construcción).
+5. Fixture afectado detectado: `app/api/admin/designations/__tests__/route.test.ts:223,251`
+   espera 'EL DECANO' y 'LA JEFA' → actualizar a 'DECANO'/'JEFA'.
+
+Estrategia de curación (cuotas orientativas, total raw ~1450):
+
+- Base actual normalizada: 200 (LUGARES + APODOS sin artículo).
+- Municipios CM, token distintivo de una palabra (GETAFE, ARGANDA, BOADILLA, PATONES...): ~140.
+- Barrios y distritos de Madrid capital (USERA, TETUÁN, MORATALAZ, ORCASITAS, ABRANTES...): ~110.
+- Sierra: cumbres, puertos, collados (PEÑALARA, MALICIOSA, MORCUERA, ABANTOS, NAJARRA...): ~50.
+- Ríos, arroyos y embalses (JARAMA, LOZOYA, TAJUÑA, ATAZAR, PINILLA, VALMAYOR...): ~40.
+- Parajes, dehesas, montes y cañadas (PEDRIZA, HERRERÍA, PARDO...): ~40.
+- Calles, plazas y puertas castizas de una palabra (CIBELES, CALLAO, ATOCHA, PRECIADOS...): ~60.
+- Pueblos y pedanías de sierra norte y vegas no cubiertos arriba: ~80.
+- Apodos castizos ampliados: oficios tradicionales (SERENO, CHISPERO, AGUADOR, PREGONERO...),
+  rasgos y motes (CANIJO, ESPIGADO...), taurino-deportivos: ~300.
+  Dedup interno obligatorio en la curación (el Set final protege, pero merma la holgura si el
+  raw trae repetidos). Guardia dura: test `pool.length >= 1300`.
+
+Consecuencia asumida: los 1270 nicks generados CAMBIAN todos de valor (el shuffle opera
+sobre otro array). Nada persistido referencia nicks (designations.json usa personId), y el
+único fixture con nicks literales es el del punto 5. Presupuesto de init MEJORA (desaparece
+la combinatoria 70×130).
+
+## Mini-spec E: panel de verificación pre-publicación
+
+Hoy `PublishDialog` (`components/publish-dialog.tsx`) muestra 4 contadores + Alert no
+bloqueante de cobertura; `handlePublish` (`asignacion-view.tsx:260-266`) llama a
+`/api/admin/designations/publish` sin validación y la ruta (`publish/route.ts`, solo
+exporta POST) pasa pending→notified. `hasTimeOverlap` (`mock-data.ts:2202-2221`) compara
+horas enteras con ventana fija de 2h.
+
+Cambios decididos:
+
+1. Nuevo módulo hoja `apps/web/src/lib/schedule-conflicts.ts` (client-safe, sin fs, sin
+   `Date.now()`/`new Date()`/`Math.random()`), cálculo en MINUTOS desde medianoche.
+   Constantes exportadas: `MATCH_DURATION_MIN = 90`, `CONFLICT_MARGIN_MIN = 30`.
+2. Dos capas para testabilidad:
+   - `detectDayConflicts(entries)` PURA sobre entradas ya preparadas
+     `{ personId, personName, date, startMin, venueId, municipalityId, matchId, hasCar }`:
+     sin imports de mock-data. Es la que se testea unitariamente.
+   - `getPublishConflicts()` wrapper que recorre `mockDesignations` (excluyendo
+     `status === 'rejected'`), resuelve partido/venue/municipio con `getMockMatch`,
+     `getMockVenue`, `getMockDistance` y persona (nombre, nick, hasCar, municipalityId),
+     agrupa por personId+fecha y delega en la pura.
+3. Reglas (partido = `[start, start + MATCH_DURATION_MIN]`; pares ordenados por inicio;
+   solape contra CUALQUIER partido del día, huecos solo entre consecutivos; un conflicto
+   por par, el de mayor severidad):
+   - Viaje A→B: mismo `venueId` → 0 min; si no,
+     `estimateTravelMinutes(getMockDistance(muniA, muniB), hasCar)` de `lib/utils.ts`
+     (hoy NO exportada, L23-28: exportarla; NO reutilizar `getDepartureInfo`, que usa
+     `new Date()`). Mismo municipio distinto pabellón → suelo 15/20 min de la propia
+     `estimateTravelMinutes`.
+   - ERROR `overlap`: los intervalos se solapan. Se marca SIEMPRE, incluso mismo pabellón
+     (decisión fijada por el planner, ver Notas).
+   - ERROR `insufficient-gap`: `gap < viaje` (no llega físicamente).
+   - AVISO `tight-gap`: `gap < viaje + CONFLICT_MARGIN_MIN`. EXENTO si mismo `venueId`
+     (encadenar en la misma pista es deseable).
+4. Tipo exportado:
+   `ScheduleConflict { personId, personName, personNick?, date, matchAId, matchBId,
+severity: 'error'|'warning', reason: 'overlap'|'insufficient-gap'|'tight-gap',
+gapMin, travelMin }`.
+5. UI: `asignacion-view.tsx` calcula los conflictos en cliente (useMemo, recalculado al
+   abrir el diálogo o al cambiar designaciones) y los pasa por props a `PublishDialog`,
+   que los lista agrupados por persona (errores en rojo, avisos en ámbar, con hora de
+   ambos partidos y hueco/viaje). NO BLOQUEA: con N errores el botón pasa a
+   "Publicar con N conflictos" (mismo patrón que el Alert de cobertura); solo avisos →
+   botón normal + resumen ámbar. Lista con scroll si es larga.
+6. NO se toca: `hasTimeOverlap` de mock-data, `hasTimeOverlapWith` del solver
+   (`solver.ts:93-125`), ni `publish/route.ts` (E no toca rutas API: todo el cálculo es
+   cliente; confirmado que la ruta solo exporta el handler POST).
+7. Follow-up anotado (fuera de tanda): unificar la semántica de solape del solver y del
+   panel en un único módulo de minutos.
+
+## Task breakdown
+
+### Track C (ficheros: referee-roster.ts, mock-data.ts nicks demo, tests de roster)
+
+**C1. Pool curado de ≥1300 palabras + refactor `buildNickPool`** · ejecutor: **fable** · esfuerzo: `xhigh` · sin dependencias
+(a) Fichero: `apps/web/src/lib/referee-roster.ts` (arrays L207-413 + `buildNickPool` L426-442).
+(b) Curar ~1450 palabras raw según las cuotas de la mini-spec (arrays literales, orden
+alfabético o por categoría con comentarios de bloque para mantenimiento); normalizar los 7
+apodos con artículo; excluir las 9 palabras demo; eliminar el bucle de compuestos; conservar
+semilla, shuffle, dedup y offsets. Sin dígitos, romanos, espacios, "DE" ni artículos en
+ninguna entrada.
+(c) Aceptación: typecheck 0; `buildNickPool(...)` devuelve ≥1300 entradas únicas, todas
+`/^[A-ZÁÉÍÓÚÜÑ]+$/` (una palabra); `pool[1269]` definido; ninguna de las 9 palabras demo en
+el pool; `generateReferees`+`generateScorers` deterministas (doble ejecución idéntica); los
+tests existentes de unicidad/disjunción/determinismo siguen pasando (excepto los que C3
+amplía).
+
+**C2. Nicks demo sin artículo + fixture** · ejecutor: **sonnet** · esfuerzo: `low` · sin dependencias (paralela a C1)
+(a) Ficheros: `apps/web/src/lib/mock-data.ts` (9 literales L1398-1534) y
+`apps/web/src/app/api/admin/designations/__tests__/route.test.ts` (L223: 'EL DECANO'→'DECANO';
+L251: 'LA JEFA'→'JEFA').
+(b) Sustituir los 9 nicks por DECANO, JEFA, CATEDRÁTICO, CONDESA, CRONISTA, COMENDADOR,
+VIRTUOSA, SIBILA, ESCRIBANO. Ningún otro cambio en mock-data.
+(c) Aceptación: typecheck 0; `route.test.ts` verde; los 9 seed conservan id/orden
+(test de integración "9 seed al frente" verde).
+
+**C3. Tests de una-palabra y de holgura del pool** · ejecutor: **sonnet** · esfuerzo: `medium` · depende de C1 y C2
+(a) Fichero: `apps/web/src/lib/__tests__/referee-roster.test.ts`.
+(b) Añadir: (i) aserción "una sola palabra" para los 1279 nicks de `mockPersons` (sin
+espacio, sin ' DE ', sin prefijo 'EL '/'LA ': con el formato una-palabra basta
+`!nick.includes(' ')` + regex de mayúsculas); (ii) `pool ≥ 1300` y sin colisión con los 9
+demo (exportar `buildNickPool` o un `NICK_POOL_SIZE` de test si hace falta, decisión del
+ejecutor); (iii) mantener unicidad 770/500/1279, disjunción, determinismo y sin-sufijos
+(regex existente L41-47) intactos.
+(c) Aceptación: `pnpm test` verde completo; la suite falla si se reintroduce un compuesto o
+un artículo (test rojo comprobado mutando temporalmente un valor en local).
+
+### Track E (ficheros: schedule-conflicts.ts nuevo + test, utils.ts export, asignacion-view.tsx, publish-dialog.tsx)
+
+**E1. Módulo `schedule-conflicts.ts` + tests unitarios (TDD)** · ejecutor: **sonnet** · esfuerzo: `high` · sin dependencias
+(a) Ficheros: `apps/web/src/lib/schedule-conflicts.ts` (nuevo),
+`apps/web/src/lib/__tests__/schedule-conflicts.test.ts` (nuevo),
+`apps/web/src/lib/utils.ts` (solo `export` de `estimateTravelMinutes`, L23).
+(b) Implementar según mini-spec E puntos 1-4 (tests primero). Casos de test mínimos:
+solape=error (incluido mismo pabellón); `gap<viaje`=error; `viaje ≤ gap < viaje+30`=aviso;
+mismo pabellón back-to-back sin aviso (exención); hueco holgado=limpio; agrupación correcta
+por persona/día (entrada multi-persona multi-fecha, sin cruces); designación 'rejected'
+excluida (test del wrapper con datos de mock-data reales o entrada preparada); sin coche vs
+con coche cambia el veredicto en el mismo hueco (1.5 vs 3 min/km).
+(c) Aceptación: typecheck 0; tests nuevos verdes; el módulo no importa fs/APIs Node ni usa
+`Date.now`/`new Date`/`Math.random` (grep limpio); `detectDayConflicts` no importa
+mock-data; diff de `solver.ts` y de `hasTimeOverlap` en mock-data VACÍO.
+
+**E2. UI del panel en PublishDialog** · ejecutor: **sonnet** · esfuerzo: `medium` · depende de E1
+(a) Ficheros: `apps/web/src/app/(admin)/asignacion/asignacion-view.tsx` y
+`apps/web/src/components/publish-dialog.tsx`.
+(b) `asignacion-view`: useMemo con `getPublishConflicts()` (recalcula al cambiar
+designaciones/al abrir), prop `conflicts` al diálogo. `publish-dialog`: sección de
+conflictos agrupada por persona (nombre + «nick»), errores en rojo y avisos en ámbar, hora
+de ambos partidos + hueco/viaje en el copy; con N errores el botón pasa a
+"Publicar con N conflictos" (sigue habilitado, `handlePublish` intacto); solo avisos →
+botón normal; sin conflictos → diálogo idéntico al actual. Scroll interno si hay muchos.
+(c) Aceptación: typecheck 0; smoke: dos designaciones de la misma persona a la misma hora →
+error rojo en el diálogo y botón "Publicar con 1 conflicto" que publica igual (respuesta
+200 y pending→notified); partidos encadenados en el mismo pabellón → sin aviso; sin
+conflictos → diálogo como antes; consola sin mismatch de hidratación.
+
+**G1. Gate final + review adversarial** · ejecutor: **PLANNER (fable, juez)** · esfuerzo: `max` · depende de C3 y E2
+(a) Todo el diff de la tanda (C+E).
+(b) `pnpm typecheck` 0 + `pnpm test` verde (previos + nuevos); `pnpm build` SOLO si el dev
+server del usuario está parado (comparten `.next`, precedente Tanda 1). Smoke runtime:
+recarga de Asignación y Personal (nicks nuevos renderizan, cero compuestos visibles),
+diálogo de publicación con y sin conflictos, publicar con errores presentes. Review
+adversarial: surgical changes (cada línea traza a C o E); huérfanos; determinismo (sin
+`Math.random`/`Date.now` en módulos cliente tocados); solver y `hasTimeOverlap` sin diff;
+`publish/route.ts` sin diff; consumidores de nick (`assignment-slot.tsx`,
+`match-detail-row.tsx`, `person-card.tsx`, `person-detail-sheet.tsx`, `persons/route.ts`)
+renderizan bien nicks cortos; `resetMockData`/`INITIAL_*` conserva nicks tras reset;
+designations.json legacy hidrata (referencia personId, no nick).
+(c) Aceptación: criterios globales de abajo con veredicto LISTO / LISTO CON RESERVAS /
+NO LISTO y reservas corregidas o anotadas.
+
+### Grafo de dependencias
+
+```
+Track C: C1 (fable, xhigh) ─┐
+         C2 (sonnet, low) ──┼─→ C3 (sonnet, medium) ─┐
+                            │                         ├─→ G1 (fable, max)
+Track E: E1 (sonnet, high) ─┴─→ E2 (sonnet, medium) ─┘
+C1 ∥ C2 ∥ E1 (ficheros disjuntos). C3 tras C1+C2; E2 tras E1. Tracks C y E paralelos.
+```
+
+## Criterios de aceptación globales (Tanda 2 · C+E)
+
+- `pnpm typecheck` 0 errores; `pnpm test` verde (todos los previos + nuevos de C3/E1);
+  build OK cuando el dev server lo permita.
+- Los 1279 nicks de `mockPersons` son únicos, de UNA sola palabra (sin espacios, sin "DE",
+  sin artículos), sin dígitos ni romanos; pool post-dedup ≥1300; generación determinista
+  (misma semilla → mismo roster).
+- El diálogo de publicación lista errores (rojo) y avisos (ámbar) por persona y NUNCA
+  bloquea la publicación; sin conflictos se comporta como hoy.
+- `hasTimeOverlap` (mock-data), `hasTimeOverlapWith` (solver.ts) y `publish/route.ts` sin
+  ningún cambio en el diff.
+- Sin `Math.random`/`Date.now`/`new Date()` en `schedule-conflicts.ts` ni en ningún módulo
+  cliente tocado; recarga sin mismatch de hidratación.
+- Follow-up registrado (no ejecutar): unificar semántica de solape solver+panel en minutos.
+
+## Notas del planner (decisiones menores fijadas al planificar)
+
+- **Solape en mismo pabellón = error**: la excepción de mismo `venueId` cerrada por el
+  usuario se aplica al AVISO de hueco (encadenar partidos es deseable); un solape real de
+  intervalos se marca como error también en el mismo pabellón (nadie pita dos pistas a la
+  vez). Reversible con una línea si el usuario prefiere la exención total.
+- **Estados considerados en E**: todas las designaciones con `status !== 'rejected'` (un
+  pending puede chocar con un confirmed ya publicado y hay que verlo).
+- **`estimateTravelMinutes` se exporta de utils.ts** en lugar de duplicarla: una sola fuente
+  de verdad para min/km y suelo intra-municipal (15/20 min); `getDepartureInfo` NO se
+  reutiliza porque depende de `new Date()`.
+- **E1 en sonnet, no fable**: la función es sutil pero la spec quedó cerrada (reglas,
+  constantes, exención, capas y casos de test enumerados); el presupuesto fable rinde más
+  en la curación del pool de C1 (riesgo real de shortfall y calidad de contenido) y en el
+  gate G1 (max), que revisará E1 adversarialmente.

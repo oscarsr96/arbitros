@@ -1395,7 +1395,7 @@ export const mockCourts: MockCourt[] = (__fbmStore.courts ??= [
 const seedPersons: MockPerson[] = [
   {
     id: 'person-001',
-    nick: 'EL DECANO',
+    nick: 'DECANO',
     name: 'Carlos Martínez López',
     email: 'carlos.martinez@email.com',
     phone: '612345678',
@@ -1412,7 +1412,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-002',
-    nick: 'LA JEFA',
+    nick: 'JEFA',
     name: 'Laura García Fernández',
     email: 'laura.garcia@email.com',
     phone: '623456789',
@@ -1429,7 +1429,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-003',
-    nick: 'EL CATEDRÁTICO',
+    nick: 'CATEDRÁTICO',
     name: 'Miguel Ángel Ruiz Torres',
     email: 'miguel.ruiz@email.com',
     phone: '634567890',
@@ -1446,7 +1446,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-004',
-    nick: 'LA CONDESA',
+    nick: 'CONDESA',
     name: 'Ana Belén Sánchez Díaz',
     email: 'anabelen.sanchez@email.com',
     phone: '645678901',
@@ -1463,7 +1463,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-005',
-    nick: 'EL CRONISTA',
+    nick: 'CRONISTA',
     name: 'David Fernández Moreno',
     email: 'david.fernandez@email.com',
     phone: '656789012',
@@ -1480,7 +1480,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-006',
-    nick: 'EL COMENDADOR',
+    nick: 'COMENDADOR',
     name: 'Raúl Jiménez Navarro',
     email: 'raul.jimenez@email.com',
     phone: '667890123',
@@ -1497,7 +1497,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-007',
-    nick: 'LA VIRTUOSA',
+    nick: 'VIRTUOSA',
     name: 'Patricia López Martín',
     email: 'patricia.lopez@email.com',
     phone: '678901234',
@@ -1514,7 +1514,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-008',
-    nick: 'LA SIBILA',
+    nick: 'SIBILA',
     name: 'Sofía Morales Vega',
     email: 'sofia.morales@email.com',
     phone: '689012345',
@@ -1531,7 +1531,7 @@ const seedPersons: MockPerson[] = [
   },
   {
     id: 'person-009',
-    nick: 'EL ESCRIBANO',
+    nick: 'ESCRIBANO',
     name: 'Javier Romero Díaz',
     email: 'javier.romero@email.com',
     phone: '690123456',

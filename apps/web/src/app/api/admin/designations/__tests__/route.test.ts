@@ -220,7 +220,7 @@ describe('getMockDesignationsForMatch propaga nick y refereeLevel', () => {
   it('persona con nick → person.nick relleno; sin refereeLevel → null', async () => {
     await route.POST(postRequest({ matchId: match.id, personId: 'person-001', role: 'arbitro' }))
     const [enriched] = getMockDesignationsForMatch(match.id)
-    expect(enriched.person?.nick).toBe('EL DECANO')
+    expect(enriched.person?.nick).toBe('DECANO')
     // person-001 (demo) no tiene refereeLevel → null, nunca undefined.
     expect(enriched.person?.refereeLevel).toBeNull()
   })
@@ -248,7 +248,7 @@ describe('getMockDesignationsForMatch propaga nick y refereeLevel', () => {
     })
     const [enriched] = getMockDesignationsForMatch(match.id)
     expect(enriched.position).toBeUndefined()
-    expect(enriched.person?.nick).toBe('LA JEFA')
+    expect(enriched.person?.nick).toBe('JEFA')
   })
 })
 

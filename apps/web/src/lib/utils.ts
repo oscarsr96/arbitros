@@ -20,7 +20,7 @@ export function getDirectionsUrl(origin: string, destination: string, hasCar: bo
 
 const ARRIVAL_BUFFER_MIN = 40 // llegar 30 min antes + 10 min margen
 
-function estimateTravelMinutes(km: number, hasCar: boolean): number {
+export function estimateTravelMinutes(km: number, hasCar: boolean): number {
   if (km <= 0) return hasCar ? 15 : 20 // mismo municipio
   // Driving: ~40 km/h media urbana → 1.5 min/km
   // Transit: ~20 km/h media con esperas → 3 min/km

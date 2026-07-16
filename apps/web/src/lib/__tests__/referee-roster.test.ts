@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateReferees, generateScorers } from '../referee-roster'
+import { generateReferees, generateScorers, buildNickPool } from '../referee-roster'
 import { mockPersons } from '../mock-data'
 import {
   REFEREE_LEVEL_DISTRIBUTION,
@@ -14,6 +14,41 @@ const MUNIS = [
   { id: 'muni-003', name: 'Getafe' },
   { id: 'muni-011', name: 'Las Rozas' },
 ]
+
+// PRNG determinista local (misma familia mulberry32 que referee-roster.ts, que
+// no la exporta) SOLO para poder invocar `buildNickPool()` de forma
+// reproducible desde el test. El contenido del pool (el Set de palabras) no
+// depende de la semilla: `buildNickPool` baraja un array fijo y deduplica,
+// así que cualquier semilla produce el mismo conjunto de palabras únicas.
+function testRand(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a |= 0
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// Palabras reservadas para los 9 nicks demo de mock-data.ts (NO deben entrar
+// en el pool generado, para que nunca colisionen con los nicks generados).
+const DEMO_NICKS = [
+  'DECANO',
+  'JEFA',
+  'CATEDRÁTICO',
+  'CONDESA',
+  'CRONISTA',
+  'COMENDADOR',
+  'VIRTUOSA',
+  'SIBILA',
+  'ESCRIBANO',
+]
+
+// Nick de una sola palabra: mayúsculas y letras acentuadas del español
+// únicamente. Cubre de paso: sin espacios (por tanto sin "DE" ni artículos
+// "EL "/"LA " como prefijo) y sin dígitos.
+const NICK_ONE_WORD = /^[A-ZÁÉÍÓÚÜÑ]+$/
 
 describe('generateReferees', () => {
   const roster = generateReferees(MUNIS)
@@ -140,6 +175,25 @@ describe('mockPersons (integración roster + seed)', () => {
       'person-008',
       'person-009',
     ])
+  })
+})
+
+describe('formato de nick: una sola palabra en mayúsculas', () => {
+  it('TODOS los nicks de mockPersons (1279, incluidos los 9 demo) cumplen /^[A-ZÁÉÍÓÚÜÑ]+$/', () => {
+    const offenders = mockPersons.filter((p) => !NICK_ONE_WORD.test(p.nick ?? ''))
+    expect(offenders.map((p) => `${p.id}:${p.nick}`)).toEqual([])
+  })
+
+  it('el pool de nicks tiene ≥1300 entradas y cubre hasta el último anotador (índice 1269)', () => {
+    const pool = buildNickPool(testRand(1))
+    expect(pool.length).toBeGreaterThanOrEqual(1300)
+    expect(pool[1269]).toBeDefined()
+  })
+
+  it('ninguna de las 9 palabras demo colisiona con el pool generado', () => {
+    const pool = new Set(buildNickPool(testRand(1)))
+    const collisions = DEMO_NICKS.filter((nick) => pool.has(nick))
+    expect(collisions).toEqual([])
   })
 })
 
