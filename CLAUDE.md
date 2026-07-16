@@ -692,7 +692,7 @@ Calcula hora de salida estimada: `horaPartido - tiempoViaje - 40min buffer (30 l
 
 ### Botón "Cómo llegar" + badge hora de salida
 
-Presentes en 3 vistas: portal designaciones (`designation-card.tsx`), admin partidos (`match-detail-row.tsx`), demo (`demo-view.tsx`). Son elementos separados: enlace azul "Cómo llegar" + badge con colores de urgencia.
+Presentes en 2 vistas: portal designaciones (`designation-card.tsx`) y admin partidos (`match-detail-row.tsx`). Son elementos separados: enlace azul "Cómo llegar" + badge con colores de urgencia. (`demo-view.tsx` se eliminó en Tanda 2: quedó huérfano tras renombrar la landing a DESIGNAR/DISPONIBILIDAD.)
 
 ---
 
