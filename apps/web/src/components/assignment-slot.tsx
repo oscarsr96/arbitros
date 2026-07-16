@@ -4,12 +4,17 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { X, Plus, MapPin } from 'lucide-react'
 import type { EnrichedDesignation } from '@/lib/types'
+import { POSITION_LABELS, positionForSlot } from '@/lib/designation-positions'
+import { refereeLevelLabel } from '@/lib/referee-eligibility'
+import { isPersonAvailable } from '@/lib/mock-data'
 
 interface AssignmentSlotProps {
   role: 'arbitro' | 'anotador'
   index: number
   designation?: EnrichedDesignation
   isActive?: boolean
+  matchDate: string
+  matchTime: string
   onActivate?: () => void
   onRemove?: (designationId: string) => void
 }
@@ -24,26 +29,70 @@ const statusLabels: Record<string, string> = {
   notified: 'Notificado',
 }
 
+// Mismo mapa que person-card.tsx / person-picker.tsx: fallback cuando no hay
+// refereeLevel (siempre el caso de anotadores).
+const categoryLabels: Record<string, string> = {
+  provincial: 'Provincial',
+  autonomico: 'Autonómico',
+  nacional: 'Nacional',
+  feb: 'FEB',
+  escuela: 'Escuela',
+}
+
 export function AssignmentSlot({
   role,
   index,
   designation,
   isActive,
+  matchDate,
+  matchTime,
   onActivate,
   onRemove,
 }: AssignmentSlotProps) {
+  const slotPosition = positionForSlot(role, index)
+
   if (designation) {
+    const person = designation.person
+    const categoryLabel = person
+      ? (refereeLevelLabel(person.refereeLevel) ??
+        (person.category ? (categoryLabels[person.category] ?? person.category) : null))
+      : null
+    const available = isPersonAvailable(designation.personId, matchDate, matchTime)
+
     return (
       <div
         className={`flex items-center justify-between rounded-lg border p-3 ${statusColors[designation.status] ?? 'border-gray-200 bg-white'}`}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-gray-900">
-              {designation.person?.name ?? 'Persona desconocida'}
+              {person?.name ?? 'Persona desconocida'}
+              {person?.nick && (
+                <span className="ml-1.5 text-xs font-normal text-gray-400">«{person.nick}»</span>
+              )}
             </span>
+            {categoryLabel && (
+              <Badge variant="outline" className="text-xs">
+                {categoryLabel}
+              </Badge>
+            )}
+            {designation.position && (
+              <Badge variant="outline" className="text-xs">
+                {POSITION_LABELS[designation.position]}
+              </Badge>
+            )}
             <Badge variant="outline" className="text-xs">
               {statusLabels[designation.status] ?? designation.status}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={`text-xs ${
+                available
+                  ? 'border-green-200 bg-green-50 text-green-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {available ? 'Disponible' : 'No disponible'}
             </Badge>
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-xs text-gray-500">
@@ -86,7 +135,10 @@ export function AssignmentSlot({
     >
       <Plus className="h-4 w-4" />
       <span>
-        Asignar {role === 'arbitro' ? 'árbitro' : 'anotador'} {index + 1}
+        Asignar{' '}
+        {slotPosition
+          ? POSITION_LABELS[slotPosition]
+          : `${role === 'arbitro' ? 'árbitro' : 'anotador'} ${index + 1}`}
       </span>
     </button>
   )

@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { MapPin, AlertTriangle, Search, MessageSquare } from 'lucide-react'
 import type { AssignmentValidation } from '@/lib/types'
+import { POSITION_LABELS, type DesignationPosition } from '@/lib/designation-positions'
 
 interface PickerPerson {
   id: string
@@ -25,7 +26,11 @@ interface PickerPerson {
 
 interface PersonPickerProps {
   persons: PickerPerson[]
-  activeSlot: { matchId: string; role: 'arbitro' | 'anotador' } | null
+  activeSlot: {
+    matchId: string
+    role: 'arbitro' | 'anotador'
+    position?: DesignationPosition
+  } | null
   onAssign: (personId: string) => void
   sortBy?: 'cost' | 'load'
   onSortChange?: (sort: 'cost' | 'load') => void
@@ -80,6 +85,11 @@ export function PersonPicker({
         <p className="mt-0.5 text-xs text-gray-500">
           {activeSlot.role === 'arbitro' ? 'Árbitros' : 'Anotadores'} disponibles para este partido
         </p>
+        {activeSlot.position && (
+          <p className="mt-0.5 text-xs font-medium text-gray-600">
+            Asignando: {POSITION_LABELS[activeSlot.position]}
+          </p>
+        )}
         <div className="relative mt-3">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
           <Input

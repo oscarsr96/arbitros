@@ -8,6 +8,11 @@ import {
   calculateMockTravelCost,
 } from '@/lib/mock-data'
 import { checkDesignationConflict } from '@/lib/designation-validation'
+import {
+  autoFillPosition,
+  isValidPositionForRole,
+  type DesignationPosition,
+} from '@/lib/designation-positions'
 import { persistDesignations } from '@/lib/designation-persistence'
 
 export async function GET() {
@@ -23,21 +28,50 @@ export async function GET() {
 }
 
 // Crea una designación e la inserta en `mockDesignations`, o devuelve el motivo
-// del conflicto (duplicado / sobre-cobertura) sin insertar. Valida contra el
-// array VIVO, así que en un lote ve las que se han insertado antes en el mismo
-// bucle → sin duplicados ni sobre-cobertura dentro de la propia propuesta.
-function createDesignation(matchId: string, personId: string, role: 'arbitro' | 'anotador') {
+// del conflicto (duplicado / sobre-cobertura / posición) sin insertar, con el
+// status HTTP que le corresponde. Valida contra el array VIVO, así que en un
+// lote ve las que se han insertado antes en el mismo bucle → sin duplicados,
+// sobre-cobertura ni posiciones repetidas dentro de la propia propuesta.
+//
+// `position` es opcional: si viene, debe ser válida para el rol (400) y única
+// en el partido+rol (409, vía checkDesignationConflict). Si NO viene, auto-fill
+// determinista (autoFillPosition): primera posición del rol no reclamada
+// explícitamente por las designaciones existentes del partido (las legacy sin
+// position no reclaman). Si todas están reclamadas queda undefined.
+function createDesignation(
+  matchId: string,
+  personId: string,
+  role: 'arbitro' | 'anotador',
+  position?: unknown,
+) {
   if (!matchId || !personId || !role) {
-    return { ok: false as const, reason: 'matchId, personId y role son requeridos' }
+    return { ok: false as const, status: 400, reason: 'matchId, personId y role son requeridos' }
   }
+  if (
+    position !== undefined &&
+    (typeof position !== 'string' || !isValidPositionForRole(position, role))
+  ) {
+    return {
+      ok: false as const,
+      status: 400,
+      reason: `Posición "${String(position)}" no válida para el rol ${role}`,
+    }
+  }
+  const requestedPosition = position as DesignationPosition | undefined
   const person = getMockPerson(personId)
   const match = getMockMatch(matchId)
   if (!person || !match) {
-    return { ok: false as const, reason: 'Persona o partido no encontrado' }
+    return { ok: false as const, status: 404, reason: 'Persona o partido no encontrado' }
   }
-  const conflict = checkDesignationConflict(mockDesignations, match, personId, role)
+  const conflict = checkDesignationConflict(
+    mockDesignations,
+    match,
+    personId,
+    role,
+    requestedPosition,
+  )
   if (!conflict.ok) {
-    return { ok: false as const, reason: conflict.reason ?? 'Conflicto' }
+    return { ok: false as const, status: 409, reason: conflict.reason ?? 'Conflicto' }
   }
   const venue = getMockVenue(match.venueId)
   const { cost, km } = calculateMockTravelCost(person.municipalityId, venue?.municipalityId ?? '')
@@ -46,6 +80,7 @@ function createDesignation(matchId: string, personId: string, role: 'arbitro' | 
     matchId,
     personId,
     role,
+    position: requestedPosition ?? autoFillPosition(mockDesignations, matchId, role),
     travelCost: cost.toFixed(2),
     distanceKm: km.toFixed(1),
     status: 'pending' as const,
@@ -59,8 +94,8 @@ function createDesignation(matchId: string, personId: string, role: 'arbitro' | 
 // POST acepta dos formas contra la MISMA ruta (que ya comparte el módulo mock con
 // el lector `/api/admin/matches`; una ruta nueva y "fría" en Next dev tendría su
 // propio `mockDesignations` aislado y las inserciones no se verían):
-//   - { matchId, personId, role }         → una designación (manual, sustitución, re-optimizar).
-//   - { assignments: [{matchId,personId,role}, ...] } → lote (aplicar una propuesta en UNA llamada).
+//   - { matchId, personId, role, position? }  → una designación (manual, sustitución, re-optimizar).
+//   - { assignments: [{matchId,personId,role,position?}, ...] } → lote (aplicar una propuesta en UNA llamada).
 export async function POST(request: Request) {
   const body = await request.json()
 
@@ -71,6 +106,7 @@ export async function POST(request: Request) {
       matchId: string
       personId: string
       role: 'arbitro' | 'anotador'
+      position?: unknown
     }[]
     if (assignments.length === 0) {
       return NextResponse.json(
@@ -81,8 +117,8 @@ export async function POST(request: Request) {
     let applied = 0
     const conflicts: { matchId: string; personId: string; role: string; reason: string }[] = []
     const created = []
-    for (const { matchId, personId, role } of assignments) {
-      const result = createDesignation(matchId, personId, role)
+    for (const { matchId, personId, role, position } of assignments) {
+      const result = createDesignation(matchId, personId, role, position)
       if (result.ok) {
         applied++
         created.push(result.designation)
@@ -100,17 +136,12 @@ export async function POST(request: Request) {
   }
 
   // Modo unitario.
-  const { matchId, personId, role } = body
-  const result = createDesignation(matchId, personId, role)
+  const { matchId, personId, role, position } = body
+  const result = createDesignation(matchId, personId, role, position)
   if (!result.ok) {
-    // 400 datos incompletos / 404 no encontrado / 409 conflicto → se mantiene 409 para
-    // el flujo unitario (los llamadores existentes lo esperan).
-    const status = result.reason.includes('requeridos')
-      ? 400
-      : result.reason.includes('no encontrado')
-        ? 404
-        : 409
-    return NextResponse.json({ error: result.reason }, { status })
+    // 400 datos incompletos / posición inválida · 404 no encontrado · 409 conflicto
+    // (el flujo unitario espera 409 en conflictos, como hasta ahora).
+    return NextResponse.json({ error: result.reason }, { status: result.status })
   }
   persistDesignations()
   return NextResponse.json({ designation: result.designation }, { status: 201 })

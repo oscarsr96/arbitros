@@ -1,5 +1,7 @@
 // Tipos compartidos para el panel de administracion
 
+import type { DesignationPosition } from './designation-positions'
+
 export interface EnrichedMatch {
   id: string
   date: string
@@ -52,6 +54,9 @@ export interface EnrichedDesignation {
   matchId: string
   personId: string
   role: 'arbitro' | 'anotador'
+  // Posición nombrada dentro del rol (Principal/Auxiliar, Anotador/Crono/24").
+  // Opcional: las designaciones legacy del piloto no la llevan.
+  position?: DesignationPosition
   travelCost: string
   distanceKm: string
   status: string
@@ -62,6 +67,8 @@ export interface EnrichedDesignation {
     name: string
     role: string
     category: string | null
+    nick?: string | null
+    refereeLevel?: string | null
     municipalityId: string
     hasCar: boolean
     address: string

@@ -5,6 +5,8 @@ import { CoverageIndicator } from '@/components/coverage-indicator'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronUp, MapPin, Navigation } from 'lucide-react'
 import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
+import { POSITION_LABELS } from '@/lib/designation-positions'
+import { refereeLevelLabel } from '@/lib/referee-eligibility'
 import type { EnrichedMatch } from '@/lib/types'
 
 interface MatchDetailRowProps {
@@ -18,6 +20,14 @@ const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
   notified: 'Notificado',
   completed: 'Completado',
+}
+
+const categoryLabels: Record<string, string> = {
+  provincial: 'Provincial',
+  autonomico: 'Autonómico',
+  nacional: 'Nacional',
+  feb: 'FEB',
+  escuela: 'Escuela',
 }
 
 export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDetailRowProps) {
@@ -106,9 +116,27 @@ export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDeta
                         >
                           {d.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
                         </Badge>
+                        {d.position && (
+                          <Badge variant="outline" className="text-xs">
+                            {POSITION_LABELS[d.position]}
+                          </Badge>
+                        )}
                         <span className="text-sm font-medium text-gray-900">
                           {d.person?.name ?? 'Desconocido'}
+                          {d.person?.nick && (
+                            <span className="ml-1.5 text-xs font-normal text-gray-400">
+                              «{d.person.nick}»
+                            </span>
+                          )}
                         </span>
+                        {(refereeLevelLabel(d.person?.refereeLevel) ?? d.person?.category) && (
+                          <Badge variant="outline" className="text-xs">
+                            {refereeLevelLabel(d.person?.refereeLevel) ??
+                              (d.person?.category
+                                ? (categoryLabels[d.person.category] ?? d.person.category)
+                                : '')}
+                          </Badge>
+                        )}
                         <span className="text-xs text-gray-500">{d.municipality?.name ?? ''}</span>
                         <span className="text-xs text-gray-400">
                           {d.travelCost} € · {d.distanceKm} km

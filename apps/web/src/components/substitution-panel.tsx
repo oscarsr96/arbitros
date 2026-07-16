@@ -15,11 +15,13 @@ import {
   getMockMunicipality,
   getMockVenue,
 } from '@/lib/mock-data'
+import { POSITION_LABELS, type DesignationPosition } from '@/lib/designation-positions'
 
 export interface SubstitutionContext {
   matchId: string
   role: 'arbitro' | 'anotador'
   removedPersonName: string
+  position?: DesignationPosition
 }
 
 interface CandidatePerson {
@@ -150,6 +152,7 @@ export function SubstitutionPanel({
               </p>
               <p className="text-xs text-red-600">
                 Rol: {context.role === 'arbitro' ? 'Árbitro' : 'Anotador'}
+                {context.position && ` (${POSITION_LABELS[context.position]})`}
               </p>
             </div>
 

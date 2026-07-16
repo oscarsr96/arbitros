@@ -182,6 +182,64 @@ describe('ensureDesignationsHydrated', () => {
     expect(mockDesignations).toHaveLength(0)
     expect(getStore()?.designationsHydrated).toBe(true)
   })
+
+  // ── position (campo opcional, Feature B) ──────────────────────────────────
+
+  it('round-trip CON position: se persiste y revive tal cual', () => {
+    const withPosition: MockDesignation = {
+      ...sample,
+      id: 'test-desig-pos',
+      position: 'principal',
+    }
+    mockDesignations.push(withPosition)
+    persistence.persistDesignations()
+
+    mockDesignations.length = 0
+    resetHydrationFlag()
+
+    persistence.ensureDesignationsHydrated()
+
+    expect(mockDesignations).toHaveLength(1)
+    expect(mockDesignations[0].position).toBe('principal')
+  })
+
+  it('round-trip SIN position (legacy del piloto): revive sin inventarle posición', () => {
+    // `sample` no lleva position, como las ~90 designaciones reales del piloto.
+    mockDesignations.push(sample)
+    persistence.persistDesignations()
+
+    // El JSON en disco tampoco la lleva (JSON.stringify omite undefined).
+    const raw = JSON.parse(readFileSync(FILE, 'utf-8'))
+    expect('position' in raw[0]).toBe(false)
+
+    mockDesignations.length = 0
+    resetHydrationFlag()
+
+    persistence.ensureDesignationsHydrated()
+
+    expect(mockDesignations).toHaveLength(1)
+    expect(mockDesignations[0].position).toBeUndefined()
+  })
+
+  it('round-trip mixto: conviven designaciones con y sin position', () => {
+    const withPosition: MockDesignation = {
+      ...sample,
+      id: 'test-desig-mix',
+      personId: 'person-002',
+      position: 'auxiliar',
+    }
+    mockDesignations.push(sample, withPosition)
+    persistence.persistDesignations()
+
+    mockDesignations.length = 0
+    resetHydrationFlag()
+
+    persistence.ensureDesignationsHydrated()
+
+    expect(mockDesignations).toHaveLength(2)
+    expect(mockDesignations.find((d) => d.id === sample.id)?.position).toBeUndefined()
+    expect(mockDesignations.find((d) => d.id === 'test-desig-mix')?.position).toBe('auxiliar')
+  })
 })
 
 describe('store de globalThis', () => {

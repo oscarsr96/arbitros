@@ -769,3 +769,310 @@ Estado: **✅ EJECUTADO Y VERIFICADO** · Planner: project-claude · Ejecutor: m
 Decisiones D1/D2 confirmadas: solver estimado por partido; badges por partido en asignación, real por día en portal/reportes. Gate: typecheck 0, **95 tests** (incl. 10 nuevos del modelo por día), smoke runtime OK (Carlos 2 partidos Madrid → 3€/día, no 6€; away = km×0,26; totales dashboard=reportes=27,06€). Extra: el subagente detectó y corrigió 3 sitios más que sumaban por partido (persons route, demo route, person-detail-sheet).
 
 **Cabo suelto (pendiente de decisión del usuario):** en el DETALLE de liquidación (XLSX/PDF/reportes) las filas por partido muestran el coste ESTIMADO por partido, así que la suma de filas no cuadra con el total real por día. La API ya expone `liquidation[].byDay`. Opción ofrecida: cambiar el detalle a desglose por día (fecha · municipios · coste) para que sume al total. Sin hacer hasta confirmar.
+
+---
+
+# Plan: Tanda 2 — Feature B (posiciones/slots nombrados + nick+categoría) + Feature D (disponibilidad en slots) (2026-07-16)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (gate + review adversarial fable) · project-claude · tipo ampliar · tamaño M · ejecutor: MIXTO (fable T1 xhigh + sonnet T2/T3/T5 + fable review T6)
+
+## Fase 4 — resultado (2026-07-16)
+
+Gate: **pnpm typecheck 0 · 220 tests verdes** (173 previos + 47 nuevos: 23 designation-positions,
+14 route POST, +7 validation, +3 persistencia round-trip). `pnpm build` NO ejecutado a propósito (dev
+server del usuario en :3001 comparte `.next`, precedente Tanda 1). Runtime end-to-end en navegador =
+MANUAL del usuario (la extensión de Claude no es fiable en páginas admin).
+
+Ejecución: T1 (fable, xhigh) hilo de datos completo → T2+T5 (sonnet, fusionadas: mismos ficheros) ∥
+T3 (sonnet) → T6 (fable, max) gate + review adversarial → **LISTO, 0 blockers**.
+
+- **T5 fusionada en T2** por la sesión: tocan exactamente `assignment-slot.tsx` + `asignacion-view.tsx`
+  → una sola tanda de edición (economía de presupuesto).
+- **Desviaciones (todas justificadas)**: `autoFillPosition` exportada desde `designation-positions.ts`
+  (el route no puede exportar helpers); fichero de test extra `designations/__tests__/route.test.ts`
+  (probar POST auto-fill/400/409 sin escribir en el `.fbm-data` real, vía `FBM_DATA_DIR` temporal);
+  `status` explícito en los errores de `createDesignation` (distinguir 400 inválida de 409 ocupada);
+  `emptyOrdinal` en `proposedForSlot` (con slots nombrados los huecos ya no son los últimos del array).
+- **Datos legacy CONFIRMADOS intactos** (criterio nº1): las 90 designaciones reales del piloto sin
+  `position` hidratan sin cambios (round-trip vía `Omit`+spread; `JSON.stringify` omite `undefined`),
+  se pintan en Asignación y Partidos sin badge de posición y sin desplazar slots (`mapDesignationsToSlots`
+  2ª pasada las coloca en orden de inserción = orden visual antiguo), nunca se les inventa posición.
+
+### Reservas del review (no bloquean, anotadas)
+
+- **[MENOR]** Mezcla legacy+propuesta en el mismo partido/rol: una propuesta pintada sobre el hueco
+  visual "Auxiliar" (con legacy sin position en Principal) recibe `principal` al aplicarse y el render
+  siguiente la coloca en el slot 0, corriendo la legacy al 1. Sin pérdida de datos; es el auto-fill
+  especificado; solo reordena visualmente en partidos con cobertura legacy parcial.
+- **[MENOR]** En modo LOTE una posición inválida se reporta como conflicto (200 con `conflicts[]`) en
+  vez de 400; coherente con el contrato de lote existente (la spec 400/409 se enunció para el unitario).
+- **[COSMÉTICO]** `match-detail-row.tsx` llama `refereeLevelLabel` dos veces (guard + render).
+- **[COSMÉTICO/inalcanzable]** Caso `needed` > catálogo de posiciones (2 árbitro / 3 mesa): dos slots
+  vacíos con `position===undefined` se resaltarían a la vez. Los datos reales FBM siempre son 2/3 →
+  no se dispara; el desempate por índice se descartó por Simplicity First.
+- **[PREEXISTENTE]** El route no valida que `role` ∈ {arbitro, anotador}; `api/admin/demo` inserta sin
+  `position` (fuera de scope, quedan legacy sin badge).
+
+### Pendiente
+
+- Verificación runtime end-to-end del usuario (asignar por posición, aplicar propuesta con auto-fill,
+  sustituir heredando posición, reiniciar server y ver que `designations.json` rehidrata con/sin position).
+- `pnpm build` cuando el usuario pare el dev server.
+- Commit ✅ + push (esta sesión; diff limpio y autocontenido, sin trabajo entrelazado).
+- **Tanda 2 restante: C (nicks de una palabra) + E (panel de verificación)** planificadas abajo, sin ejecutar.
+
+## Contexto verificado contra el código (2026-07-16)
+
+- `getMockDesignationsForMatch` (`mock-data.ts` L1963-1982) construye `personWithAddress` con SOLO
+  `{id, name, role, category, municipalityId, hasCar, address}` → **confirmado: NO propaga `nick` ni
+  `refereeLevel`** aunque `MockPerson` (referee-roster.ts L26-44) los tiene y TODAS las personas del
+  roster (9 demo + 770 árbitros + 500 anotadores) llevan `nick`. `EnrichedDesignation.person`
+  (`types.ts` L60-68) tampoco los tipa. Anotadores NO tienen `refereeLevel` (solo `category`
+  escuela/autonomico/nacional) → el badge cae al fallback de category, como en person-card.
+- Precedente de render (person-card.tsx L60-83): nick como `«{nick}»` en gris junto al nombre; badge
+  de categoría = `refereeLevelLabel(person.refereeLevel) ?? categoryLabels[person.category]`
+  (`refereeLevelLabel` de `referee-eligibility.ts` L229, devuelve null si no hay nivel).
+- Vistas que pintan designaciones (grep `EnrichedDesignation` + `.designations.map`):
+  `components/assignment-slot.tsx` (asignación), `app/(admin)/partidos/match-detail-row.tsx` (OJO:
+  vive en `app/(admin)/partidos/`, no en `components/`), `components/demo-view.tsx` (DesignationRow
+  L727). **CAMBIO relevante: `demo-view.tsx` está HUÉRFANA** (grep `DemoView` → 0 imports; la landing
+  la eliminó en la tanda anterior, T8) → se EXCLUYE del scope por defecto (tocarla es trabajo muerto;
+  ver T4 opcional). El portal (`designation-card.tsx`) muestra las designaciones propias del árbitro;
+  fuera de scope ahora, pero `position` le llegará gratis vía spread de `getMockDesignationsForPerson`.
+- Slots hoy: `asignacion-view.tsx` L739-875 itera `Array.from({length: match.refereesNeeded})` y mapea
+  designación→slot **por índice de array** (`refDesigs[i]`); `onActivate` solo si `i >= refDesigs.length`.
+  `activeSlot` en `admin-store.ts` (L18-19) = `{matchId, role}` sin índice ni posición.
+- Partidos reales FBM (fbm-seed.json): `refereesNeeded: 2`, `scorersNeeded: 3` en todos. Los slots
+  nombrados cubren exactamente 2 y 3.
+- POST `/api/admin/designations` (route.ts): helper module-local `createDesignation` (no exportado, OK
+  con la lección route.ts) + dos modos: unitario `{matchId, personId, role}` y lote
+  `{assignments: [...]}`. Valida con `checkDesignationConflict` (designation-validation.ts, pura:
+  duplicado de persona + sobre-cobertura por rol). `persistDesignations()` tras mutar. DELETE en
+  `[id]/route.ts` también persiste.
+- Persistencia (`designation-persistence.ts`): serializa `JSON.stringify(mockDesignations)` y revive
+  con spread `...d` + fechas; `SerializedDesignation` deriva de `MockDesignation` vía `Omit` →
+  **añadir un campo opcional a `MockDesignation` round-trippea SIN tocar código de persistencia**
+  (se verifica con test). Los datos reales del piloto (`.fbm-data/designations.json`, ~90
+  designaciones) NO tienen `position` → deben seguir hidratando y pintándose.
+- `isPersonAvailable(personId: string, date: string, time: string): boolean` (`mock-data.ts` L2174):
+  date `YYYY-MM-DD`, time `HH:MM`; compara EN MINUTOS contra franjas indexadas
+  (`personId|weekStart|dayOfWeek`), semántica `[start, end)`. Client-safe (ya la importan
+  `asignacion-view.tsx` L430 y `substitution-panel.tsx` L74 para el motivo "No disponible en esta
+  franja" del picker). Caveat lección 3: en cliente lee la copia estática del seed (determinista);
+  es la MISMA fuente que usa hoy el picker → el badge del slot será consistente con el picker.
+- Otras rutas que crean designaciones: `api/admin/demo/route.ts` (push directo L693, sin posición) →
+  fuera de scope, quedan como legacy sin badge de posición (fallback). Solver/propuestas
+  (`ProposedAssignment`) no llevan posición: el auto-fill del servidor (mini-spec) las posiciona al
+  aplicar.
+
+## Mini-spec Feature B — modelo de datos (FIJADO)
+
+**Nuevo módulo hoja** `apps/web/src/lib/designation-positions.ts` (sin imports de mock-data ni fs;
+importable desde cliente y server):
+
+```ts
+export const REFEREE_POSITIONS = ['principal', 'auxiliar'] as const
+export const SCORER_POSITIONS = ['anotador', 'cronometrador', 'veinticuatro'] as const
+export type DesignationPosition =
+  | (typeof REFEREE_POSITIONS)[number]
+  | (typeof SCORER_POSITIONS)[number]
+
+export const POSITION_LABELS: Record<DesignationPosition, string> = {
+  principal: 'Principal',
+  auxiliar: 'Auxiliar',
+  anotador: 'Anotador',
+  cronometrador: 'Cronometrador',
+  veinticuatro: '24"',
+}
+
+export function positionsForRole(role: 'arbitro' | 'anotador'): readonly DesignationPosition[]
+export function positionForSlot(
+  role: 'arbitro' | 'anotador',
+  slotIndex: number,
+): DesignationPosition | undefined // fuera de rango → undefined
+export function isValidPositionForRole(position: string, role: 'arbitro' | 'anotador'): boolean
+
+// Reconciliación slots↔designaciones (el punto delicado, con datos legacy sin position):
+// 1ª pasada: designaciones con position válida para el rol reclaman SU slot (si dos reclaman la
+//   misma, la primera gana y la otra pasa a la 2ª pasada).
+// 2ª pasada: designaciones sin position (o con position duplicada/invalida) rellenan los huecos
+//   restantes en orden de llegada.
+// Sobrantes (> needed, datos raros): se anexan al final (longitud devuelta = max(needed, ocupadas))
+//   para no ocultar designaciones existentes. Determinista, pura, con tests.
+export function mapDesignationsToSlots<T extends { role: string; position?: DesignationPosition }>(
+  designations: T[],
+  role: 'arbitro' | 'anotador',
+  needed: number,
+): (T | undefined)[]
+```
+
+**Campo en la designación**: `position?: DesignationPosition` (OPCIONAL) en `MockDesignation`
+(mock-data.ts L1636) y en `EnrichedDesignation` (types.ts L50). Opcional para no romper el JSON
+existente ni los pushes de tests/demo. `EnrichedDesignation.person` gana además
+`nick?: string | null` y `refereeLevel?: string | null`.
+
+**Cómo se fija la posición al crear** (`createDesignation` en el route):
+
+- Si el body trae `position`: validar `isValidPositionForRole` (si no → 400) y unicidad
+  match+rol+posición vía `checkDesignationConflict` extendida (si ocupada → 409).
+- Si NO trae `position` (aplicar propuesta, re-optimizar slot, llamadores legacy): **auto-fill
+  determinista** = primera posición de `positionsForRole(role)` no reclamada explícitamente por las
+  designaciones existentes de ese partido+rol. Si todas ocupadas → queda `undefined` (la
+  sobre-cobertura ya la corta el conflicto por rol). Así TODA designación nueva nace con posición
+  sin obligar a los llamadores a conocerla.
+
+**Mapeo slot→posición en la UI**: el slot i del rol r ES la posición `positionForSlot(r, i)`. El
+slot vacío se pinta "Asignar Principal / Auxiliar / Anotador / Cronometrador / 24\"" y al activarlo
+`activeSlot` pasa a `{matchId, role, position}` (admin-store). Slots ocupados: se resuelven con
+`mapDesignationsToSlots` (NO por índice crudo). El badge de posición en un slot ocupado muestra SOLO
+`designation.position` guardada (una legacy sin position no muestra badge: no inventamos posiciones
+no guardadas).
+
+**Persistencia/revive**: automático (spread + `Omit`); test de round-trip obligatorio (con y sin
+`position`).
+
+**Sustitución**: `SubstitutionContext` gana `position?: DesignationPosition` (capturada de la
+designación eliminada en `handleRemove` antes del DELETE); `handleSubstitute` la envía en el POST →
+el sustituto hereda la posición liberada.
+
+**Fuera de scope B (decisión ya tomada)**: NO se conecta `referee-eligibility.ts` (matriz 7 niveles)
+para validar/sugerir por posición; la categoría se MUESTRA tal cual. El solver NO propone posiciones.
+
+## Mini-spec Feature D — disponibilidad en slots asignados
+
+`AssignmentSlot` recibe 2 props nuevas obligatorias: `matchDate: string`, `matchTime: string`
+(asignacion-view tiene `match` en scope en ambos bucles). En la rama de slot ocupado:
+`const available = isPersonAvailable(designation.personId, matchDate, matchTime)` → badge
+`Disponible` (verde, `border-green-200 bg-green-50 text-green-700`) o `No disponible` (rojo,
+`border-red-200 bg-red-50 text-red-700`). Misma fuente y semántica (minutos, `[start,end)`) que el
+motivo del picker → nunca se contradicen. Sin `Date.now()`/`Math.random()` (determinista). Solo
+`assignment-slot.tsx` (el picker ya lo hace; match-detail-row y demo-view fuera de scope D).
+
+## Task breakdown
+
+**T1. Hilo de datos posición+nick+categoría (types → positions lib → mock-data → validación → route) + tests** · ejecutor: **PLANNER (fable)** · esfuerzo: `xhigh`
+(a) `apps/web/src/lib/designation-positions.ts` (NUEVO), `apps/web/src/lib/types.ts`,
+`apps/web/src/lib/mock-data.ts`, `apps/web/src/lib/designation-validation.ts`,
+`apps/web/src/app/api/admin/designations/route.ts`, tests:
+`apps/web/src/lib/__tests__/designation-positions.test.ts` (NUEVO),
+`designation-validation.test.ts` y `designation-persistence.test.ts` (extender).
+(b) Implementa el módulo de posiciones completo (unions, labels, `positionForSlot`,
+`isValidPositionForRole`, `mapDesignationsToSlots` con las 2 pasadas + sobrantes); añade
+`position?` a `MockDesignation` y a `EnrichedDesignation` (+ `nick`/`refereeLevel` en su `person`);
+`getMockDesignationsForMatch` propaga `nick: person.nick ?? null` y
+`refereeLevel: person.refereeLevel ?? null`; `checkDesignationConflict` gana el parámetro opcional
+`position` (chequeo de posición ocupada, mensaje claro); `createDesignation` acepta/valida
+`position` en modo unitario Y lote, con auto-fill determinista si falta. `route.ts` sigue exportando
+SOLO handlers.
+(c) Aceptación: tests nuevos verdes — `mapDesignationsToSlots` (legacy sin position en orden;
+position explícita reclama su slot aunque llegara después; duplicada degrada a hueco; sobrantes no
+se pierden); validación (posición inválida para rol → ok:false; ocupada → ok:false; sin position →
+comportamiento actual intacto); round-trip persistencia con/sin position; POST unitario con
+position guarda y devuelve la designación con position; POST sin position auto-fill 'principal' y
+luego 'auxiliar'; **`pnpm typecheck` 0** (toca route.ts → lección 1: typecheck obligatorio, vitest
+no basta) y suite completa verde (los push de solver.test/optimize-range.test NO se tocan: campo
+opcional).
+Justificación fable: es el hilo con más riesgo de romper (datos reales del piloto sin position,
+persistencia, contrato del route, reconciliación con legacy); un reintento aquí invalida todo lo
+demás.
+
+**T2. UI Asignación: slots nombrados + nick/categoría + picker consciente de posición** · ejecutor: `sonnet` · esfuerzo: `high` · depende de T1
+(a) `apps/web/src/stores/admin-store.ts`, `apps/web/src/app/(admin)/asignacion/asignacion-view.tsx`,
+`apps/web/src/components/assignment-slot.tsx`, `apps/web/src/components/person-picker.tsx`,
+`apps/web/src/components/substitution-panel.tsx`.
+(b) `activeSlot` → `{matchId, role, position?: DesignationPosition}` (store + los 2 `setActiveSlot`
+de asignacion-view + prop de PersonPicker). En asignacion-view: sustituir el mapeo por índice
+(`refDesigs[i]`) por `mapDesignationsToSlots(refDesigs, 'arbitro', match.refereesNeeded)` (ídem
+anotadores); `isActive`/`onActivate` comparan por `positionForSlot(role, i)` y activan cualquier
+slot VACÍO (ya no solo `i >= length`); `handleAssign` envía `activeSlot.position`; `handleRemove`
+captura `desig.position` al `SubstitutionContext`; `handleSubstitute` la envía. En assignment-slot:
+slot vacío = "Asignar {POSITION_LABELS[position] ?? '<rol> N'}"; slot ocupado = nombre + `«nick»`
+(estilo person-card) + badge categoría (`refereeLevelLabel(refereeLevel) ?? categoryLabels[category]`,
+mapa local con 'escuela' incluida, como los 5 mapas existentes) + badge posición (solo si
+`designation.position` existe) + badge estado actual. PersonPicker: el header muestra la posición
+activa ("Asignando: Principal") si viene en activeSlot.
+(c) Aceptación (typecheck + smoke): partido FBM expandido muestra "Asignar Principal"/"Asignar
+Auxiliar" y "Asignar Anotador"/"Asignar Cronometrador"/"Asignar 24\""; asignar desde el picker a
+Auxiliar con Principal vacío guarda position='auxiliar' y el slot Principal SIGUE vacío y activable;
+las ~90 designaciones legacy del piloto se pintan sin badge de posición y sin huecos corridos;
+quitar+sustituir hereda la posición; nick y categoría visibles en cada slot ocupado.
+
+**T3. Vista Partidos (match-detail-row): nick + categoría + posición** · ejecutor: `sonnet` · esfuerzo: `low` · depende de T1 · paralelo con T2
+(a) `apps/web/src/app/(admin)/partidos/match-detail-row.tsx`.
+(b) En cada fila de designación (L94-169): junto al nombre, `«nick»` gris (patrón person-card);
+badge de posición (`POSITION_LABELS[d.position]`, solo si existe) al lado del badge de rol
+Árbitro/Anotador ya existente; badge de categoría (`refereeLevelLabel ?? categoryLabels`). No tocar
+"Cómo llegar" ni el badge de hora de salida.
+(c) Aceptación: typecheck 0; smoke: partido designado en /partidos muestra nick+categoría+posición;
+designación legacy sin position no muestra badge de posición ni rompe el layout.
+
+**T4. (OPCIONAL — descartada por defecto) demo-view.tsx** · ejecutor: `sonnet` · esfuerzo: `low`
+`demo-view.tsx` está huérfana (0 imports desde la limpieza de la landing). Tocarla es trabajo
+muerto. Solo si el usuario decide conservarla viva: replicar T3 en `DesignationRow` (L727). Si no,
+candidata a borrado en una limpieza aparte (decisión del usuario, no de esta tanda).
+
+**T5. Feature D: badge de disponibilidad en slots ocupados** · ejecutor: `sonnet` · esfuerzo: `low` · depende de T2 (mismos ficheros)
+(a) `apps/web/src/components/assignment-slot.tsx`, `apps/web/src/app/(admin)/asignacion/asignacion-view.tsx`.
+(b) Props `matchDate`/`matchTime` en AssignmentSlot (pasadas desde los 2 bucles de asignacion-view,
+`match.date`/`match.time`); en slot ocupado, badge Disponible/No disponible vía
+`isPersonAvailable(designation.personId, matchDate, matchTime)` con los colores de la mini-spec.
+(c) Aceptación: typecheck 0; smoke: asignar a alguien disponible → badge verde; una designación de
+una persona SIN franja en esa fecha/hora (p. ej. creada antes de cambiar su disponibilidad) → badge
+rojo, y el veredicto coincide con el motivo que daría el picker para esa persona; sin mismatch de
+hidratación (consola limpia).
+
+**T6. Gate final + review adversarial** · ejecutor: **PLANNER (fable, juez)** · esfuerzo: `max` · depende de T2, T3, T5
+(a) Todo el diff de la tanda.
+(b) `pnpm typecheck` 0 + `pnpm test` verde (173 previos + nuevos de T1); `pnpm build` SOLO si el dev
+server del usuario está parado (comparten `.next`, precedente Tanda 1). Smoke runtime completo del
+flujo: asignar por posición, aplicar propuesta del solver (auto-fill), sustituir, recargar server
+(hidratación de designations.json con y sin position). Review adversarial: surgical changes (cada
+línea traza a B o D), huérfanos (imports/props que los cambios dejen muertos), datos legacy sin
+`position` intactos en TODAS las vistas, determinismo/hidratación (nada de Date.now/Math.random en
+módulos cliente), route.ts solo exporta handlers, persistencia tras cada mutación.
+(c) Aceptación: criterios globales de abajo, con veredicto explícito LISTO / LISTO CON RESERVAS /
+NO LISTO y reservas corregidas o anotadas.
+
+### Grafo de dependencias
+
+```
+T1 (fable, xhigh)
+ ├─→ T2 (sonnet, high) ─→ T5 (sonnet, low) ─┐
+ └─→ T3 (sonnet, low)  ────────────────────┼─→ T6 (fable, max)
+     [T4 opcional, descartada]              ┘
+T2 ∥ T3 (ficheros disjuntos). T5 tras T2 (comparten assignment-slot.tsx y asignacion-view.tsx).
+```
+
+## Criterios de aceptación globales (Tanda 2 · B+D)
+
+- `pnpm typecheck` 0 errores; `pnpm test` verde (todos los previos + nuevos de T1); build OK cuando
+  el dev server lo permita.
+- Toda designación NUEVA (manual, propuesta aplicada, re-optimización, sustitución) queda con
+  `position` guardada y sobrevive a un reinicio del server (JSON round-trip).
+- Las designaciones EXISTENTES del piloto (sin `position`) siguen hidratando, pintándose en
+  Asignación/Partidos sin badge de posición y sin desplazar slots; nunca se les inventa posición.
+- En Asignación cada slot muestra: nombre + «nick» + badge de categoría (refereeLevel si existe,
+  category si no, 'Escuela' incluida) + badge de posición (si guardada) + badge de estado + badge
+  Disponible/No disponible coherente con el motivo del picker.
+- No se puede crear por API una posición inválida para el rol (400) ni duplicada en el mismo
+  partido (409). El modo lote respeta lo mismo dentro del propio lote.
+- Determinismo: recarga sin mismatch de hidratación; sin `Math.random`/`Date.now` nuevos en módulos
+  importados por cliente.
+
+## Tanda 2 restante (planificado, siguiente sesión — esbozo, NO al nivel de B/D)
+
+- **C. Nicks de una sola palabra**: hoy el pool (`referee-roster.ts#buildNickPool`) mezcla motes de
+  1 palabra con compuestos "APODO DE LUGAR" (p. ej. "EL FLACO DE VALLECAS") para tener holgura.
+  Pasar a 1 palabra exige un pool curado de **≥1300 palabras sueltas únicas** (770 árbitros + 500
+  anotadores + 9 demo + margen) sin sufijos numéricos/romanos ni determinantes ("EL", "LA"). Tensión
+  sin resolver: curar ~1300 palabras con calidad (barrios, parajes, apodos castizos) sin repetirse
+  ni degenerar en ruido; probablemente requiera generación asistida + filtro manual del usuario.
+  Mantener determinismo (mismo PRNG/semillas) y unicidad árbitro/anotador (offset actual).
+- **E. Panel de verificación pre-publicación**: chequeo previo a "Publicar designaciones" que lista
+  problemas por persona/día. Necesita una **función de solape NUEVA en minutos** que use duración
+  real del partido (hoy `hasTimeOverlap` compara solo horas enteras con ventana fija de 2h) y
+  distancia entre pabellones. Umbrales propuestos (A CONFIRMAR con el usuario): partidos de la misma
+  persona a <2h → aviso; <1h30 → error; solape directo → error. Excepción confirmada: **mismo
+  pabellón + misma categoría → mismo cuerpo arbitral OK** (encadenar partidos seguidos en la misma
+  pista es práctica deseada, no error). UI: panel/diálogo antes de publicar con errores (bloquean) y
+  avisos (no bloquean).

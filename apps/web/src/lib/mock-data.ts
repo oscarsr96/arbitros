@@ -8,6 +8,9 @@ import fbmSeed from './fbm-calendar/fbm-seed.json'
 // Generador determinista de disponibilidad de temporada para las 1279 personas
 // (ver mini-spec Parte 1, tasks/todo.md). Módulo hoja: sin ciclo con mock-data.
 import { generateSeasonAvailability, type GeneratedAvailabilitySlot } from './availability-roster'
+// Posiciones nombradas de designación (Principal/Auxiliar, Anotador/Crono/24").
+// Módulo hoja: sin ciclo con mock-data.
+import type { DesignationPosition } from './designation-positions'
 
 // ── Store compartido en globalThis (fix HMR / rutas frías, ver CLAUDE.md) ───
 //
@@ -1638,6 +1641,9 @@ export interface MockDesignation {
   matchId: string
   personId: string
   role: 'arbitro' | 'anotador'
+  // Posición nombrada dentro del rol. OPCIONAL: las designaciones legacy del
+  // piloto (designations.json) no la llevan y nunca se les inventa una.
+  position?: DesignationPosition
   travelCost: string
   distanceKm: string
   status: DesignationStatus
@@ -1972,6 +1978,8 @@ export function getMockDesignationsForMatch(matchId: string) {
             name: person.name,
             role: person.role,
             category: person.category,
+            nick: person.nick ?? null,
+            refereeLevel: person.refereeLevel ?? null,
             municipalityId: person.municipalityId,
             hasCar: person.hasCar,
             address: person.address,

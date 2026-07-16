@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { OptimizationState, Proposal, SolverParameters } from '@/lib/types'
+import type { DesignationPosition } from '@/lib/designation-positions'
 
 interface AdminState {
   // Matchday selection
@@ -15,8 +16,14 @@ interface AdminState {
   toggleExpandedMatch: (id: string) => void
 
   // Active assignment slot
-  activeSlot: { matchId: string; role: 'arbitro' | 'anotador' } | null
-  setActiveSlot: (slot: { matchId: string; role: 'arbitro' | 'anotador' } | null) => void
+  activeSlot: {
+    matchId: string
+    role: 'arbitro' | 'anotador'
+    position?: DesignationPosition
+  } | null
+  setActiveSlot: (
+    slot: { matchId: string; role: 'arbitro' | 'anotador'; position?: DesignationPosition } | null,
+  ) => void
 
   // Match filters
   matchFilters: {

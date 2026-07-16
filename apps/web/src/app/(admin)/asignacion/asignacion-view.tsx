@@ -26,6 +26,7 @@ import {
   getMockVenue,
 } from '@/lib/mock-data'
 import { getJornadaSaturdayForDate, getMatchdayWindow } from '@/lib/matchday-availability'
+import { mapDesignationsToSlots, positionForSlot } from '@/lib/designation-positions'
 
 interface PickerPerson {
   id: string
@@ -163,6 +164,7 @@ export function AsignacionView() {
         matchId: activeSlot.matchId,
         personId,
         role: activeSlot.role,
+        position: activeSlot.position,
       }),
     })
 
@@ -181,12 +183,14 @@ export function AsignacionView() {
     let removedPersonName = ''
     let removedMatchId = ''
     let removedRole: 'arbitro' | 'anotador' = 'arbitro'
+    let removedPosition: SubstitutionContext['position']
     for (const match of matches) {
       const desig = match.designations.find((d) => d.id === designationId)
       if (desig) {
         removedPersonName = desig.person?.name ?? ''
         removedMatchId = match.id
         removedRole = desig.role
+        removedPosition = desig.position
         break
       }
     }
@@ -204,6 +208,7 @@ export function AsignacionView() {
           matchId: removedMatchId,
           role: removedRole,
           removedPersonName,
+          position: removedPosition,
         })
       }
     } else {
@@ -221,6 +226,7 @@ export function AsignacionView() {
         matchId: substitutionContext.matchId,
         personId,
         role: substitutionContext.role,
+        position: substitutionContext.position,
       }),
     })
 
@@ -723,6 +729,15 @@ export function AsignacionView() {
                 const scorerDesigs = match.designations.filter((d) => d.role === 'anotador')
                 const proposedRefs = getProposedForSlot(match.id, 'arbitro')
                 const proposedScorers = getProposedForSlot(match.id, 'anotador')
+                // Slots nombrados: puede ser más largo que needed si hay
+                // designaciones sobrantes (datos raros) — se itera el array
+                // devuelto, nunca Array.from({length: needed}).
+                const refSlots = mapDesignationsToSlots(refDesigs, 'arbitro', match.refereesNeeded)
+                const scorerSlots = mapDesignationsToSlots(
+                  scorerDesigs,
+                  'anotador',
+                  match.scorersNeeded,
+                )
 
                 return (
                   <MatchCard
@@ -736,11 +751,14 @@ export function AsignacionView() {
                       <div>
                         <h4 className="mb-2 text-xs font-semibold text-gray-600">Árbitros</h4>
                         <div className="space-y-2">
-                          {Array.from({ length: match.refereesNeeded }).map((_, i) => {
-                            const existingDesig = refDesigs[i]
+                          {refSlots.map((existingDesig, i) => {
+                            const slotPosition = positionForSlot('arbitro', i)
+                            const emptyOrdinal = existingDesig
+                              ? -1
+                              : refSlots.slice(0, i).filter((d) => !d).length
                             const proposedForSlot =
-                              !existingDesig && proposedRefs.length > i - refDesigs.length
-                                ? proposedRefs[i - refDesigs.length]
+                              !existingDesig && proposedRefs.length > emptyOrdinal
+                                ? proposedRefs[emptyOrdinal]
                                 : undefined
 
                             return (
@@ -751,6 +769,8 @@ export function AsignacionView() {
                                     index={i}
                                     designation={existingDesig}
                                     isActive={false}
+                                    matchDate={match.date}
+                                    matchTime={match.time}
                                     onRemove={handleRemove}
                                   />
                                 ) : proposedForSlot ? (
@@ -766,15 +786,16 @@ export function AsignacionView() {
                                       isActive={
                                         activeSlot?.matchId === match.id &&
                                         activeSlot?.role === 'arbitro' &&
-                                        i >= refDesigs.length
+                                        activeSlot?.position === slotPosition
                                       }
+                                      matchDate={match.date}
+                                      matchTime={match.time}
                                       onActivate={() =>
-                                        i >= refDesigs.length
-                                          ? setActiveSlot({
-                                              matchId: match.id,
-                                              role: 'arbitro',
-                                            })
-                                          : undefined
+                                        setActiveSlot({
+                                          matchId: match.id,
+                                          role: 'arbitro',
+                                          position: slotPosition,
+                                        })
                                       }
                                       onRemove={handleRemove}
                                     />
@@ -807,11 +828,14 @@ export function AsignacionView() {
                       <div>
                         <h4 className="mb-2 text-xs font-semibold text-gray-600">Anotadores</h4>
                         <div className="space-y-2">
-                          {Array.from({ length: match.scorersNeeded }).map((_, i) => {
-                            const existingDesig = scorerDesigs[i]
+                          {scorerSlots.map((existingDesig, i) => {
+                            const slotPosition = positionForSlot('anotador', i)
+                            const emptyOrdinal = existingDesig
+                              ? -1
+                              : scorerSlots.slice(0, i).filter((d) => !d).length
                             const proposedForSlot =
-                              !existingDesig && proposedScorers.length > i - scorerDesigs.length
-                                ? proposedScorers[i - scorerDesigs.length]
+                              !existingDesig && proposedScorers.length > emptyOrdinal
+                                ? proposedScorers[emptyOrdinal]
                                 : undefined
 
                             return (
@@ -822,6 +846,8 @@ export function AsignacionView() {
                                     index={i}
                                     designation={existingDesig}
                                     isActive={false}
+                                    matchDate={match.date}
+                                    matchTime={match.time}
                                     onRemove={handleRemove}
                                   />
                                 ) : proposedForSlot ? (
@@ -837,15 +863,16 @@ export function AsignacionView() {
                                       isActive={
                                         activeSlot?.matchId === match.id &&
                                         activeSlot?.role === 'anotador' &&
-                                        i >= scorerDesigs.length
+                                        activeSlot?.position === slotPosition
                                       }
+                                      matchDate={match.date}
+                                      matchTime={match.time}
                                       onActivate={() =>
-                                        i >= scorerDesigs.length
-                                          ? setActiveSlot({
-                                              matchId: match.id,
-                                              role: 'anotador',
-                                            })
-                                          : undefined
+                                        setActiveSlot({
+                                          matchId: match.id,
+                                          role: 'anotador',
+                                          position: slotPosition,
+                                        })
                                       }
                                       onRemove={handleRemove}
                                     />
