@@ -12,8 +12,8 @@
 // expresar estas reglas porque NO son monótonas: p. ej. un Nacional NO pita 1ª
 // autonómica (reservada a los árbitros de 1ª aut) aunque sea "superior".
 //
-// BORRADOR: es la mejor interpretación del texto de las reglas. Hay 4
-// ambigüedades marcadas con [AMBIGUO-n] para afinar con el usuario.
+// Las 4 ambigüedades iniciales del borrador ([AMBIGUO-1..4]) ya se resolvieron
+// con el usuario y están reflejadas en la matriz (ver comentarios inline).
 
 export type RefereeLevel =
   | 'nacional'
@@ -26,7 +26,9 @@ export type RefereeLevel =
 
 export type CompetitionCategory =
   | 'nacional'
-  | 'primera_aut' // 1ª autonómica masc/fem (reservada a árbitros de 1ª aut)
+  | 'primera_aut_oro' // 1ª autonómica oro (reservada a árbitros de 1ª aut)
+  | 'primera_aut_plata' // 1ª autonómica plata (reservada a árbitros de 1ª aut)
+  | 'primera_aut_fem' // 1ª autonómica femenina (reservada a árbitros de 1ª aut)
   | 'segunda_aut_oro'
   | 'segunda_aut_plata'
   | 'segunda_aut_bronce'
@@ -114,11 +116,9 @@ export const ELIGIBILITY: Record<
     infantil_pref: ['principal'],
     minibasket: ['principal'],
   },
-  // FEB: todo MENOS nacional, 1ª aut y escuela (no pita solo). Principal. Foco ORO.
-  // [AMBIGUO-1] segunda_aut_oro: la doy como principal (refuerzo), aunque el
-  // bloque de autonómico_oro la llama "exclusiva". Confirmar si feb entra o no.
+  // FEB: todo MENOS nacional, 1ª aut y escuela (no pita solo). Principal.
+  // segunda_aut_oro es exclusiva de autonomico_oro: feb no la pita.
   feb: {
-    segunda_aut_oro: ['principal'],
     segunda_aut_plata: ['principal'],
     segunda_aut_bronce: ['principal'],
     junior_pref: ['principal'],
@@ -133,7 +133,11 @@ export const ELIGIBILITY: Record<
   // escuela. Foco principal: 2ª aut, junior pref, sub22 plata/bronce, junior
   // especial plata/bronce.
   primera_aut: {
-    primera_aut: ['principal'],
+    // Los 3 subniveles heredan la misma elegibilidad que la antigua
+    // primera_aut; refinar si las reglas FBM difieren por oro/plata/fem.
+    primera_aut_oro: ['principal'],
+    primera_aut_plata: ['principal'],
+    primera_aut_fem: ['principal'],
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     segunda_aut_oro: ['principal'],
@@ -144,8 +148,6 @@ export const ELIGIBILITY: Record<
     sub22_bronce: ['principal'],
     junior_especial_plata: ['principal'],
     junior_especial_bronce: ['principal'],
-    // [AMBIGUO-3] "principales de escuela": en partido de 1 árbitro, ¿van solos
-    // o a doble con un escuela de auxiliar? Modelado como principal.
     cadete_pref: ['principal'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
@@ -156,7 +158,9 @@ export const ELIGIBILITY: Record<
     segunda_aut_oro: ['principal'],
     segunda_aut_plata: ['principal'],
     segunda_aut_bronce: ['principal'],
-    primera_aut: ['auxiliar'],
+    primera_aut_oro: ['auxiliar'],
+    primera_aut_plata: ['auxiliar'],
+    primera_aut_fem: ['auxiliar'],
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     cadete_pref: ['principal'],
@@ -171,7 +175,9 @@ export const ELIGIBILITY: Record<
     segunda_aut_bronce: ['principal'],
     segunda_aut_oro: ['auxiliar'],
     nacional: ['auxiliar'],
-    primera_aut: ['auxiliar'],
+    primera_aut_oro: ['auxiliar'],
+    primera_aut_plata: ['auxiliar'],
+    primera_aut_fem: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     cadete_pref: ['principal'],
     infantil_pref: ['principal'],
@@ -196,12 +202,6 @@ export const ELIGIBILITY: Record<
     junior_pref: ['auxiliar'],
   },
 }
-
-// [AMBIGUO-2] 1ª autonómica: aquí es un único bloque `primera_aut`. Las reglas
-// citan "1ª aut masc oro y plata" y femenina: si hace falta, desglosar en
-// primera_aut_oro / primera_aut_plata / primera_aut_fem.
-// [AMBIGUO-4] Género (masc/fem) de las competiciones: no modelado. Si importa
-// para la elegibilidad, añadir dimensión de género a CompetitionCategory.
 
 /**
  * ¿Puede un árbitro de nivel `level` pitar la competición `competition`?

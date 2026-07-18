@@ -6,6 +6,8 @@ import {
   LEGACY_CATEGORY_BY_LEVEL,
   REFEREE_LEVELS,
   canOfficiate,
+  eligibleRoles,
+  type CompetitionCategory,
 } from '../referee-eligibility'
 
 const MUNIS = [
@@ -200,13 +202,13 @@ describe('formato de nick: una sola palabra en mayúsculas', () => {
 describe('canOfficiate (matriz de elegibilidad)', () => {
   it('nacional pita nacional pero NO 1ª autonómica', () => {
     expect(canOfficiate('nacional', 'nacional', 'principal')).toBe(true)
-    expect(canOfficiate('nacional', 'primera_aut')).toBe(false)
+    expect(canOfficiate('nacional', 'primera_aut_oro')).toBe(false)
   })
 
   it('1ª aut es exclusiva de primera_aut y escuela no la pita', () => {
-    expect(canOfficiate('primera_aut', 'primera_aut', 'principal')).toBe(true)
-    expect(canOfficiate('feb', 'primera_aut')).toBe(false)
-    expect(canOfficiate('escuela', 'primera_aut')).toBe(false)
+    expect(canOfficiate('primera_aut', 'primera_aut_oro', 'principal')).toBe(true)
+    expect(canOfficiate('feb', 'primera_aut_oro')).toBe(false)
+    expect(canOfficiate('escuela', 'primera_aut_oro')).toBe(false)
   })
 
   it('feb no pita nacional ni escuela (no va solo)', () => {
@@ -224,5 +226,23 @@ describe('canOfficiate (matriz de elegibilidad)', () => {
   it('autónomico oro es exclusiva en 2ª aut oro', () => {
     expect(canOfficiate('autonomico_oro', 'segunda_aut_oro', 'principal')).toBe(true)
     expect(canOfficiate('autonomico_bronce', 'segunda_aut_oro')).toBe(false)
+  })
+
+  it('feb no pita 2ª aut oro; sigue exclusiva de autonomico_oro', () => {
+    expect(canOfficiate('feb', 'segunda_aut_oro')).toBe(false)
+    expect(canOfficiate('autonomico_oro', 'segunda_aut_oro')).toBe(true)
+  })
+
+  it('primera_aut oficia las 3 subcategorías (oro/plata/fem) como principal', () => {
+    expect(canOfficiate('primera_aut', 'primera_aut_oro', 'principal')).toBe(true)
+    expect(canOfficiate('primera_aut', 'primera_aut_plata', 'principal')).toBe(true)
+    expect(canOfficiate('primera_aut', 'primera_aut_fem', 'principal')).toBe(true)
+  })
+
+  it('las 3 subcategorías de 1ª aut son CompetitionCategory válidas', () => {
+    const cats: CompetitionCategory[] = ['primera_aut_oro', 'primera_aut_plata', 'primera_aut_fem']
+    for (const cat of cats) {
+      expect(eligibleRoles('primera_aut', cat)).toEqual(['principal'])
+    }
   })
 })
