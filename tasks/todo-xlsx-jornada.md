@@ -171,7 +171,7 @@ Plan completo T1-T9 ejecutado y committeado. 9 commits (`01b3757`..`23eeda3`).
 
 ### Pendiente / cabos sueltos
 
-- **Smoke manual en navegador NO ejecutado** (los 3 flujos: importar xlsx real → partidos con pista; declarar franjas → aparecen en admin; deadline vencido → bloqueo). El gate automatizado y el review cubren la lógica; falta la validación visual E2E con `pnpm -F @fbm/web dev`.
+- **Smoke: parte sin navegador VERDE (2026-07-18), falta la visual.** Verificado sin navegador: server :3000 + páginas (partidos/disponibilidad/asignacion) 200 + import del xlsx real (707 partidos, 71 venues, 77 pistas), log limpio. La **pista ya se renderiza** en detalle admin y portal (commit `1f64fe0`). PENDIENTE solo la validación visual (deadline vencido deshabilita toggles; franjas declaradas aparecen en `/asignacion`): requiere conectar la extensión de Chrome (no viable en remoto). La lógica está cubierta por unit tests.
 - **M2 (por diseño)**: reimportar el mismo xlsx duplica partidos con nuevo nº de jornada (aceptado en el plan, como el CSV). Sin dedupe por decisión explícita.
 - **Nota seed (M3)**: los `mockMatchdayAvailabilities` sembrados no están materializados en `mockAvailabilities` (franjas de 1h del seed antiguo), así que en la demo un registro puede mostrar "Alta" mientras el picker discrepa hasta re-guardar. No se re-arquitecturó el seed (fuera de alcance); se corrige solo al declarar de nuevo.
 - **.gitignore**: incorpora `*.eml`/`*.xlsx` (PII) como cambio preexistente en el árbol; sin commitear aún (protege ya el árbol de trabajo).
