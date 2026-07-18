@@ -114,7 +114,7 @@ export function detectDayConflicts(
   for (let i = 0; i < sorted.length - 1; i++) {
     const a = sorted[i]
     const b = sorted[i + 1]
-    const { intervalsOverlap, gapMin, travelMin, travelKnown } = pairOverlap(a, b, {
+    const { intervalsOverlap, gapMin, travelMin, travelKnown, sameVenue } = pairOverlap(a, b, {
       hasCar: a.hasCar,
       getDistanceKm,
     })
@@ -123,7 +123,7 @@ export function detectDayConflicts(
 
     if (gapMin < travelMin) {
       conflicts.push(buildConflict(a, b, 'error', 'insufficient-gap', gapMin, travelMin))
-    } else if (a.venueId !== b.venueId && gapMin < travelMin + CONFLICT_MARGIN_MIN) {
+    } else if (!sameVenue && gapMin < travelMin + CONFLICT_MARGIN_MIN) {
       conflicts.push(buildConflict(a, b, 'warning', 'tight-gap', gapMin, travelMin))
     }
   }

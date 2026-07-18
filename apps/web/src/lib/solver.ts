@@ -103,6 +103,24 @@ interface Assignment {
 // conservador que el panel: usa `isSolverConflict` (mismo módulo), que exige un colchón
 // adicional (CONFLICT_MARGIN_MIN) sobre el viaje estimado antes de dar un candidato por
 // válido, salvo cuando ambos partidos son en el mismo pabellón.
+function toOverlapMatch(
+  m: { date: string; time: string; venueId: string },
+  municipalityId: string,
+): OverlapMatch {
+  return { date: m.date, startMin: timeToMinutes(m.time), venueId: m.venueId, municipalityId }
+}
+
+// Índice matchId → OverlapMatch de TODOS los mockMatches, compartido por
+// solve/solvePartial para resolver las designaciones existentes de una persona.
+function buildOverlapMatchIndex(): Map<string, OverlapMatch> {
+  return new Map(
+    mockMatches.map((m) => [
+      m.id,
+      toOverlapMatch(m, getMockVenue(m.venueId)?.municipalityId ?? ''),
+    ]),
+  )
+}
+
 function hasScheduleConflict(
   personId: string,
   candidateMatch: OverlapMatch,
@@ -119,15 +137,7 @@ function hasScheduleConflict(
   const current = assignmentsByPerson.get(personId)
   if (current) {
     for (const a of current) {
-      if (
-        conflictsWithOther({
-          date: a.date,
-          startMin: timeToMinutes(a.time),
-          venueId: a.venueId,
-          municipalityId: a.venueMuniId,
-        })
-      )
-        return true
+      if (conflictsWithOther(toOverlapMatch(a, a.venueMuniId))) return true
     }
   }
 
@@ -215,17 +225,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   // recorrer arrays completos por cada candidato evaluado.
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
-  const matchesById = new Map<string, OverlapMatch>(
-    mockMatches.map((m) => [
-      m.id,
-      {
-        date: m.date,
-        startMin: timeToMinutes(m.time),
-        venueId: m.venueId,
-        municipalityId: getMockVenue(m.venueId)?.municipalityId ?? '',
-      },
-    ]),
-  )
+  const matchesById = buildOverlapMatchIndex()
   // Índice completo por id (incluye partidos FUERA del scope): necesario para resolver
   // fecha y municipio del venue de designaciones existentes de la persona ese día que
   // caen fuera del rango/categoría solucionados (ver F2 — el coste marginal ve el día
@@ -599,6 +599,9 @@ function findBestCandidate(
     if (personLoadCount[key] > maxLoad) maxLoad = personLoadCount[key]
   }
 
+  // Invariante del slot: se construye una vez, no por candidato
+  const candidateMatch = toOverlapMatch(match, venueMuniId)
+
   for (const person of persons) {
     // Filtrar por rol
     if (person.role !== role) continue
@@ -618,12 +621,7 @@ function findBestCandidate(
     if (
       hasScheduleConflict(
         person.id,
-        {
-          date: match.date,
-          startMin: timeToMinutes(match.time),
-          venueId: match.venueId,
-          municipalityId: venueMuniId,
-        },
+        candidateMatch,
         person.hasCar,
         assignmentsByPerson,
         designationsByPerson,
@@ -746,6 +744,8 @@ function getUnassignedReason(
     return `No hay ${role === 'arbitro' ? 'árbitros' : 'anotadores'} activos`
 
   const venueMuni = match.venue?.municipalityId ?? ''
+  // Invariante del slot: se construye una vez, no por candidato
+  const candidateMatch = toOverlapMatch(match, venueMuni)
 
   let noAvailability = 0
   let overlap = 0
@@ -771,12 +771,7 @@ function getUnassignedReason(
     if (
       hasScheduleConflict(
         person.id,
-        {
-          date: match.date,
-          startMin: timeToMinutes(match.time),
-          venueId: match.venueId,
-          municipalityId: venueMuni,
-        },
+        candidateMatch,
         person.hasCar,
         assignmentsByPerson,
         designationsByPerson,
@@ -836,17 +831,7 @@ export function solvePartial(
   // Construir estado actual de asignaciones
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
-  const matchesById = new Map<string, OverlapMatch>(
-    mockMatches.map((m) => [
-      m.id,
-      {
-        date: m.date,
-        startMin: timeToMinutes(m.time),
-        venueId: m.venueId,
-        municipalityId: getMockVenue(m.venueId)?.municipalityId ?? '',
-      },
-    ]),
-  )
+  const matchesById = buildOverlapMatchIndex()
   const personLoadCount: Record<string, number> = {}
   for (const p of persons) personLoadCount[p.id] = 0
 

@@ -86,13 +86,7 @@ export function pairOverlap(a: OverlapMatch, b: OverlapMatch, ctx: OverlapCtx): 
  * viaje no es estimable (`travelKnown=false`, municipio sin resolver) el chequeo de viaje
  * se omite por completo: solo bloquea el solape real de intervalos.
  */
-export function isSolverConflict(o: {
-  intervalsOverlap: boolean
-  gapMin: number
-  travelMin: number
-  sameVenue: boolean
-  travelKnown: boolean
-}): boolean {
+export function isSolverConflict(o: OverlapResult): boolean {
   return (
     o.intervalsOverlap ||
     (!o.sameVenue && o.travelKnown && o.gapMin < o.travelMin + CONFLICT_MARGIN_MIN)
