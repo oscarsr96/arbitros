@@ -1211,6 +1211,141 @@ describe('solve — T7: elegibilidad fina de 7 niveles', () => {
     expect(result.unassigned[0].slotIndex).toBe(0)
   })
 
+  // ── Preferencia soft de auxiliar titular (AUX_TITULAR_PREFERENCE_WEIGHT) ──
+  // El peso se pasa SIEMPRE explícito vía options para que estos tests no
+  // dependan del valor de la constante exportada. Setup común: partido
+  // `nacional` con 2 slots; primera_aut vive en el municipio del venue
+  // (marginal 2€, el más barato) y el 2º nacional a 20km (5,2€): sin
+  // preferencia el auxiliar sale primera_aut por coste; con peso 5€ la
+  // penalización (equivale a +5€ de marginal) invierte el orden.
+  function makeNacionalMatch() {
+    return makeMatch({
+      id: 'm1',
+      refereesNeeded: 2,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Liga Nacional',
+        category: 'nacional',
+        gender: 'male',
+        refereesNeeded: 2,
+        scorersNeeded: 0,
+        minRefCategory: 'nacional',
+        seasonId: 's1',
+        fineCategory: 'nacional',
+      },
+    })
+  }
+
+  it('preferencia titular (peso 5): con 2 nacionales asequibles el auxiliar sale nacional', () => {
+    const match = makeNacionalMatch()
+    const nacional1 = makePerson({
+      id: 'p-nac-1',
+      role: 'arbitro',
+      refereeLevel: 'nacional',
+      municipalityId: 'muni-X', // municipio del venue → marginal 2€ (fijo día en casa)
+    })
+    const nacional2 = makePerson({
+      id: 'p-nac-2',
+      role: 'arbitro',
+      refereeLevel: 'nacional',
+      municipalityId: 'muni-A', // 20km → marginal 5,2€
+    })
+    const primeraAut = makePerson({
+      id: 'p-primera-aut',
+      role: 'arbitro',
+      refereeLevel: 'primera_aut',
+      municipalityId: 'muni-X', // el candidato MÁS barato (2€), pero no titular
+    })
+    addAvailability('p-nac-1', match.date, match.time)
+    addAvailability('p-nac-2', match.date, match.time)
+    addAvailability('p-primera-aut', match.date, match.time)
+
+    const result = solve(
+      {
+        matches: [match],
+        persons: [nacional1, nacional2, primeraAut],
+        parameters: defaultParams(),
+      },
+      { auxTitularPreferenceWeight: 5 },
+    )
+
+    expect(result.status).toBe('optimal')
+    const principalPick = result.assignments.find((a) => a.position === 'principal')
+    const auxiliarPick = result.assignments.find((a) => a.position === 'auxiliar')
+    expect(principalPick?.personId).toBe('p-nac-1')
+    expect(auxiliarPick?.personId).toBe('p-nac-2')
+    expect(result.assignments.some((a) => a.personId === 'p-primera-aut')).toBe(false)
+  })
+
+  it('preferencia titular (peso 0): comportamiento actual, el auxiliar sale por coste (primera_aut)', () => {
+    const match = makeNacionalMatch()
+    const nacional1 = makePerson({
+      id: 'p-nac-1',
+      role: 'arbitro',
+      refereeLevel: 'nacional',
+      municipalityId: 'muni-X',
+    })
+    const nacional2 = makePerson({
+      id: 'p-nac-2',
+      role: 'arbitro',
+      refereeLevel: 'nacional',
+      municipalityId: 'muni-A',
+    })
+    const primeraAut = makePerson({
+      id: 'p-primera-aut',
+      role: 'arbitro',
+      refereeLevel: 'primera_aut',
+      municipalityId: 'muni-X',
+    })
+    addAvailability('p-nac-1', match.date, match.time)
+    addAvailability('p-nac-2', match.date, match.time)
+    addAvailability('p-primera-aut', match.date, match.time)
+
+    const result = solve(
+      {
+        matches: [match],
+        persons: [nacional1, nacional2, primeraAut],
+        parameters: defaultParams(),
+      },
+      { auxTitularPreferenceWeight: 0 },
+    )
+
+    expect(result.status).toBe('optimal')
+    const auxiliarPick = result.assignments.find((a) => a.position === 'auxiliar')
+    expect(auxiliarPick?.personId).toBe('p-primera-aut')
+  })
+
+  it('preferencia titular es SOFT: con un solo nacional el auxiliar cae a primera_aut (cobertura intacta)', () => {
+    const match = makeNacionalMatch()
+    const nacional1 = makePerson({
+      id: 'p-nac-1',
+      role: 'arbitro',
+      refereeLevel: 'nacional',
+      municipalityId: 'muni-X',
+    })
+    const primeraAut = makePerson({
+      id: 'p-primera-aut',
+      role: 'arbitro',
+      refereeLevel: 'primera_aut',
+      municipalityId: 'muni-X',
+    })
+    addAvailability('p-nac-1', match.date, match.time)
+    addAvailability('p-primera-aut', match.date, match.time)
+
+    const result = solve(
+      { matches: [match], persons: [nacional1, primeraAut], parameters: defaultParams() },
+      { auxTitularPreferenceWeight: 5 },
+    )
+
+    expect(result.status).toBe('optimal')
+    expect(result.metrics.coverage).toBe(100)
+    const principalPick = result.assignments.find((a) => a.position === 'principal')
+    const auxiliarPick = result.assignments.find((a) => a.position === 'auxiliar')
+    expect(principalPick?.personId).toBe('p-nac-1')
+    expect(auxiliarPick?.personId).toBe('p-primera-aut')
+  })
+
   it('unassigned.reason incluye "nivel no elegible" cuando nadie es elegible por el modelo fino', () => {
     const match = makeMatch({
       id: 'm1',

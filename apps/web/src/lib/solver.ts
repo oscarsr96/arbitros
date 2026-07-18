@@ -29,6 +29,7 @@ import {
 } from './designation-positions'
 import {
   checkSlotEligibility,
+  eligibleRoles,
   isRefereeLevel,
   type CompetitionCategory,
   type EligibleRole,
@@ -291,10 +292,43 @@ function markAssigned(index: Map<string, Set<string>>, matchId: string, personId
   else index.set(matchId, new Set([personId]))
 }
 
+// ── Preferencia soft de auxiliar titular (modelo fino) ──────────────────────
+// En la práctica FBM un partido con modelo fino (p. ej. 1ª Nacional) se cubre
+// preferentemente con DOS árbitros "titulares" de esa categoría (nivel con rol
+// 'principal' en la matriz de elegibilidad para esa fineCategory); el auxiliar
+// de nivel inferior es pareja VÁLIDA pero no la habitual. Esta constante
+// expresa esa preferencia como penalización SOFT en el score del candidato NO
+// titular del slot AUXILIAR, en EUROS EQUIVALENTES de coste marginal: como
+// normalizedCost = marginal/26, sumar costWeight·(W/26) al score equivale
+// exactamente a que el candidato costara W€ más ese día. Con peso W, un no
+// titular solo gana el slot si el titular alternativo cuesta más de W€ extra
+// (a igualdad de carga). NUNCA toca elegibilidad ni cobertura: sin titular
+// disponible/asequible se asigna el auxiliar inferior, como antes.
+// Calibrado 2026-07-18 con la curva coste/fidelidad de la temporada seed
+// (solve por jornada, roster completo, disponibilidad total): peso 0 → 53% de
+// partidos de 1ª Nacional con 2 nacionales; la fidelidad satura al 100% en
+// peso 7 y de 7 a 25 la solución es idéntica (+302€ = +8,6% de coste de
+// temporada). 10 = punto de saturación con margen.
+export const AUX_TITULAR_PREFERENCE_WEIGHT = 10
+
+// Options de solve(). El 2º parámetro acepta un number como `seed` (compat
+// con los llamadores existentes) o este objeto.
+export interface SolveOptions {
+  seed?: number
+  // Override del peso de la preferencia de auxiliar titular (0 = desactivada).
+  // Por defecto AUX_TITULAR_PREFERENCE_WEIGHT.
+  auxTitularPreferenceWeight?: number
+}
+
 // ── Solver principal ────────────────────────────────────────────────────────
 
-export function solve(input: SolverInput, seed?: number): SolverOutput {
+export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions): SolverOutput {
   const startTime = performance.now()
+  const options: SolveOptions =
+    typeof seedOrOptions === 'number' ? { seed: seedOrOptions } : (seedOrOptions ?? {})
+  const seed = options.seed
+  const auxTitularPreferenceWeight =
+    options.auxTitularPreferenceWeight ?? AUX_TITULAR_PREFERENCE_WEIGHT
   const { matches, persons, parameters } = input
   const { costWeight, balanceWeight, maxMatchesPerPerson, forceExisting } = parameters
   // findBestCandidate recorre esta lista para CADA slot (hasta ~1000 con el
@@ -464,6 +498,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         maxMatchesPerPerson,
         costWeight,
         balanceWeight,
+        auxTitularPreferenceWeight,
         assignedPersonsByMatch,
         slotPosition,
         rng,
@@ -539,6 +574,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         maxMatchesPerPerson,
         costWeight,
         balanceWeight,
+        auxTitularPreferenceWeight,
         assignedPersonsByMatch,
         slotPosition,
         rng,
@@ -694,11 +730,24 @@ function findBestCandidate(
   maxMatchesPerPerson: number,
   costWeight: number,
   balanceWeight: number,
+  auxTitularPreferenceWeight: number,
   assignedPersonsByMatch: Map<string, Set<string>>,
   slotPosition?: DesignationPosition,
   rng: (() => number) | null = null,
 ): { person: EnrichedPerson; cost: number; km: number } | null {
   const candidates: { person: EnrichedPerson; cost: number; km: number; score: number }[] = []
+
+  // Preferencia soft de titular en el slot AUXILIAR con modelo fino activo
+  // (ver AUX_TITULAR_PREFERENCE_WEIGHT). Invariantes del slot, precalculados:
+  // categoría fina solo si la preferencia aplica a este slot, y penalización
+  // en unidades de score (costWeight·(W€/26) ≡ W€ más de coste marginal).
+  const auxPrefFineCategory =
+    auxTitularPreferenceWeight > 0 &&
+    role === 'arbitro' &&
+    toEligibleRole(slotPosition) === 'auxiliar'
+      ? (match.competition?.fineCategory ?? null)
+      : null
+  const auxTitularPenalty = costWeight * (auxTitularPreferenceWeight / 26)
 
   // Encontrar max carga para normalizar. Bucle plano en vez de
   // Math.max(1, ...Object.values(...)): esto se llama una vez POR SLOT (hasta
@@ -782,7 +831,19 @@ function findBestCandidate(
     }
     const normalizedLoad = currentLoad / maxLoad
 
-    const score = costWeight * normalizedCost + balanceWeight * normalizedLoad
+    let score = costWeight * normalizedCost + balanceWeight * normalizedLoad
+    // Candidato NO titular (nivel sin rol 'principal' en esa fineCategory) en
+    // el slot auxiliar → penalización soft. Solo reordena candidatos YA
+    // elegibles (checkSlotEligibility arriba); las personas sin refereeLevel
+    // (fallback legacy) no llevan penalización, igual que el resto del modelo
+    // fino (mismo criterio de activación que usesFineModel).
+    if (
+      auxPrefFineCategory &&
+      isRefereeLevel(person.refereeLevel) &&
+      !eligibleRoles(person.refereeLevel, auxPrefFineCategory).includes('principal')
+    ) {
+      score += auxTitularPenalty
+    }
     candidates.push({ person, cost: marginalCost, km: directKm, score })
   }
 
@@ -1003,6 +1064,7 @@ export function solvePartial(
     parameters.maxMatchesPerPerson,
     parameters.costWeight,
     parameters.balanceWeight,
+    AUX_TITULAR_PREFERENCE_WEIGHT,
     assignedPersonsByMatch,
     slotPosition,
   )

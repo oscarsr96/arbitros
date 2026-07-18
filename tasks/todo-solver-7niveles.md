@@ -357,6 +357,14 @@ Modo MIXTO ejecutado (T4 = fable; resto = sonnet). T1-T9 completas.
 - **B1/B2/B3/B5**: comentario falso corregido, `isRefereeLevel` exportada y reutilizada (solver + etiquetas de pickers), reexport muerto `meetsMinCategory` eliminado.
 - **B4** (`solvePartial` sin llamadores, pre-existente): follow-up, no tocado.
 
-**Follow-ups pendientes (no bloqueantes)**: (1) DECISIÓN DE NEGOCIO sobre la concentración ×4 en nacionales (T8); (2) B4 `solvePartial` (testear o retirar); (3) el solver Python del demo sigue recibiendo payload legacy (riesgo 4 del plan).
+## 7. Decisión de negocio (T8) RESUELTA (2026-07-18)
+
+La "concentración ×4" de T8 era un **artefacto de medición**: el cap de 3 partidos/persona es POR JORNADA, y T8 lo midió sobre la temporada completa en una sola llamada a `solve`, creando un cuello artificial. Medido bien (solve jornada a jornada, viernes→jueves): **cobertura 100%**, pico de partidos de 1ª Nacional concurrentes = 6 de 60 nacionales; solo 28 de los 60 llegan a pitar. No había problema de capacidad.
+
+Lo único real era reparto: el 53% de partidos de 1ª Nacional usaba 2 nacionales por coste (el pool `autonomico_plata`, 100 personas, ni se tocaba). El usuario confirmó que la práctica FBM es **2 nacionales** en 1ª Nacional → se añadió una **preferencia soft de pareja de titulares** en el slot AUXILIAR (`AUX_TITULAR_PREFERENCE_WEIGHT = 10` en `solver.ts`, parametrizable vía `solve(input, {auxTitularPreferenceWeight})`). Curva medida: peso 10 → 100% de 1ª Nacional con 2 nacionales, **+302 €/temporada solo de km (+8,6%)**; Junior ORO llega al 100% ya con peso 1. Es soft: sin titular disponible cae al auxiliar inferior sin perder cobertura. Gate 273/273.
+
+**Hallazgo lateral (coste)**: el modelo solo contempla desplazamiento. Las **tarifas oficiales** (honorarios por categoría de partido y rol de árbitro/mesa, NO por nivel del árbitro) no están modeladas → pendiente para las liquidaciones (Fase 4 del roadmap). Como van por categoría+rol, no afectan a la optimización del solver (el honorario del partido es fijo ocupe quien ocupe cada slot).
+
+**Follow-ups pendientes (no bloqueantes)**: (1) B4 `solvePartial` sin llamadores (testear o retirar); (2) el optimizador Python del demo sigue con payload legacy (riesgo 4 del plan); (3) modelar tarifas oficiales para liquidaciones (Fase 4).
 
 Estado: LISTO para commit (a confirmar con el usuario). Sin commitear aún.

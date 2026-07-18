@@ -181,6 +181,16 @@ mismo municipio de destino cuesta 0 (ya viaja allí). La feasibility del coche (
 > `metrics.totalCost` de una propuesta es el total real agrupado por persona/día, no la suma
 > por partido.
 
+Además, en competiciones con categoría fina el solver aplica una **preferencia soft de pareja
+de titulares**: en el slot AUXILIAR prefiere un nivel que también sea titular (elegible como
+`principal`) de esa categoría, para reflejar la práctica FBM de designar 2 árbitros del nivel de
+la competición (p. ej. 2 nacionales en 1ª División Nacional). Es soft
+(`AUX_TITULAR_PREFERENCE_WEIGHT` en `solver.ts`, 10 € equivalentes): un no-titular solo gana el
+slot si el titular alternativo costaría más de 10 € extra de desplazamiento ese día; si no hay
+titular disponible se usa el auxiliar de categoría inferior (pareja válida, sin perder
+cobertura). No afecta a honorarios (van por categoría del partido y rol, no por nivel del
+árbitro).
+
 `calculateMockTravelCost` aplica las mismas tarifas pero por partido: es solo una
 estimación orientativa para los badges del picker manual del panel de administración,
 nunca para liquidaciones ni para el objetivo del solver.
