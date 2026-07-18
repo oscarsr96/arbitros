@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { CostBadge } from '@/components/cost-badge'
 import { MapPin, Clock, Calendar, Users, Navigation } from 'lucide-react'
 import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
+import { getMockCourt } from '@/lib/mock-data'
 
 interface DesignationCardProps {
   designation: {
@@ -19,6 +20,7 @@ interface DesignationCardProps {
       time: string
       homeTeam: string
       awayTeam: string
+      courtId?: string | null
     }
     venue?: {
       name: string
@@ -54,6 +56,7 @@ export function DesignationCard({
 }: DesignationCardProps) {
   const { match, venue, competition } = designation
   const hasCar = personHasCar ?? true
+  const court = getMockCourt(match?.courtId)
 
   const directionsUrl =
     personAddress && venue?.address ? getDirectionsUrl(personAddress, venue.address, hasCar) : null
@@ -96,7 +99,10 @@ export function DesignationCard({
             {/* Pabellón + directions */}
             <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
               <MapPin className="h-3.5 w-3.5" />
-              <span>{venue?.name ?? '—'}</span>
+              <span>
+                {venue?.name ?? '—'}
+                {court && ` · ${court.name}`}
+              </span>
             </div>
 
             {/* Directions + departure time */}

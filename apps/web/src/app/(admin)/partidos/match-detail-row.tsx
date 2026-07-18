@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, MapPin, Navigation } from 'lucide-react'
 import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
 import { POSITION_LABELS } from '@/lib/designation-positions'
 import { refereeLevelLabel } from '@/lib/referee-eligibility'
+import { getMockCourt } from '@/lib/mock-data'
 import type { EnrichedMatch } from '@/lib/types'
 
 interface MatchDetailRowProps {
@@ -31,6 +32,8 @@ const categoryLabels: Record<string, string> = {
 }
 
 export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDetailRowProps) {
+  const court = getMockCourt(match.courtId)
+
   return (
     <>
       <tr
@@ -87,6 +90,7 @@ export function MatchDetailRow({ match, expanded, onToggle, dateStr }: MatchDeta
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     {match.venue.name} — {match.venue.address}
+                    {court && ` · ${court.name}`}
                   </span>
                 )}
                 <span>Jornada {match.matchday}</span>
