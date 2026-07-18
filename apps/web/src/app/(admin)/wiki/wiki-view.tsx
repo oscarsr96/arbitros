@@ -154,7 +154,7 @@ export function WikiView() {
               </li>
               <li>
                 <strong>Alertas:</strong> avisos automáticos cuando hay partidos sin cobertura,
-                personas sin disponibilidad registrada, o rechazos pendientes de gestionar.
+                personas sin disponibilidad registrada, o sustituciones pendientes de gestionar.
               </li>
               <li>
                 <strong>Selector de escenario demo:</strong> permite cargar distintos conjuntos de
@@ -367,7 +367,7 @@ export function WikiView() {
                 answer="El motor de optimización recibe los partidos, las personas disponibles, las distancias y las restricciones, y busca la combinación que minimiza el coste total de desplazamiento mientras equilibra la carga entre oficiales. Usa programación lineal entera (CP-SAT de Google OR-Tools) con un límite de tiempo de 30 segundos."
               />
               <FaqItem
-                question="¿Qué pasa si un árbitro rechaza una designación?"
+                question="¿Qué pasa si un árbitro no puede acudir a una designación (baja de última hora)?"
                 answer="El partido queda marcado como parcialmente cubierto. El designador puede buscar un sustituto manualmente (el sistema sugiere candidatos ordenados por coste) o relanzar una optimización parcial que solo reasigna ese slot sin tocar el resto."
               />
               <FaqItem
@@ -380,7 +380,7 @@ export function WikiView() {
               />
               <FaqItem
                 question="¿Qué es una sustitución?"
-                answer="Cuando un oficial asignado no puede acudir (rechaza la designación, enfermedad, etc.), se necesita un sustituto. El sistema propone automáticamente candidatos disponibles para esa franja horaria, ordenados por menor coste de desplazamiento."
+                answer="Cuando un oficial asignado no puede acudir a última hora (enfermedad, imprevisto, etc.), se necesita un sustituto. El sistema propone automáticamente candidatos disponibles para esa franja horaria, ordenados por menor coste de desplazamiento."
               />
               <FaqItem
                 question="¿Qué restricciones aplica el sistema?"

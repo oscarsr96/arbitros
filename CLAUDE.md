@@ -126,8 +126,6 @@ enum RefereeCategory {
 enum DesignationStatus {
   PENDING = 'pending', // Asignado, pendiente de notificar
   NOTIFIED = 'notified', // Notificación enviada
-  CONFIRMED = 'confirmed', // Árbitro confirma
-  REJECTED = 'rejected', // Árbitro rechaza (necesita sustituto)
   COMPLETED = 'completed', // Partido jugado
 }
 
@@ -388,7 +386,7 @@ fbm-designaciones/
 | Ver su disponibilidad             |        ✅        |     —      |    ✅     |
 | Editar su disponibilidad          |        ✅        |     —      |    ✅     |
 | Ver sus designaciones             |        ✅        |     —      |    ✅     |
-| Confirmar/rechazar designación    |        ✅        |     —      |    ✅     |
+| Confirmar designación             |        ✅        |     —      |    ✅     |
 | Ver todos los partidos            |        —         |     ✅     |    ✅     |
 | Ver toda la disponibilidad        |        —         |     ✅     |    ✅     |
 | Asignar manualmente               |        —         |     ✅     |    ✅     |
@@ -431,8 +429,8 @@ Implementación: Supabase RLS (Row Level Security) con roles en metadata del JWT
 8. Revisa, ajusta manualmente si necesita (drag & drop o selección)
 9. Pulsa "Publicar designaciones"
 10. Sistema envía email + push a cada persona con sus partidos asignados
-11. Cada persona confirma o rechaza
-12. Si hay rechazos, el designador busca sustituto (manual o re-optimización parcial)
+11. Cada persona confirma su asignación
+12. Si alguien no puede acudir (baja de última hora), el designador busca sustituto (manual o re-optimización parcial)
 ```
 
 ### Flujo 3: Importación de partidos
@@ -479,7 +477,7 @@ Implementación: Supabase RLS (Row Level Security) con roles en metadata del JWT
 - [ ] Página de designaciones:
   - Lista de partidos asignados con detalle completo
   - Estado de cada designación (pendiente / confirmada)
-  - Botón confirmar / rechazar designación
+  - Botón confirmar designación
   - Resumen semanal: partidos, coste total de desplazamiento
 - [ ] Página de perfil:
   - Datos personales (solo lectura excepto teléfono y dirección)
@@ -547,7 +545,7 @@ Implementación: Supabase RLS (Row Level Security) con roles en metadata del JWT
   - Máximo de partidos por persona y jornada
   - Forzar asignaciones previas (personas ya asignadas manualmente no se mueven)
 - [ ] Re-optimización parcial:
-  - Si un árbitro rechaza, re-optimizar solo ese slot sin tocar el resto
+  - Si un árbitro cancela (no puede acudir), re-optimizar solo ese slot sin tocar el resto
 - [ ] Tests del solver:
   - Caso trivial (1 partido, 1 árbitro)
   - Caso sin solución (más partidos que personas)
@@ -596,7 +594,7 @@ Implementación: Supabase RLS (Row Level Security) con roles en metadata del JWT
   - Modo offline: ver designaciones cacheadas, cola de cambios de disponibilidad
 - [ ] Canal de Telegram/WhatsApp (opcional):
   - Bot que envía resumen semanal de designaciones
-  - Respuesta rápida para confirmar/rechazar
+  - Respuesta rápida para confirmar
 
 **Entregable**: Los árbitros reciben notificaciones push y pueden usar la app desde el móvil como si fuera nativa.
 

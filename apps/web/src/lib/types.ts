@@ -1,6 +1,7 @@
 // Tipos compartidos para el panel de administracion
 
 import type { DesignationPosition } from './designation-positions'
+import type { DesignationStatus } from './mock-data'
 
 export interface EnrichedMatch {
   id: string
@@ -59,7 +60,7 @@ export interface EnrichedDesignation {
   position?: DesignationPosition
   travelCost: string
   distanceKm: string
-  status: string
+  status: DesignationStatus
   notifiedAt: Date | null
   createdAt: Date
   person?: {

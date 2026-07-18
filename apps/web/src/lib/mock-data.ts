@@ -1634,7 +1634,7 @@ export const mockMatches: MockMatch[] = (__fbmStore.matches ??= [
 
 // ── Designaciones ───────────────────────────────────────────────────────────
 
-type DesignationStatus = 'pending' | 'notified' | 'completed'
+export type DesignationStatus = 'pending' | 'notified' | 'completed'
 
 export interface MockDesignation {
   id: string

@@ -193,13 +193,11 @@ describe('getPublishConflicts', () => {
     'match-2': { date: '2026-01-10', time: '11:20', venueId: 'venue-b' }, // person1, día 1, solapa con match-1
     'match-3': { date: '2026-01-11', time: '09:00', venueId: 'venue-a' }, // person1, día 2 (sin cruce)
     'match-4': { date: '2026-01-10', time: '10:00', venueId: 'venue-a' }, // person2, día 1 (sin cruce)
-    'match-5': { date: '2026-01-10', time: '10:15', venueId: 'venue-c' }, // person1, día 1, solaparía si no estuviera rechazada
   }
 
   const venueMunicipality: Record<string, string> = {
     'venue-a': 'muni-a',
     'venue-b': 'muni-b',
-    'venue-c': 'muni-c',
   }
 
   const persons: Record<
@@ -238,16 +236,5 @@ describe('getPublishConflicts', () => {
       severity: 'error',
       reason: 'overlap',
     })
-  })
-
-  it('ignora las designaciones con status "rejected"', () => {
-    const designations: PublishConflictDesignation[] = [
-      { matchId: 'match-1', personId: 'person-1', status: 'pending' },
-      { matchId: 'match-5', personId: 'person-1', status: 'rejected' },
-    ]
-
-    const conflicts = getPublishConflicts(designations, helpers)
-
-    expect(conflicts).toEqual([])
   })
 })

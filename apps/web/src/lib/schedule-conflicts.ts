@@ -11,6 +11,7 @@
 // es el mismo pabellón.
 
 import { pairOverlap, timeToMinutes, MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN } from './overlap'
+import type { DesignationStatus } from './mock-data'
 
 export { MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN }
 
@@ -135,7 +136,7 @@ export function detectDayConflicts(
 export interface PublishConflictDesignation {
   matchId: string
   personId: string
-  status: string
+  status: DesignationStatus
 }
 
 export interface PublishConflictMatch {
@@ -159,11 +160,10 @@ export interface PublishConflictHelpers {
 }
 
 /**
- * Agrupa TODAS las designaciones (excluyendo `status === 'rejected'`) por
- * personId+fecha, resuelve los datos necesarios vía `helpers` y delega en
- * `detectDayConflicts` por cada grupo. Devuelve la lista plana de conflictos (cada uno
- * ya lleva personId/personName/personNick/date, por lo que agrupar por persona en la UI
- * es un simple reduce del lado del llamador).
+ * Agrupa TODAS las designaciones por personId+fecha, resuelve los datos necesarios vía
+ * `helpers` y delega en `detectDayConflicts` por cada grupo. Devuelve la lista plana de
+ * conflictos (cada uno ya lleva personId/personName/personNick/date, por lo que agrupar
+ * por persona en la UI es un simple reduce del lado del llamador).
  */
 export function getPublishConflicts(
   designations: PublishConflictDesignation[],
@@ -172,8 +172,6 @@ export function getPublishConflicts(
   const groups = new Map<string, DayConflictEntry[]>()
 
   for (const designation of designations) {
-    if (designation.status === 'rejected') continue
-
     const match = helpers.getMatch(designation.matchId)
     if (!match) continue
 
