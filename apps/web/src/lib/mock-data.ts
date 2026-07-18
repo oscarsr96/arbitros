@@ -2220,19 +2220,6 @@ export function hasTimeOverlap(personId: string, matchId: string): boolean {
   return false
 }
 
-// Jerarquia de categorias para validacion
-const CATEGORY_RANK: Record<string, number> = {
-  provincial: 1,
-  autonomico: 2,
-  nacional: 3,
-  feb: 4,
-}
-
-export function meetsMinCategory(personCategory: string | null, requiredCategory: string): boolean {
-  if (!personCategory) return false
-  return (CATEGORY_RANK[personCategory] ?? 0) >= (CATEGORY_RANK[requiredCategory] ?? 0)
-}
-
 // ── Datos historicos de jornadas anteriores ─────────────────────────────
 
 export interface HistoricalMatchday {

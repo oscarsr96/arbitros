@@ -17,6 +17,7 @@ import {
   getMockDesignationsForMatch,
 } from '@/lib/mock-data'
 import { validateDateRange, filterMatchesByRange } from '@/lib/optimize-range'
+import { resolveFineCategory } from '@/lib/competition-fine-category'
 
 export async function POST(request: Request) {
   try {
@@ -54,7 +55,9 @@ export async function POST(request: Request) {
       return {
         ...m,
         venue: venue ? { ...venue, latitude: 0, longitude: 0 } : undefined,
-        competition: competition ?? undefined,
+        competition: competition
+          ? { ...competition, fineCategory: resolveFineCategory(competition) }
+          : undefined,
         designations,
         refereesAssigned,
         scorersAssigned,
@@ -75,6 +78,7 @@ export async function POST(request: Request) {
           phone: p.phone,
           role: p.role,
           category: p.category,
+          refereeLevel: p.refereeLevel ?? null,
           address: p.address,
           postalCode: p.postalCode,
           municipalityId: p.municipalityId,

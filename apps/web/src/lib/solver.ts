@@ -22,6 +22,17 @@ import {
   calculateDailyTravelCost,
 } from './mock-data'
 import { pairOverlap, timeToMinutes, isSolverConflict, type OverlapMatch } from './overlap'
+import {
+  mapDesignationsToSlots,
+  positionForSlot,
+  type DesignationPosition,
+} from './designation-positions'
+import {
+  checkSlotEligibility,
+  isRefereeLevel,
+  type CompetitionCategory,
+  type EligibleRole,
+} from './referee-eligibility'
 
 // ── PRNG con seed (Mulberry32) ────────────────────────────────────────────
 
@@ -53,6 +64,43 @@ const CATEGORY_RANK: Record<string, number> = {
   feb: 4,
 }
 
+// Prioridad por ESCASEZ de árbitros elegibles cuando el partido lleva categoría
+// FINA (T4, tasks/todo-solver-7niveles.md): mayor = pool de principales más
+// pequeño según ELIGIBILITY × REFEREE_LEVEL_DISTRIBUTION = se resuelve antes.
+// `nacional` (solo 60 nivel nacional) y las `primera_aut_*` (solo 70 de 1ª aut)
+// primero; las de escuela (cadete/infantil/minibasket, las pita casi todo el
+// roster) al final. Los valores se solapan con el rango legacy 1-4 de
+// CATEGORY_RANK para que una mezcla de partidos tagueados y sin taguear ordene
+// de forma determinista.
+const FINE_PRIORITY: Record<CompetitionCategory, number> = {
+  nacional: 10,
+  primera_aut_oro: 9,
+  primera_aut_plata: 9,
+  primera_aut_fem: 9,
+  junior_especial_oro: 8,
+  sub22_oro: 8,
+  segunda_aut_oro: 7,
+  junior_especial_plata: 6,
+  junior_especial_bronce: 6,
+  sub22_plata: 6,
+  sub22_bronce: 6,
+  segunda_aut_plata: 5,
+  segunda_aut_bronce: 4,
+  junior_pref: 3,
+  cadete_pref: 2,
+  infantil_pref: 2,
+  minibasket: 1,
+}
+
+// Rango de prioridad de un partido en la ordenación (solve/shuffleWithinGroups):
+// con `fineCategory` usa FINE_PRIORITY; sin ella, el ranking legacy por
+// minRefCategory (idéntico al comportamiento previo a T4).
+function matchPriorityRank(match: EnrichedMatch): number {
+  const fine = match.competition?.fineCategory
+  if (fine) return FINE_PRIORITY[fine] ?? 0
+  return CATEGORY_RANK[match.competition?.minRefCategory ?? 'provincial'] ?? 0
+}
+
 // ── Helpers de restricciones ────────────────────────────────────────────────
 // Disponibilidad: delega en mock-data (misma lógica que el picker del portal/
 // admin, comparación en minutos con intervalos semiabiertos). Antes este
@@ -60,9 +108,46 @@ const CATEGORY_RANK: Record<string, number> = {
 // lo que tenía un bug latente: una franja 15:30-22:00 daba disponible un
 // partido a las 15:00.
 
-function meetsMinCategory(personCategory: string | null, requiredCategory: string): boolean {
-  if (!personCategory) return false
-  return (CATEGORY_RANK[personCategory] ?? 0) >= (CATEGORY_RANK[requiredCategory] ?? 0)
+// El slot `principal`/`auxiliar` de árbitro coincide con los roles de la matriz
+// de elegibilidad; las posiciones de mesa (anotador/crono/24") no aplican al
+// check (checkSlotEligibility ya da true a anotadores).
+function toEligibleRole(position?: DesignationPosition): EligibleRole | undefined {
+  return position === 'principal' || position === 'auxiliar' ? position : undefined
+}
+
+// ¿El rechazo de elegibilidad vino del modelo FINO o del fallback legacy?
+// Mismo criterio de activación que checkSlotEligibility: partido con
+// fineCategory Y persona con refereeLevel reconocido.
+function usesFineModel(
+  person: { refereeLevel?: string | null },
+  competition: { fineCategory?: CompetitionCategory | null } | undefined,
+): boolean {
+  return Boolean(competition?.fineCategory && isRefereeLevel(person.refereeLevel))
+}
+
+// Slots LIBRES de un partido para un rol, con su índice ABSOLUTO (el que hay
+// que reportar en UnassignedSlot.slotIndex) y la posición nombrada que les
+// corresponde. Reutiliza mapDesignationsToSlots (designation-positions.ts):
+// las designaciones con `position` explícita reclaman SU slot y las legacy
+// sin posición rellenan los huecos en orden de llegada — la MISMA regla que
+// la UI de slots. Con forceExisting=false el llamador pasa `existing=[]` y
+// todos los slots quedan libres en orden. El índice absoluto (no el ordinal
+// entre libres) importa porque una designación existente puede reclamar una
+// posición NO inicial (p. ej. solo el auxiliar): el próximo hueco libre es
+// entonces el principal (índice 0), no "nº de existentes" (M2, review 7
+// niveles). Posiciones más allá de las nombradas del rol (p. ej. un 3er
+// árbitro) → position undefined, slotIndex sigue siendo el índice real.
+function getFreeSlots(
+  existing: { role: string; position?: DesignationPosition }[],
+  role: 'arbitro' | 'anotador',
+  needed: number,
+): { slotIndex: number; position?: DesignationPosition }[] {
+  const slots = mapDesignationsToSlots(existing, role, needed)
+  const free: { slotIndex: number; position?: DesignationPosition }[] = []
+  for (let i = 0; i < needed; i++) {
+    if (slots[i] === undefined) free.push({ slotIndex: i, position: positionForSlot(role, i) })
+  }
+  return free
 }
 
 function hasIncompatibility(personId: string, homeTeam: string, awayTeam: string): boolean {
@@ -255,10 +340,13 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
   // entre designaciones del mismo día no afecta al total (la suma de
   // marginales telescopa al coste real del conjunto completo, ver
   // metrics.totalCost más abajo).
-  const existingByMatch: Record<string, { personId: string; role: string }[]> = {}
+  const existingByMatch: Record<
+    string,
+    { personId: string; role: string; position?: DesignationPosition }[]
+  > = {}
   for (const d of mockDesignations) {
     if (!existingByMatch[d.matchId]) existingByMatch[d.matchId] = []
-    existingByMatch[d.matchId].push({ personId: d.personId, role: d.role })
+    existingByMatch[d.matchId].push({ personId: d.personId, role: d.role, position: d.position })
     if (personLoadCount[d.personId] !== undefined && inScopeMatchIds.has(d.matchId)) {
       personLoadCount[d.personId]++
     }
@@ -309,6 +397,9 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           distanceKm,
           isNew: false,
           municipalityName: municipality?.name ?? '',
+          // Pass-through de la posición real de la designación; a las legacy
+          // sin posición nunca se les inventa una (doctrina Tanda 2).
+          position: d.position,
         })
         markAssigned(assignedPersonsByMatch, d.matchId, person.id)
       }
@@ -327,16 +418,15 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
 
   // Ordenar partidos por prioridad:
   // 1. Sin asignaciones primero
-  // 2. Mayor categoria requerida primero
+  // 2. Mayor prioridad de categoría primero (escasez FINE_PRIORITY con
+  //    categoría fina, CATEGORY_RANK legacy sin ella — matchPriorityRank)
   // Con seed: shuffle parcial para generar variacion entre ejecuciones
   const baseSorted = [...matches].sort((a, b) => {
     const aExisting = (existingByMatch[a.id] ?? []).length
     const bExisting = (existingByMatch[b.id] ?? []).length
     if (aExisting !== bExisting) return aExisting - bExisting
 
-    const aCatRank = CATEGORY_RANK[a.competition?.minRefCategory ?? 'provincial'] ?? 0
-    const bCatRank = CATEGORY_RANK[b.competition?.minRefCategory ?? 'provincial'] ?? 0
-    return bCatRank - aCatRank
+    return matchPriorityRank(b) - matchPriorityRank(a)
   })
 
   // Con seed, hacer un shuffle parcial dentro de grupos con misma prioridad
@@ -351,9 +441,17 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
     // Slots de arbitros
     const existingRefs = existing.filter((e) => e.role === 'arbitro')
     const refsNeeded = match.refereesNeeded - (forceExisting ? existingRefs.length : 0)
+    // Slots NO reclamados del partido: con forceExisting las existentes
+    // ocupan las suyas (explícitas primero, legacy rellenan huecos, misma regla
+    // que mapDesignationsToSlots); sin forceExisting todos libres en orden.
+    const freeRefSlots = getFreeSlots(
+      forceExisting ? existing : [],
+      'arbitro',
+      match.refereesNeeded,
+    )
 
     for (let i = 0; i < refsNeeded; i++) {
-      const slotIndex = forceExisting ? existingRefs.length + i : i
+      const { slotIndex, position: slotPosition } = freeRefSlots[i]
       const candidate = findBestCandidate(
         match,
         'arbitro',
@@ -367,6 +465,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         costWeight,
         balanceWeight,
         assignedPersonsByMatch,
+        slotPosition,
         rng,
       )
 
@@ -381,6 +480,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           distanceKm: candidate.km,
           isNew: true,
           municipalityName: municipality?.name ?? '',
+          position: slotPosition,
         }
         assignments.push(proposed)
         addAssignment(assignmentsByPerson, {
@@ -410,6 +510,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
             personLoadCount,
             maxMatchesPerPerson,
             assignedPersonsByMatch,
+            slotPosition,
           ),
         })
       }
@@ -418,9 +519,14 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
     // Slots de anotadores
     const existingScorers = existing.filter((e) => e.role === 'anotador')
     const scorersNeeded = match.scorersNeeded - (forceExisting ? existingScorers.length : 0)
+    const freeScorerSlots = getFreeSlots(
+      forceExisting ? existing : [],
+      'anotador',
+      match.scorersNeeded,
+    )
 
     for (let i = 0; i < scorersNeeded; i++) {
-      const slotIndex = forceExisting ? existingScorers.length + i : i
+      const { slotIndex, position: slotPosition } = freeScorerSlots[i]
       const candidate = findBestCandidate(
         match,
         'anotador',
@@ -434,6 +540,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
         costWeight,
         balanceWeight,
         assignedPersonsByMatch,
+        slotPosition,
         rng,
       )
 
@@ -448,6 +555,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           distanceKm: candidate.km,
           isNew: true,
           municipalityName: municipality?.name ?? '',
+          position: slotPosition,
         }
         assignments.push(proposed)
         addAssignment(assignmentsByPerson, {
@@ -477,6 +585,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
             personLoadCount,
             maxMatchesPerPerson,
             assignedPersonsByMatch,
+            slotPosition,
           ),
         })
       }
@@ -586,6 +695,7 @@ function findBestCandidate(
   costWeight: number,
   balanceWeight: number,
   assignedPersonsByMatch: Map<string, Set<string>>,
+  slotPosition?: DesignationPosition,
   rng: (() => number) | null = null,
 ): { person: EnrichedPerson; cost: number; km: number } | null {
   const candidates: { person: EnrichedPerson; cost: number; km: number; score: number }[] = []
@@ -630,9 +740,11 @@ function findBestCandidate(
     )
       continue
 
-    // Categoria minima (solo arbitros)
-    if (role === 'arbitro' && match.competition?.minRefCategory) {
-      if (!meetsMinCategory(person.category, match.competition.minRefCategory)) continue
+    // Elegibilidad de categoría (solo arbitros): matriz fina de 7 niveles por
+    // posición del slot cuando partido y persona llevan datos finos; fallback
+    // legacy meetsMinCategory si no (D2/D4, checkSlotEligibility).
+    if (role === 'arbitro') {
+      if (!checkSlotEligibility(person, match.competition, toEligibleRole(slotPosition))) continue
     }
 
     // Incompatibilidades
@@ -711,10 +823,10 @@ function shuffleWithinGroups(
   while (i < sorted.length) {
     let j = i + 1
     const aExisting = (existingByMatch[sorted[i].id] ?? []).length
-    const aCat = CATEGORY_RANK[sorted[i].competition?.minRefCategory ?? 'provincial'] ?? 0
+    const aCat = matchPriorityRank(sorted[i])
     while (j < sorted.length) {
       const bExisting = (existingByMatch[sorted[j].id] ?? []).length
-      const bCat = CATEGORY_RANK[sorted[j].competition?.minRefCategory ?? 'provincial'] ?? 0
+      const bCat = matchPriorityRank(sorted[j])
       if (aExisting !== bExisting || aCat !== bCat) break
       j++
     }
@@ -738,6 +850,7 @@ function getUnassignedReason(
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
   assignedPersonsByMatch: Map<string, Set<string>>,
+  slotPosition?: DesignationPosition,
 ): string {
   const candidatesOfRole = persons.filter((p) => p.role === role && p.active)
   if (candidatesOfRole.length === 0)
@@ -750,6 +863,7 @@ function getUnassignedReason(
   let noAvailability = 0
   let overlap = 0
   let categoryInsufficient = 0
+  let levelNotEligible = 0
   let incompatible = 0
   let maxLoad = 0
   let alreadyAssigned = 0
@@ -783,10 +897,12 @@ function getUnassignedReason(
     }
     if (
       role === 'arbitro' &&
-      match.competition?.minRefCategory &&
-      !meetsMinCategory(person.category, match.competition.minRefCategory)
+      !checkSlotEligibility(person, match.competition, toEligibleRole(slotPosition))
     ) {
-      categoryInsufficient++
+      // "nivel no elegible" cuando el rechazo vino de la matriz fina;
+      // "categoría insuficiente" cuando vino del fallback legacy.
+      if (usesFineModel(person, match.competition)) levelNotEligible++
+      else categoryInsufficient++
       continue
     }
     if (hasIncompatibility(person.id, match.homeTeam, match.awayTeam)) {
@@ -806,6 +922,7 @@ function getUnassignedReason(
   if (noAvailability > 0) reasons.push(`${noAvailability} sin disponibilidad`)
   if (overlap > 0) reasons.push(`${overlap} con solapamiento`)
   if (categoryInsufficient > 0) reasons.push(`${categoryInsufficient} categoría insuficiente`)
+  if (levelNotEligible > 0) reasons.push(`${levelNotEligible} nivel no elegible`)
   if (incompatible > 0) reasons.push(`${incompatible} incompatible`)
   if (noCarTooFar > 0) reasons.push(`${noCarTooFar} sin coche (>30km)`)
   if (maxLoad > 0) reasons.push(`${maxLoad} con carga máxima`)
@@ -851,6 +968,25 @@ export function solvePartial(
     }
   }
 
+  // Posición libre del slot re-optimizado: las designaciones existentes del
+  // partido reclaman las suyas (misma regla de huecos que mapDesignationsToSlots,
+  // como en solve con forceExisting). Si el slot `slotIndex` está libre se usa su
+  // posición; si no (llamador desincronizado), la primera posición libre.
+  const needed = role === 'arbitro' ? match.refereesNeeded : match.scorersNeeded
+  const existingOfMatch = mockDesignations.filter((d) => d.matchId === match.id)
+  const slots = mapDesignationsToSlots(existingOfMatch, role, needed)
+  let slotPosition: DesignationPosition | undefined
+  if (slotIndex < needed && slots[slotIndex] === undefined) {
+    slotPosition = positionForSlot(role, slotIndex)
+  } else {
+    for (let i = 0; i < needed; i++) {
+      if (slots[i] === undefined) {
+        slotPosition = positionForSlot(role, i)
+        break
+      }
+    }
+  }
+
   // solvePartial evalúa un único slot: no hay asignaciones propuestas previas
   // en esta misma resolución (mapa vacío, misma semántica que el array vacío
   // que sustituye).
@@ -868,6 +1004,7 @@ export function solvePartial(
     parameters.costWeight,
     parameters.balanceWeight,
     assignedPersonsByMatch,
+    slotPosition,
   )
 
   const endTime = performance.now()
@@ -886,6 +1023,7 @@ export function solvePartial(
           distanceKm: candidate.km,
           isNew: true,
           municipalityName: municipality?.name ?? '',
+          position: slotPosition,
         },
       ],
       metrics: {
@@ -925,6 +1063,7 @@ export function solvePartial(
           personLoadCount,
           parameters.maxMatchesPerPerson,
           assignedPersonsByMatch,
+          slotPosition,
         ),
       },
     ],

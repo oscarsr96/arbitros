@@ -8,8 +8,10 @@ import {
   isValidPositionForRole,
   autoFillPosition,
   mapDesignationsToSlots,
+  firstFreePosition,
   type DesignationPosition,
 } from '../designation-positions'
+import { checkSlotEligibility } from '../referee-eligibility'
 
 describe('positionsForRole', () => {
   it('árbitro → principal y auxiliar, en ese orden', () => {
@@ -171,5 +173,50 @@ describe('mapDesignationsToSlots', () => {
     const copy = [...input]
     mapDesignationsToSlots(input, 'arbitro', 2)
     expect(input).toEqual(copy)
+  })
+})
+
+describe('firstFreePosition', () => {
+  it('partido sin designaciones → primera posición del rol', () => {
+    expect(firstFreePosition([], 'arbitro', 2)).toBe('principal')
+    expect(firstFreePosition([], 'anotador', 3)).toBe('anotador')
+  })
+
+  it('solo auxiliar ocupado → el hueco libre es principal', () => {
+    const aux = desig('arbitro', 'auxiliar', 'aux')
+    expect(firstFreePosition([aux], 'arbitro', 2)).toBe('principal')
+  })
+
+  it('todo ocupado → undefined', () => {
+    const existing = [desig('arbitro', 'principal'), desig('arbitro', 'auxiliar')]
+    expect(firstFreePosition(existing, 'arbitro', 2)).toBeUndefined()
+  })
+
+  // Fix A1 (review modelo 7 niveles): el panel de sustitución coló un
+  // primera_aut como Principal cuando la designación eliminada era legacy
+  // (sin `position`), porque derivaba `slotPosition` de `context.position`
+  // (undefined) en vez del hueco REAL que queda tras la eliminación.
+  it('Fix A1: partido nacional con 1 slot y la única designación (legacy) eliminada → hueco real "principal", un primera_aut no lo cubre', () => {
+    // Tras eliminar la legacy, las designaciones RESTANTES del partido están
+    // vacías: el hueco real es la primera posición del rol.
+    const remaining: { role: 'arbitro' | 'anotador'; position?: DesignationPosition }[] = []
+    const effectivePosition = firstFreePosition(remaining, 'arbitro', 1)
+    expect(effectivePosition).toBe('principal')
+
+    // Con el hueco correcto ('principal'), un primera_aut queda INVÁLIDO en
+    // 'nacional' (solo pita auxiliar ahí) — antes del fix, sin slotPosition,
+    // `checkSlotEligibility` aplicaba la regla genérica "pita en algún rol" y
+    // lo dejaba pasar.
+    const eligibleRoleSlot =
+      effectivePosition === 'principal' || effectivePosition === 'auxiliar'
+        ? effectivePosition
+        : undefined
+    expect(
+      checkSlotEligibility(
+        { role: 'arbitro', category: 'autonomico', refereeLevel: 'primera_aut' },
+        { fineCategory: 'nacional' },
+        eligibleRoleSlot,
+      ),
+    ).toBe(false)
   })
 })

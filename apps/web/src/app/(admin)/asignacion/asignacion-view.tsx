@@ -20,7 +20,6 @@ import {
   calculateMockTravelCost,
   isPersonAvailable,
   hasTimeOverlap,
-  meetsMinCategory,
   getPersonIncompatibilities,
   getMockMunicipality,
   getMockVenue,
@@ -28,7 +27,13 @@ import {
   getMockDistance,
 } from '@/lib/mock-data'
 import { getJornadaSaturdayForDate, getMatchdayWindow } from '@/lib/matchday-availability'
-import { mapDesignationsToSlots, positionForSlot } from '@/lib/designation-positions'
+import {
+  mapDesignationsToSlots,
+  positionForSlot,
+  firstFreePosition,
+} from '@/lib/designation-positions'
+import { checkSlotEligibility, isRefereeLevel } from '@/lib/referee-eligibility'
+import { resolveFineCategory } from '@/lib/competition-fine-category'
 import {
   getPublishConflicts,
   type PublishConflictHelpers,
@@ -226,6 +231,21 @@ export function AsignacionView() {
 
   const handleSubstitute = async (personId: string) => {
     if (!substitutionContext) return
+    // Posición efectiva del hueco (Fix A1): si la designación eliminada llevaba
+    // `position`, esa es la vacante. Si era legacy (sin `position`), se deriva
+    // de las designaciones RESTANTES del partido (misma regla que
+    // `getCandidates` en substitution-panel.tsx) y se envía EXPLÍCITA, para que
+    // el POST no caiga en `autoFillPosition` (que ignora las legacy y
+    // devolvería 'principal' aunque el hueco real validado fuera 'auxiliar').
+    const match = matches.find((m) => m.id === substitutionContext.matchId)
+    const needed =
+      substitutionContext.role === 'arbitro'
+        ? (match?.refereesNeeded ?? 0)
+        : (match?.scorersNeeded ?? 0)
+    const position =
+      substitutionContext.position ??
+      (match ? firstFreePosition(match.designations, substitutionContext.role, needed) : undefined)
+
     const res = await fetch('/api/admin/designations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -233,7 +253,7 @@ export function AsignacionView() {
         matchId: substitutionContext.matchId,
         personId,
         role: substitutionContext.role,
-        position: substitutionContext.position,
+        position,
       }),
     })
 
@@ -322,6 +342,7 @@ export function AsignacionView() {
             matchId: a.matchId,
             personId: a.personId,
             role: a.role,
+            position: a.position,
           })),
         }),
       })
@@ -380,6 +401,7 @@ export function AsignacionView() {
               matchId: a.matchId,
               personId: a.personId,
               role: a.role,
+              position: a.position,
             }),
           })
           if (assignRes.ok) {
@@ -406,6 +428,15 @@ export function AsignacionView() {
 
     const venue = match.venue ? getMockVenue(match.venueId) : undefined
     const saturdayDate = getJornadaSaturdayForDate(match.date)
+    // Categoría fina (T6): `/api/admin/matches` no la enriquece (solo lo hace el
+    // enrich del solver), así que se resuelve aquí por nombre canónico. Igual que
+    // `slotPosition`, es la misma para las ~1279 personas del picker: se calcula
+    // una vez, no dentro del `.map()`.
+    const fineCategory = match.competition ? resolveFineCategory(match.competition) : null
+    const slotPosition =
+      activeSlot.position === 'principal' || activeSlot.position === 'auxiliar'
+        ? activeSlot.position
+        : undefined
 
     // Carga actual por persona a partir del estado `matches` (datos reales del
     // servidor), NO del `mockDesignations` importado (copia estática del seed en
@@ -446,12 +477,19 @@ export function AsignacionView() {
           validation = { valid: false, reason: 'Solapamiento con otro partido' }
         } else if (
           activeSlot.role === 'arbitro' &&
-          match.competition?.minRefCategory &&
-          !meetsMinCategory(person.category, match.competition.minRefCategory)
+          match.competition &&
+          !checkSlotEligibility(
+            { role: person.role, category: person.category, refereeLevel: person.refereeLevel },
+            { fineCategory, minRefCategory: match.competition.minRefCategory },
+            slotPosition,
+          )
         ) {
           validation = {
             valid: false,
-            reason: `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
+            reason:
+              fineCategory && isRefereeLevel(person.refereeLevel)
+                ? 'Nivel no elegible para esta competición'
+                : `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
           }
         } else {
           const incomps = getPersonIncompatibilities(person.id)

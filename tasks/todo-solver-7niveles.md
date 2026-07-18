@@ -105,6 +105,37 @@ la UI queda para un follow-up?
 
 ---
 
+## 2.5 Decisiones RESUELTAS con el usuario (2026-07-18) + modo de ejecución
+
+**Modo de ejecución: MIXTO** (T4 = fable/xhigh; resto = sonnet). Elegido por el usuario en el prompt.
+
+**D1 - Mapeo competición → `CompetitionCategory` fina (CERRADO):**
+
+| Competición                                             | Fina                                                              |
+| ------------------------------------------------------- | ----------------------------------------------------------------- |
+| Liga VIPS Masc/Fem (comp-001/002) + 1ª Div Nac (import) | `nacional`                                                        |
+| Junior Masc/Fem ORO (comp-004/005 + import)             | `junior_especial_oro`                                             |
+| Sub-22 Masc (comp-003)                                  | `sub22_oro` (**NUEVA**)                                           |
+| Cadete Masc/Fem ORO (comp-006/007)                      | `cadete_pref`                                                     |
+| Infantil Masc/Fem (comp-008/009)                        | `infantil_pref`                                                   |
+| Preferente Masc (comp-010)                              | `junior_pref` (es Junior Preferente Masc, corrección del usuario) |
+| Futuras CSV: 2ª Div Aut Masc BRONCE                     | `segunda_aut_bronce`                                              |
+| Futuras CSV: 2ª Div Aut Fem PLATA                       | `segunda_aut_plata`                                               |
+
+**NUEVO (parte de T1): añadir `sub22_oro`** a `CompetitionCategory` y a `ELIGIBILITY` en
+`referee-eligibility.ts`, con elegibilidad ESPEJO de `junior_especial_oro`:
+`nacional`→['principal'], `feb`→['principal'], `primera_aut`→['auxiliar'],
+`autonomico_oro`→['auxiliar'], `autonomico_plata`→['auxiliar'] (bronce y escuela: no la pitan).
+Añadir label/orden si procede. Tests de la matriz siguen verdes.
+
+- **D2** = (a) fallback legacy `meetsMinCategory` para partido sin categoría fina.
+- **D3** = (a) slot auxiliar acepta un nivel solo-principal (auxiliar → `roles.length > 0`).
+- **D4** = (a) fallback legacy solo para los 5 seed sin `refereeLevel`.
+- **D5** = anotadores COMO HOY, sin check de elegibilidad; solo `position` informativa.
+- **D6** = migrar pickers manuales (`asignacion-view`, `substitution-panel`) en esta tanda.
+
+---
+
 ## 3. Task breakdown (ordenado por dependencia)
 
 Etiquetas: EJECUTOR `sonnet` (implementación estándar) o `PLANNER` (=fable, la dificultad vive en
@@ -302,3 +333,30 @@ la ejecución). ESFUERZO `low` / `high` (default) / `xhigh`.
   T3 (helper + tests, sin consumidores) deja `main` estable; T4-T6 son el punto de no retorno
   funcional y van detrás de la medición T8 si el usuario lo prefiere (T8 puede adelantarse con un
   branch de prueba).
+
+---
+
+## 6. Estado de ejecución (2026-07-18) — CÓDIGO COMPLETO
+
+Modo MIXTO ejecutado (T4 = fable; resto = sonnet). T1-T9 completas.
+
+- **T1-T3**: `sub22_oro` añadida a la matriz; `competition-fine-category.ts` (mapeo puro `resolveFineCategory`); `category-rank.ts` (extraídos `meetsMinCategory`/`CATEGORY_RANK` para romper ciclo, reexport desde `mock-data.ts`); `checkSlotEligibility` con fallback legacy; threading de `fineCategory`/`refereeLevel`. (T1.3 fineCategory en `CategoryMapping` OMITIDO: rompía 9 asserts y es redundante, el enrich taguea por `name`.)
+- **T4**: solver integrado; posiciones libres vía `getFreePositions`→`mapDesignationsToSlots` (explícitas primero, legacy rellenan huecos); `FINE_PRIORITY` por escasez solapado con rango legacy; `position` en cada `ProposedAssignment`; `meetsMinCategory` huérfano eliminado del solver. El partial real va por `solve(forceExisting=true)`, no por `solvePartial` (sin llamadores).
+- **T5-T6**: `position` explícita al aplicar propuesta y re-optimizar; pickers (`asignacion-view`, `substitution-panel`) migrados a `checkSlotEligibility` con `fineCategory` resuelta en cliente desde el estado `matches` del fetch; mensajes de invalidez diferenciados.
+- **T7**: 7 tests nuevos (elegibilidad fina, principal/auxiliar, fallback, `position`+forceExisting, unassigned reason). Sin bugs en T4.
+- **T8** (informativo): cobertura 100% en montaje idealizado (disponibilidad total, carga ilimitada); PERO concentración ×4 sobre los 60 árbitros `nacional` para el slot principal de 1ª Div Nacional (de ~1.1 a 4.5 partidos/persona). Riesgo real en producción con disponibilidad parcial + cap 3/jornada. DECISIÓN DE NEGOCIO pendiente: ¿margen en esos 60, o ampliar/relajar la matriz para Liga Nacional?
+- **T9**: docs actualizadas (CLAUDE.md restricción 4, cabecera `referee-eligibility.ts`, memoria `referee-categories.md` + `MEMORY.md`).
+
+**Gate global independiente**: `pnpm -C apps/web typecheck` + `lint` + `vitest run` = VERDE (264/264, 20 archivos).
+
+**Fase 4 (verificación) COMPLETA**: review adversarial (fable) → 1 ALTA + 2 MEDIA + 5 BAJA, 8 categorías de foco limpias. Fixes aplicados (sonnet) y re-gate VERDE (**270/270**, +6 tests):
+
+- **A1 (ALTA, correctness)**: el panel de sustitución colaba un nivel solo-auxiliar como Principal en partidos finos (designaciones legacy sin `position` → regla genérica + `autoFillPosition`='principal', divergente del solver). Fix: `firstFreePosition(designations, role, needed)` (pura, sobre `mapDesignationsToSlots`) deriva la posición efectiva del hueco en `getCandidates` y se envía explícita en `handleSubstitute`. Test de regresión añadido.
+- **M1**: 3 claves finas que faltaban en `FINE_CATEGORY_BY_CANONICAL` (Sub-22 PLATA, Cadete Masc Pref, 1ª Div Nac Fem).
+- **M2**: `unassigned.slotIndex` ahora es el índice absoluto del slot (`getFreeSlots` → `{slotIndex, position}`), alineado con la posición diagnosticada.
+- **B1/B2/B3/B5**: comentario falso corregido, `isRefereeLevel` exportada y reutilizada (solver + etiquetas de pickers), reexport muerto `meetsMinCategory` eliminado.
+- **B4** (`solvePartial` sin llamadores, pre-existente): follow-up, no tocado.
+
+**Follow-ups pendientes (no bloqueantes)**: (1) DECISIÓN DE NEGOCIO sobre la concentración ×4 en nacionales (T8); (2) B4 `solvePartial` (testear o retirar); (3) el solver Python del demo sigue recibiendo payload legacy (riesgo 4 del plan).
+
+Estado: LISTO para commit (a confirmar con el usuario). Sin commitear aún.

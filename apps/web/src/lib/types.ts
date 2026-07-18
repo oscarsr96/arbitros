@@ -2,6 +2,7 @@
 
 import type { DesignationPosition } from './designation-positions'
 import type { DesignationStatus } from './mock-data'
+import type { CompetitionCategory } from './referee-eligibility'
 
 export interface EnrichedMatch {
   id: string
@@ -43,6 +44,9 @@ export interface EnrichedMatch {
     scorersNeeded: number
     minRefCategory: string
     seasonId: string
+    // Categoría fina de la matriz de elegibilidad (T1, tasks/todo-solver-7niveles.md).
+    // null/ausente = sin tag → fallback legacy (`meetsMinCategory`, D2).
+    fineCategory?: CompetitionCategory | null
   }
   designations: EnrichedDesignation[]
   refereesAssigned: number
@@ -202,6 +206,9 @@ export interface ProposedAssignment {
   distanceKm: number
   isNew: boolean // true si es nueva, false si ya existía
   municipalityName: string
+  // Posición nombrada del slot que cubre (Principal/Auxiliar, Anotador/Crono/24").
+  // La rellena el solver (T4); ausente en llamadores que aún no la calculan.
+  position?: DesignationPosition
 }
 
 export interface UnassignedSlot {

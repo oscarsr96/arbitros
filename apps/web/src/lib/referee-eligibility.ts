@@ -3,10 +3,12 @@
 // Traduce las reglas de la FBM sobre QUÉ categoría de competición puede pitar
 // cada nivel de árbitro y en qué ROL (principal / auxiliar-vinculado).
 //
-// IMPORTANTE (alcance actual): esto es una ESTRUCTURA DE DATOS. NO la consume
-// todavía el solver ni las validaciones de asignación (que siguen usando el
-// ranking lineal `CATEGORY_RANK`/`meetsMinCategory` de `mock-data.ts`). Es la
-// base para una fase posterior en la que la asignación respete estas reglas.
+// IMPORTANTE (alcance actual): la matriz YA la consume el solver y los pickers
+// manuales de asignación, a través del helper único `checkSlotEligibility` de
+// este mismo módulo. Si el partido tiene categoría fina y la persona tiene
+// nivel fino, valida contra esta matriz; si falta cualquiera de los dos datos,
+// hace fallback al ranking lineal `CATEGORY_RANK`/`meetsMinCategory` (ahora en
+// `category-rank.ts`), con el mismo comportamiento que antes de esta fase.
 //
 // El modelo lineal de 4 niveles (provincial<autonomico<nacional<feb) NO puede
 // expresar estas reglas porque NO son monótonas: p. ej. un Nacional NO pita 1ª
@@ -14,6 +16,11 @@
 //
 // Las 4 ambigüedades iniciales del borrador ([AMBIGUO-1..4]) ya se resolvieron
 // con el usuario y están reflejadas en la matriz (ver comentarios inline).
+
+// Fallback legacy de `checkSlotEligibility` (D2/D4). Importado del módulo hoja
+// `category-rank.ts` (no de `mock-data.ts`, que crearía un ciclo: `mock-data.ts`
+// → `referee-roster.ts` → `referee-eligibility.ts`).
+import { meetsMinCategory } from './category-rank'
 
 export type RefereeLevel =
   | 'nacional'
@@ -36,6 +43,7 @@ export type CompetitionCategory =
   | 'junior_especial_oro'
   | 'junior_especial_plata'
   | 'junior_especial_bronce'
+  | 'sub22_oro'
   | 'sub22_plata'
   | 'sub22_bronce'
   | 'cadete_pref' // escuela (se pita solo)
@@ -110,6 +118,7 @@ export const ELIGIBILITY: Record<
     junior_especial_oro: ['principal'],
     junior_especial_plata: ['principal'],
     junior_especial_bronce: ['principal'],
+    sub22_oro: ['principal'],
     sub22_plata: ['principal'],
     sub22_bronce: ['principal'],
     cadete_pref: ['principal'],
@@ -125,6 +134,7 @@ export const ELIGIBILITY: Record<
     junior_especial_oro: ['principal'],
     junior_especial_plata: ['principal'],
     junior_especial_bronce: ['principal'],
+    sub22_oro: ['principal'],
     sub22_plata: ['principal'],
     sub22_bronce: ['principal'],
   },
@@ -140,6 +150,7 @@ export const ELIGIBILITY: Record<
     primera_aut_fem: ['principal'],
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
+    sub22_oro: ['auxiliar'],
     segunda_aut_oro: ['principal'],
     segunda_aut_plata: ['principal'],
     segunda_aut_bronce: ['principal'],
@@ -163,6 +174,7 @@ export const ELIGIBILITY: Record<
     primera_aut_fem: ['auxiliar'],
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
+    sub22_oro: ['auxiliar'],
     cadete_pref: ['principal'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
@@ -179,6 +191,7 @@ export const ELIGIBILITY: Record<
     primera_aut_plata: ['auxiliar'],
     primera_aut_fem: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
+    sub22_oro: ['auxiliar'],
     cadete_pref: ['principal'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
@@ -229,4 +242,47 @@ export function eligibleRoles(
 export function refereeLevelLabel(value?: string | null): string | null {
   if (!value) return null
   return REFEREE_LEVEL_LABELS[value as RefereeLevel] ?? null
+}
+
+/** ¿`value` es uno de los 7 niveles reconocidos de la matriz de elegibilidad? */
+export function isRefereeLevel(value?: string | null): value is RefereeLevel {
+  return !!value && (REFEREE_LEVELS as string[]).includes(value)
+}
+
+/**
+ * Helper ÚNICO de elegibilidad por slot (T3, tasks/todo-solver-7niveles.md).
+ * Lo consumen el solver (T4) y los pickers manuales (T6) para decidir si una
+ * persona puede ocupar un slot concreto de un partido.
+ *
+ * - Anotadores (D5): la matriz es solo de árbitros → siempre elegibles.
+ * - Modelo fino: si el partido lleva `fineCategory` Y la persona un
+ *   `refereeLevel` reconocido, se consulta `eligibleRoles`. El slot
+ *   `principal` exige el rol `principal`; el slot `auxiliar` (D3) acepta
+ *   también un nivel solo-principal (basta con que pite en algún rol); sin
+ *   `slotPosition` (uso genérico, p. ej. un picker sin slot activo) vale
+ *   cualquier rol elegible.
+ * - Fallback legacy (D2 sin fina en el partido / D4 sin nivel en la persona):
+ *   `meetsMinCategory` sobre el ranking lineal de siempre. Sin
+ *   `minRefCategory` en el partido → elegible (nada que exigir).
+ */
+export function checkSlotEligibility(
+  person: { role: string; category: string | null; refereeLevel?: string | null },
+  competition:
+    | { fineCategory?: CompetitionCategory | null; minRefCategory?: string | null }
+    | undefined,
+  slotPosition?: EligibleRole,
+): boolean {
+  if (person.role !== 'arbitro') return true
+
+  const fineCategory = competition?.fineCategory
+  const level = person.refereeLevel
+
+  if (fineCategory && isRefereeLevel(level)) {
+    const roles = eligibleRoles(level, fineCategory)
+    if (slotPosition === 'principal') return roles.includes('principal')
+    return roles.length > 0
+  }
+
+  if (!competition?.minRefCategory) return true
+  return meetsMinCategory(person.category, competition.minRefCategory)
 }

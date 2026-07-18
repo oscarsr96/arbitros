@@ -223,7 +223,7 @@ Donde α y β son pesos configurables por el designador. Por defecto α=0.7, β=
 1. **Cobertura**: cada partido tiene exactamente N árbitros y M anotadores asignados.
 2. **Disponibilidad**: solo asignar personas disponibles en la franja horaria del partido.
 3. **Rol**: árbitros solo se asignan como árbitros, anotadores como anotadores.
-4. **Categoría mínima**: el nivel del árbitro debe ser ≥ al requerido por la competición.
+4. **Elegibilidad de categoría**: el árbitro debe ser elegible según la matriz de 7 niveles (`ELIGIBILITY`) para la categoría fina de la competición y el rol del slot (principal/auxiliar); si el partido no tiene categoría fina o la persona no tiene nivel fino, se aplica el mínimo lineal legacy (nivel del árbitro ≥ al requerido por la competición) como fallback.
 5. **Sin solapamiento**: una persona no puede estar en dos partidos cuya franja horaria se solape (considerar duración del partido ~1,5h + margen de desplazamiento).
 6. **Incompatibilidades**: un árbitro no puede pitar partidos de su propio club.
 7. **Carga máxima**: ninguna persona puede superar X partidos por jornada (configurable, por defecto 3).

@@ -26,6 +26,7 @@ import {
 import { solve } from '@/lib/solver'
 import type { EnrichedMatch, EnrichedPerson } from '@/lib/types'
 import { persistDesignations } from '@/lib/designation-persistence'
+import { resolveFineCategory } from '@/lib/competition-fine-category'
 
 // ── Pools de datos ────────────────────────────────────────────────────────
 
@@ -461,7 +462,9 @@ export async function POST(request: Request) {
             municipalityName: getMockMunicipality(venue.municipalityId)?.name,
           }
         : undefined,
-      competition: competition ?? undefined,
+      competition: competition
+        ? { ...competition, fineCategory: resolveFineCategory(competition) }
+        : undefined,
       designations,
       refereesAssigned,
       scorersAssigned,
@@ -486,6 +489,7 @@ export async function POST(request: Request) {
         phone: p.phone,
         role: p.role,
         category: p.category,
+        refereeLevel: p.refereeLevel ?? null,
         address: p.address,
         postalCode: p.postalCode,
         municipalityId: p.municipalityId,

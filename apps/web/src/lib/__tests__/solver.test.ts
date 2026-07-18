@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { SolverInput, EnrichedMatch, EnrichedPerson } from '../types'
+import type { DesignationPosition } from '../designation-positions'
 
 // ── Mock the mock-data module so we control what the solver sees ──────────
 
@@ -24,6 +25,8 @@ const mockDesignations: {
   matchId: string
   personId: string
   role: 'arbitro' | 'anotador'
+  // Posición nombrada (T7): opcional, las designaciones legacy no la llevan.
+  position?: DesignationPosition
   travelCost: string
   distanceKm: string
   status: string
@@ -930,5 +933,309 @@ describe('solve — solapamiento unificado (pairOverlap)', () => {
     expect(result.unassigned).toHaveLength(1)
     expect(result.unassigned[0].matchId).toBe('m2')
     expect(result.unassigned[0].reason).toContain('solapamiento')
+  })
+})
+
+// ── T7: elegibilidad fina de 7 niveles (checkSlotEligibility, T4) ──────────
+// El modelo fino solo se activa cuando el partido lleva `competition.fineCategory`
+// Y la persona lleva `refereeLevel` reconocido (tasks/todo-solver-7niveles.md, D2/D4).
+// Los helpers makeMatch/makePerson no cambian sus defaults: los tests de arriba
+// (sin fineCategory ni refereeLevel) siguen cayendo en el fallback legacy intacto.
+describe('solve — T7: elegibilidad fina de 7 niveles', () => {
+  beforeEach(() => {
+    mockAvailabilities.length = 0
+    mockIncompatibilities.length = 0
+    mockDesignations.length = 0
+    mockMatches.length = 0
+  })
+
+  it('nacional (2 slots): principal lo cubre el nacional, feb nunca asignado, primera_aut solo auxiliar', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 2,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Liga Nacional',
+        category: 'nacional',
+        gender: 'male',
+        refereesNeeded: 2,
+        scorersNeeded: 0,
+        minRefCategory: 'nacional',
+        seasonId: 's1',
+        fineCategory: 'nacional',
+      },
+    })
+    const nacional = makePerson({ id: 'p-nacional', role: 'arbitro', refereeLevel: 'nacional' })
+    const primeraAut = makePerson({
+      id: 'p-primera-aut',
+      role: 'arbitro',
+      refereeLevel: 'primera_aut',
+    })
+    const feb = makePerson({ id: 'p-feb', role: 'arbitro', refereeLevel: 'feb' })
+    addAvailability('p-nacional', match.date, match.time)
+    addAvailability('p-primera-aut', match.date, match.time)
+    addAvailability('p-feb', match.date, match.time)
+
+    const result = solve({
+      matches: [match],
+      persons: [nacional, primeraAut, feb],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments).toHaveLength(2)
+    const principalPick = result.assignments.find((a) => a.position === 'principal')
+    const auxiliarPick = result.assignments.find((a) => a.position === 'auxiliar')
+    expect(principalPick?.personId).toBe('p-nacional')
+    expect(auxiliarPick?.personId).toBe('p-primera-aut')
+    expect(result.assignments.some((a) => a.personId === 'p-feb')).toBe(false)
+  })
+
+  it('escuela en junior_pref: auxiliar sí, principal no', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 2,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Junior Preferente',
+        category: 'junior',
+        gender: 'male',
+        refereesNeeded: 2,
+        scorersNeeded: 0,
+        minRefCategory: 'provincial',
+        seasonId: 's1',
+        fineCategory: 'junior_pref',
+      },
+    })
+    const escuela = makePerson({ id: 'p-escuela', role: 'arbitro', refereeLevel: 'escuela' })
+    addAvailability('p-escuela', match.date, match.time)
+
+    const result = solve({
+      matches: [match],
+      persons: [escuela],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('partial')
+    const assigned = result.assignments.filter((a) => a.isNew)
+    expect(assigned).toHaveLength(1)
+    expect(assigned[0].personId).toBe('p-escuela')
+    expect(assigned[0].position).toBe('auxiliar')
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].slotIndex).toBe(0)
+    expect(result.unassigned[0].reason).toContain('nivel no elegible')
+  })
+
+  it('segunda_aut_oro: feb excluido, autonomico_oro asignado', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: '2ª Autonómica Oro',
+        category: 'segunda-aut',
+        gender: 'male',
+        refereesNeeded: 1,
+        scorersNeeded: 0,
+        minRefCategory: 'provincial',
+        seasonId: 's1',
+        fineCategory: 'segunda_aut_oro',
+      },
+    })
+    const feb = makePerson({ id: 'p-feb', role: 'arbitro', refereeLevel: 'feb' })
+    const autonomicoOro = makePerson({
+      id: 'p-auto-oro',
+      role: 'arbitro',
+      refereeLevel: 'autonomico_oro',
+    })
+    addAvailability('p-feb', match.date, match.time)
+    addAvailability('p-auto-oro', match.date, match.time)
+
+    const result = solve({
+      matches: [match],
+      persons: [feb, autonomicoOro],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments).toHaveLength(1)
+    expect(result.assignments[0].personId).toBe('p-auto-oro')
+    expect(result.assignments.some((a) => a.personId === 'p-feb')).toBe(false)
+  })
+
+  it('fallback legacy: partido sin fineCategory usa meetsMinCategory pese al refereeLevel de la persona', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Liga',
+        category: 'nacional',
+        gender: 'male',
+        refereesNeeded: 1,
+        scorersNeeded: 0,
+        minRefCategory: 'nacional',
+        seasonId: 's1',
+        // sin fineCategory → fallback legacy (D2), aunque la persona lleve refereeLevel.
+      },
+    })
+    // refereeLevel 'escuela' NO pitaría 'nacional' bajo el modelo fino, pero sin
+    // fineCategory en el partido el check legacy es el único que se aplica: category
+    // legacy 'nacional' cumple minRefCategory 'nacional'.
+    const p1 = makePerson({
+      id: 'p1',
+      role: 'arbitro',
+      category: 'nacional',
+      refereeLevel: 'escuela',
+    })
+    addAvailability('p1', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [p1], parameters: defaultParams() })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments[0].personId).toBe('p1')
+  })
+
+  it('fallback legacy: persona sin refereeLevel usa meetsMinCategory pese al fineCategory del partido', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: '2ª Autonómica Oro',
+        category: 'segunda-aut',
+        gender: 'male',
+        refereesNeeded: 1,
+        scorersNeeded: 0,
+        minRefCategory: 'provincial',
+        seasonId: 's1',
+        fineCategory: 'segunda_aut_oro',
+      },
+    })
+    // Sin refereeLevel (default de makePerson): cae al legacy pese al fineCategory del
+    // partido. category legacy 'autonomico' cumple minRefCategory 'provincial'.
+    const p1 = makePerson({ id: 'p1', role: 'arbitro', category: 'autonomico' })
+    addAvailability('p1', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [p1], parameters: defaultParams() })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments[0].personId).toBe('p1')
+  })
+
+  it('position: con forceExisting y una existente "principal", el nuevo pick sale "auxiliar"', () => {
+    const match = makeMatch({ id: 'm1', refereesNeeded: 2, scorersNeeded: 0 })
+    mockMatches.push({ id: 'm1', date: match.date, time: match.time })
+    mockDesignations.push({
+      id: 'd1',
+      matchId: 'm1',
+      personId: 'p-existing',
+      role: 'arbitro',
+      position: 'principal',
+      travelCost: '0.00',
+      distanceKm: '0.0',
+      status: 'confirmed',
+      notifiedAt: null,
+      createdAt: new Date(),
+    })
+    const pExisting = makePerson({ id: 'p-existing', role: 'arbitro' })
+    const pNew = makePerson({ id: 'p-new', role: 'arbitro' })
+    addAvailability('p-new', match.date, match.time)
+
+    const result = solve({
+      matches: [match],
+      persons: [pExisting, pNew],
+      parameters: { ...defaultParams(), forceExisting: true },
+    })
+
+    expect(result.status).toBe('optimal')
+    const existingPick = result.assignments.find((a) => !a.isNew)
+    const newPick = result.assignments.find((a) => a.isNew)
+    expect(existingPick?.personId).toBe('p-existing')
+    expect(existingPick?.position).toBe('principal')
+    expect(newPick?.personId).toBe('p-new')
+    expect(newPick?.position).toBe('auxiliar')
+  })
+
+  it('M2: forceExisting con existente "auxiliar" reporta el slotIndex del hueco real (principal=0), no existentes+i', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 2,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Liga Nacional',
+        category: 'nacional',
+        gender: 'male',
+        refereesNeeded: 2,
+        scorersNeeded: 0,
+        minRefCategory: 'nacional',
+        seasonId: 's1',
+        fineCategory: 'nacional',
+      },
+    })
+    mockMatches.push({ id: 'm1', date: match.date, time: match.time })
+    // La única existente reclama el AUXILIAR: el hueco real que queda es el
+    // PRINCIPAL (índice 0), no "existentes(1) + i(0) = 1" (el bug del review).
+    mockDesignations.push({
+      id: 'd1',
+      matchId: 'm1',
+      personId: 'p-existing',
+      role: 'arbitro',
+      position: 'auxiliar',
+      travelCost: '0.00',
+      distanceKm: '0.0',
+      status: 'confirmed',
+      notifiedAt: null,
+      createdAt: new Date(),
+    })
+    const pExisting = makePerson({ id: 'p-existing', role: 'arbitro', refereeLevel: 'primera_aut' })
+    // feb no tiene entrada para 'nacional' en la matriz → sin candidato para el
+    // hueco principal, que queda sin cubrir.
+    const feb = makePerson({ id: 'p-feb', role: 'arbitro', refereeLevel: 'feb' })
+    addAvailability('p-feb', match.date, match.time)
+
+    const result = solve({
+      matches: [match],
+      persons: [pExisting, feb],
+      parameters: { ...defaultParams(), forceExisting: true },
+    })
+
+    expect(result.status).toBe('no_solution')
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].slotIndex).toBe(0)
+  })
+
+  it('unassigned.reason incluye "nivel no elegible" cuando nadie es elegible por el modelo fino', () => {
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      competition: {
+        id: 'c1',
+        name: 'Liga Nacional',
+        category: 'nacional',
+        gender: 'male',
+        refereesNeeded: 1,
+        scorersNeeded: 0,
+        minRefCategory: 'nacional',
+        seasonId: 's1',
+        fineCategory: 'nacional',
+      },
+    })
+    // feb no tiene entrada para 'nacional' en la matriz → [] → excluido de cualquier rol.
+    const feb = makePerson({ id: 'p-feb', role: 'arbitro', refereeLevel: 'feb' })
+    addAvailability('p-feb', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [feb], parameters: defaultParams() })
+
+    expect(result.status).toBe('no_solution')
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].reason).toContain('nivel no elegible')
   })
 })

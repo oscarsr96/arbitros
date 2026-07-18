@@ -10,12 +10,17 @@ import {
   calculateMockTravelCost,
   isPersonAvailable,
   hasTimeOverlap,
-  meetsMinCategory,
   getPersonIncompatibilities,
   getMockMunicipality,
   getMockVenue,
 } from '@/lib/mock-data'
-import { POSITION_LABELS, type DesignationPosition } from '@/lib/designation-positions'
+import {
+  POSITION_LABELS,
+  firstFreePosition,
+  type DesignationPosition,
+} from '@/lib/designation-positions'
+import { checkSlotEligibility, isRefereeLevel } from '@/lib/referee-eligibility'
+import { resolveFineCategory } from '@/lib/competition-fine-category'
 
 export interface SubstitutionContext {
   matchId: string
@@ -47,8 +52,28 @@ function getCandidates(
   match: EnrichedMatch,
   role: 'arbitro' | 'anotador',
   matches: EnrichedMatch[],
+  removedPosition?: DesignationPosition,
 ): CandidatePerson[] {
   const venue = match.venue ? getMockVenue(match.venueId) : undefined
+  // Categoría fina (T6): `matches` viene de `/api/admin/matches`, que no la
+  // enriquece (solo lo hace el enrich del solver), así que se resuelve aquí
+  // por nombre canónico.
+  const fineCategory = match.competition ? resolveFineCategory(match.competition) : null
+
+  // Posición efectiva del hueco (Fix A1, review 7 niveles): si la designación
+  // eliminada llevaba `position`, esa es la vacante. Si era legacy (sin
+  // `position`, las ~90 reales del piloto), se deriva de las designaciones
+  // RESTANTES del partido (ya sin la eliminada: `match` viene del estado
+  // `matches`, recién refrescado tras el DELETE) con la MISMA regla que
+  // aplicará el POST de sustitución (`autoFillPosition`/`mapDesignationsToSlots`).
+  // Sin esto, un hueco Principal se validaba con la regla genérica de "pita en
+  // algún rol" en vez de exigir el rol `principal`.
+  const needed = role === 'arbitro' ? match.refereesNeeded : match.scorersNeeded
+  const effectivePosition = removedPosition ?? firstFreePosition(match.designations, role, needed)
+  const slotPosition =
+    effectivePosition === 'principal' || effectivePosition === 'auxiliar'
+      ? effectivePosition
+      : undefined
 
   const assignedCounts = new Map<string, number>()
   for (const m of matches) {
@@ -79,12 +104,19 @@ function getCandidates(
         validation = { valid: false, reason: 'Solapamiento con otro partido' }
       } else if (
         role === 'arbitro' &&
-        match.competition?.minRefCategory &&
-        !meetsMinCategory(person.category, match.competition.minRefCategory)
+        match.competition &&
+        !checkSlotEligibility(
+          { role: person.role, category: person.category, refereeLevel: person.refereeLevel },
+          { fineCategory, minRefCategory: match.competition.minRefCategory },
+          slotPosition,
+        )
       ) {
         validation = {
           valid: false,
-          reason: `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
+          reason:
+            fineCategory && isRefereeLevel(person.refereeLevel)
+              ? 'Nivel no elegible para esta competición'
+              : `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
         }
       } else {
         const incomps = getPersonIncompatibilities(person.id)
@@ -125,7 +157,11 @@ export function SubstitutionPanel({
   onSubstitute,
 }: SubstitutionPanelProps) {
   const match = context ? matches.find((m) => m.id === context.matchId) : null
-  const candidates = match && context ? getCandidates(match, context.role, matches) : []
+  // La posición efectiva del hueco (la de la designación eliminada, o la
+  // derivada de las restantes si era legacy) se calcula dentro de
+  // `getCandidates` — ver comentario ahí (Fix A1).
+  const candidates =
+    match && context ? getCandidates(match, context.role, matches, context.position) : []
   const validCount = candidates.filter((c) => c.validation.valid).length
 
   return (

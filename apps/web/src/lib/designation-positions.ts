@@ -114,3 +114,27 @@ export function mapDesignationsToSlots<T extends { role: string; position?: Desi
 
   return slots
 }
+
+/**
+ * Posición del PRIMER hueco libre de un partido para un rol, dadas sus
+ * designaciones actuales y el número de plazas (`needed`). Delega en
+ * `mapDesignationsToSlots` (misma regla exacta que aplica el POST vía
+ * `autoFillPosition`): una designación con `position` explícita reclama SU
+ * slot, las legacy sin `position` rellenan huecos en orden de llegada.
+ * `undefined` si no queda hueco libre.
+ *
+ * Usado por el panel de sustitución (Fix A1, review del modelo de 7 niveles):
+ * cuando la designación eliminada era legacy (sin `position`), esta es la
+ * posición REAL que queda vacante, no "principal" por defecto.
+ */
+export function firstFreePosition<T extends { role: string; position?: DesignationPosition }>(
+  designations: T[],
+  role: 'arbitro' | 'anotador',
+  needed: number,
+): DesignationPosition | undefined {
+  const slots = mapDesignationsToSlots(designations, role, needed)
+  for (let i = 0; i < needed; i++) {
+    if (slots[i] === undefined) return positionForSlot(role, i)
+  }
+  return undefined
+}
