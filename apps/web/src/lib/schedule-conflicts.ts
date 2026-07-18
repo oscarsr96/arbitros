@@ -10,10 +10,9 @@
 // (lib/utils.ts) sobre la distancia entre los municipios de los pabellones; viaje = 0 si
 // es el mismo pabellón.
 
-import { estimateTravelMinutes } from './utils'
+import { pairOverlap, timeToMinutes, MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN } from './overlap'
 
-export const MATCH_DURATION_MIN = 90
-export const CONFLICT_MARGIN_MIN = 30
+export { MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN }
 
 /** Entrada ya resuelta de un partido de UNA persona en UN día. */
 export interface DayConflictEntry {
@@ -44,15 +43,6 @@ export interface ScheduleConflict {
   gapMin: number
   /** Minutos de viaje estimados de A a B (0 si mismo pabellón). */
   travelMin: number
-}
-
-function travelBetween(
-  a: DayConflictEntry,
-  b: DayConflictEntry,
-  getDistanceKm: (originMuniId: string, destMuniId: string) => number,
-): number {
-  if (a.venueId === b.venueId) return 0
-  return estimateTravelMinutes(getDistanceKm(a.municipalityId, b.municipalityId), a.hasCar)
 }
 
 function buildConflict(
@@ -87,6 +77,10 @@ function buildConflict(
  *   inicio) es menor que el viaje estimado entre ambos.
  * - AVISO `tight-gap`: el hueco es menor que viaje + CONFLICT_MARGIN_MIN. Exento si
  *   ambos partidos son en el mismo pabellón (encadenar en la misma pista es deseable).
+ *
+ * Si el viaje entre un par no es estimable (`travelKnown=false`, municipio de alguno de
+ * los pabellones sin resolver) no se emite `insufficient-gap` ni `tight-gap` para ese
+ * par: solo queda el error `overlap` si los intervalos se cruzan.
  */
 export function detectDayConflicts(
   entries: DayConflictEntry[],
@@ -105,10 +99,12 @@ export function detectDayConflicts(
     for (let j = i + 1; j < sorted.length; j++) {
       const a = sorted[i]
       const b = sorted[j]
-      const endA = a.startMin + MATCH_DURATION_MIN
-      if (b.startMin < endA) {
-        const travelMin = travelBetween(a, b, getDistanceKm)
-        conflicts.push(buildConflict(a, b, 'error', 'overlap', b.startMin - endA, travelMin))
+      const { intervalsOverlap, gapMin, travelMin } = pairOverlap(a, b, {
+        hasCar: a.hasCar,
+        getDistanceKm,
+      })
+      if (intervalsOverlap) {
+        conflicts.push(buildConflict(a, b, 'error', 'overlap', gapMin, travelMin))
       }
     }
   }
@@ -118,11 +114,12 @@ export function detectDayConflicts(
   for (let i = 0; i < sorted.length - 1; i++) {
     const a = sorted[i]
     const b = sorted[i + 1]
-    const endA = a.startMin + MATCH_DURATION_MIN
-    if (b.startMin < endA) continue // ya cubierto por el chequeo de solape
-
-    const gapMin = b.startMin - endA
-    const travelMin = travelBetween(a, b, getDistanceKm)
+    const { intervalsOverlap, gapMin, travelMin, travelKnown } = pairOverlap(a, b, {
+      hasCar: a.hasCar,
+      getDistanceKm,
+    })
+    if (intervalsOverlap) continue // ya cubierto por el chequeo de solape
+    if (!travelKnown) continue // municipio sin resolver: el viaje no es estimable
 
     if (gapMin < travelMin) {
       conflicts.push(buildConflict(a, b, 'error', 'insufficient-gap', gapMin, travelMin))
@@ -132,11 +129,6 @@ export function detectDayConflicts(
   }
 
   return conflicts
-}
-
-function timeToMinutes(time: string): number {
-  const [hours, minutes] = time.split(':').map(Number)
-  return hours * 60 + minutes
 }
 
 /** Designación mínima que necesita `getPublishConflicts` (no acopla al tipo de mock-data). */

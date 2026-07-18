@@ -21,6 +21,7 @@ import {
   isPersonAvailable,
   calculateDailyTravelCost,
 } from './mock-data'
+import { pairOverlap, timeToMinutes, isSolverConflict, type OverlapMatch } from './overlap'
 
 // ── PRNG con seed (Mulberry32) ────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ interface Assignment {
   role: 'arbitro' | 'anotador'
   date: string
   time: string
+  venueId: string
   venueMuniId: string
 }
 
@@ -90,23 +92,42 @@ interface Assignment {
 // por personId UNA vez por resolucion (`buildAssignmentIndex`/`buildDesignationIndex`
 // en `solve`/`solvePartial`) y aqui solo se recorre la lista (pequena, acotada por
 // maxMatchesPerPerson) de ESA persona.
-function hasTimeOverlapWith(
+// Chequeo de conflicto duro de horario para un candidato: delega en `pairOverlap`
+// (lib/overlap.ts), la misma primitiva minutos + duración real + viaje estimado
+// (estimateTravelMinutes) + hasCar que usa el panel de verificación pre-publicación
+// (schedule-conflicts.ts). Antes este módulo duplicaba el cálculo con granularidad de
+// HORAS ENTERAS (parseInt(time.split(':')[0]) y |horaA-horaB|<2), lo que ignoraba
+// minutos, duración, pabellón y viaje: un partido justo encadenado en el mismo pabellón
+// (14:00 y 15:30, duración 90min) se marcaba como solape, y un hueco insuficiente para
+// viajar entre dos municipios distintos podía no detectarse. El solver es más
+// conservador que el panel: usa `isSolverConflict` (mismo módulo), que exige un colchón
+// adicional (CONFLICT_MARGIN_MIN) sobre el viaje estimado antes de dar un candidato por
+// válido, salvo cuando ambos partidos son en el mismo pabellón.
+function hasScheduleConflict(
   personId: string,
-  matchDate: string,
-  matchTime: string,
+  candidateMatch: OverlapMatch,
+  hasCar: boolean,
   assignmentsByPerson: Map<string, Assignment[]>,
   designationsByPerson: Map<string, typeof mockDesignations>,
-  matchesById: Map<string, { date: string; time: string }>,
+  matchesById: Map<string, OverlapMatch>,
 ): boolean {
-  const targetHour = parseInt(matchTime.split(':')[0])
+  const ctx = { hasCar, getDistanceKm: getMockDistance }
+  const conflictsWithOther = (other: OverlapMatch): boolean =>
+    isSolverConflict(pairOverlap(candidateMatch, other, ctx))
 
   // Comprobar contra asignaciones ya propuestas en esta ejecucion
   const current = assignmentsByPerson.get(personId)
   if (current) {
     for (const a of current) {
-      if (a.date !== matchDate) continue
-      const otherHour = parseInt(a.time.split(':')[0])
-      if (Math.abs(targetHour - otherHour) < 2) return true
+      if (
+        conflictsWithOther({
+          date: a.date,
+          startMin: timeToMinutes(a.time),
+          venueId: a.venueId,
+          municipalityId: a.venueMuniId,
+        })
+      )
+        return true
     }
   }
 
@@ -115,9 +136,8 @@ function hasTimeOverlapWith(
   if (existing) {
     for (const d of existing) {
       const match = matchesById.get(d.matchId)
-      if (!match || match.date !== matchDate) continue
-      const otherHour = parseInt(match.time.split(':')[0])
-      if (Math.abs(targetHour - otherHour) < 2) return true
+      if (!match) continue
+      if (conflictsWithOther(match)) return true
     }
   }
 
@@ -191,11 +211,21 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
 
   const assignments: ProposedAssignment[] = []
   const unassigned: UnassignedSlot[] = []
-  // Indices por personId (ver comentario sobre hasTimeOverlapWith): evitan
+  // Indices por personId (ver comentario sobre hasScheduleConflict): evitan
   // recorrer arrays completos por cada candidato evaluado.
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
-  const matchesById = new Map(mockMatches.map((m) => [m.id, { date: m.date, time: m.time }]))
+  const matchesById = new Map<string, OverlapMatch>(
+    mockMatches.map((m) => [
+      m.id,
+      {
+        date: m.date,
+        startMin: timeToMinutes(m.time),
+        venueId: m.venueId,
+        municipalityId: getMockVenue(m.venueId)?.municipalityId ?? '',
+      },
+    ]),
+  )
   // Índice completo por id (incluye partidos FUERA del scope): necesario para resolver
   // fecha y municipio del venue de designaciones existentes de la persona ese día que
   // caen fuera del rango/categoría solucionados (ver F2 — el coste marginal ve el día
@@ -240,16 +270,19 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
     const inScopeMatch = matches.find((mm) => mm.id === d.matchId)
     let date: string
     let time: string
+    let venueId: string
     let venueMuniId: string
     if (inScopeMatch) {
       date = inScopeMatch.date
       time = inScopeMatch.time
+      venueId = inScopeMatch.venueId
       venueMuniId = inScopeMatch.venue?.municipalityId ?? ''
     } else {
       const gm = mockMatchById.get(d.matchId)
       if (!gm) continue
       date = gm.date
       time = gm.time
+      venueId = gm.venueId
       venueMuniId = getMockVenue(gm.venueId)?.municipalityId ?? ''
     }
 
@@ -287,6 +320,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
       role: d.role,
       date,
       time,
+      venueId,
       venueMuniId,
     })
   }
@@ -355,6 +389,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           role: 'arbitro',
           date: match.date,
           time: match.time,
+          venueId: match.venueId,
           venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
@@ -421,6 +456,7 @@ export function solve(input: SolverInput, seed?: number): SolverOutput {
           role: 'anotador',
           date: match.date,
           time: match.time,
+          venueId: match.venueId,
           venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
@@ -544,7 +580,7 @@ function findBestCandidate(
   persons: EnrichedPerson[],
   assignmentsByPerson: Map<string, Assignment[]>,
   designationsByPerson: Map<string, typeof mockDesignations>,
-  matchesById: Map<string, { date: string; time: string }>,
+  matchesById: Map<string, OverlapMatch>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
   costWeight: number,
@@ -580,10 +616,15 @@ function findBestCandidate(
 
     // Solapamiento temporal
     if (
-      hasTimeOverlapWith(
+      hasScheduleConflict(
         person.id,
-        match.date,
-        match.time,
+        {
+          date: match.date,
+          startMin: timeToMinutes(match.time),
+          venueId: match.venueId,
+          municipalityId: venueMuniId,
+        },
+        person.hasCar,
         assignmentsByPerson,
         designationsByPerson,
         matchesById,
@@ -695,7 +736,7 @@ function getUnassignedReason(
   persons: EnrichedPerson[],
   assignmentsByPerson: Map<string, Assignment[]>,
   designationsByPerson: Map<string, typeof mockDesignations>,
-  matchesById: Map<string, { date: string; time: string }>,
+  matchesById: Map<string, OverlapMatch>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
   assignedPersonsByMatch: Map<string, Set<string>>,
@@ -703,6 +744,8 @@ function getUnassignedReason(
   const candidatesOfRole = persons.filter((p) => p.role === role && p.active)
   if (candidatesOfRole.length === 0)
     return `No hay ${role === 'arbitro' ? 'árbitros' : 'anotadores'} activos`
+
+  const venueMuni = match.venue?.municipalityId ?? ''
 
   let noAvailability = 0
   let overlap = 0
@@ -726,10 +769,15 @@ function getUnassignedReason(
       continue
     }
     if (
-      hasTimeOverlapWith(
+      hasScheduleConflict(
         person.id,
-        match.date,
-        match.time,
+        {
+          date: match.date,
+          startMin: timeToMinutes(match.time),
+          venueId: match.venueId,
+          municipalityId: venueMuni,
+        },
+        person.hasCar,
         assignmentsByPerson,
         designationsByPerson,
         matchesById,
@@ -752,7 +800,6 @@ function getUnassignedReason(
     }
 
     // Comprobar hard constraint coche para diagnóstico (distancia directa)
-    const venueMuni = match.venue?.municipalityId ?? ''
     const km = getMockDistance(person.municipalityId, venueMuni)
     if (!person.hasCar && km > 30) {
       noCarTooFar++
@@ -789,7 +836,17 @@ export function solvePartial(
   // Construir estado actual de asignaciones
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
-  const matchesById = new Map(mockMatches.map((m) => [m.id, { date: m.date, time: m.time }]))
+  const matchesById = new Map<string, OverlapMatch>(
+    mockMatches.map((m) => [
+      m.id,
+      {
+        date: m.date,
+        startMin: timeToMinutes(m.time),
+        venueId: m.venueId,
+        municipalityId: getMockVenue(m.venueId)?.municipalityId ?? '',
+      },
+    ]),
+  )
   const personLoadCount: Record<string, number> = {}
   for (const p of persons) personLoadCount[p.id] = 0
 
@@ -802,6 +859,7 @@ export function solvePartial(
         role: d.role,
         date: m.date,
         time: m.time,
+        venueId: m.venueId,
         venueMuniId: m.venue?.municipalityId ?? '',
       })
       if (personLoadCount[d.personId] !== undefined) personLoadCount[d.personId]++

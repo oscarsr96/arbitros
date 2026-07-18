@@ -858,3 +858,77 @@ describe('solve — coste marginal por persona/día', () => {
     expect(m1Pick?.travelCost).toBeCloseTo(-1.22) // 0,78 (away barato) − 2 (fijo que desaparece)
   })
 })
+
+// ── Solapamiento unificado (pairOverlap) ────────────────────────────────────
+// Regresión del bug de horas truncadas: antes hasTimeOverlapWith comparaba
+// parseInt(time.split(':')[0]) con |horaA-horaB|<2, lo que marcaba en conflicto
+// partidos ENCADENABLES en el mismo pabellón (14:00 y 15:30 con duración de 90min: el
+// primero termina exactamente cuando empieza el segundo). Ahora delega en pairOverlap
+// (minutos + duración real + viaje estimado + hasCar), la misma primitiva que usa el
+// panel de verificación pre-publicación (schedule-conflicts.ts).
+describe('solve — solapamiento unificado (pairOverlap)', () => {
+  beforeEach(() => {
+    mockAvailabilities.length = 0
+    mockIncompatibilities.length = 0
+    mockDesignations.length = 0
+    mockMatches.length = 0
+  })
+
+  it('mismo pabellón, 14:00 y 15:30 (90min) → encadenables, ambos asignables', () => {
+    const m1 = makeMatch({ id: 'm1', time: '14:00', refereesNeeded: 1, scorersNeeded: 0 })
+    const m2 = makeMatch({ id: 'm2', time: '15:30', refereesNeeded: 1, scorersNeeded: 0 })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro' })
+    addAvailability('p1', m1.date, m1.time)
+    addAvailability('p1', m2.date, m2.time)
+
+    const result = solve({
+      matches: [m1, m2],
+      persons: [p1],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('optimal')
+    expect(result.assignments).toHaveLength(2)
+    expect(result.assignments.every((a) => a.personId === 'p1')).toBe(true)
+    expect(result.unassigned).toHaveLength(0)
+  })
+
+  it('distinto municipio, sin coche, hueco menor que el viaje estimado → conflictúan', () => {
+    // m1: 10:00-11:30 en muni-A (municipio propio de p1, sin coche pero 0km directos).
+    // m2: 12:00 en muni-B (20km directos, dentro del límite de 30km sin coche). Hueco tras
+    // m1 = 30min; viaje estimado sin coche muni-A→muni-B (20km × 3min/km) = 60min > hueco.
+    const m1 = makeMatch({
+      id: 'm1',
+      time: '10:00',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venueId: 'vA',
+      venue: { id: 'vA', name: 'Venue A', address: '', municipalityId: 'muni-A', postalCode: '' },
+    })
+    const m2 = makeMatch({
+      id: 'm2',
+      time: '12:00',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venueId: 'vB',
+      venue: { id: 'vB', name: 'Venue B', address: '', municipalityId: 'muni-B', postalCode: '' },
+    })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro', hasCar: false, municipalityId: 'muni-A' })
+    addAvailability('p1', m1.date, m1.time)
+    addAvailability('p1', m2.date, m2.time)
+
+    const result = solve({
+      matches: [m1, m2],
+      persons: [p1],
+      parameters: defaultParams(),
+    })
+
+    expect(result.status).toBe('partial')
+    const assigned = result.assignments.filter((a) => a.isNew)
+    expect(assigned).toHaveLength(1)
+    expect(assigned[0].matchId).toBe('m1')
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].matchId).toBe('m2')
+    expect(result.unassigned[0].reason).toContain('solapamiento')
+  })
+})
