@@ -44,9 +44,13 @@ describe('generateSeasonAvailability - presupuesto de volumen (roster completo r
     mockMatches.map((m) => m.date),
   )
 
-  it('mockAvailabilities generado esta dentro del presupuesto 12000-55000', () => {
+  it('mockAvailabilities generado esta dentro del presupuesto 12000-70000', () => {
+    // El limite superior crece proporcional al numero de fechas de la temporada:
+    // 55000 x 57/44 ~= 71000 (57 fechas en fbm-seed tras pasar de 324 a 24508
+    // partidos, frente a las ~44 originales). No es una fuga, es el mismo
+    // roster de personas cubriendo mas jornadas.
     expect(result.slots.length).toBeGreaterThanOrEqual(12000)
-    expect(result.slots.length).toBeLessThanOrEqual(55000)
+    expect(result.slots.length).toBeLessThanOrEqual(70000)
   })
 
   it('toda persona tiene al menos 1 slot en la temporada', () => {

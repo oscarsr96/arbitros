@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { resolveFineCategory } from '../competition-fine-category'
+import { resolveFineCategory, CANONICALS_WITHOUT_FINE_CATEGORY } from '../competition-fine-category'
+import type { CompetitionCategory } from '../referee-eligibility'
 import { mockCompetitions } from '../mock-data'
 
 // Decisión D1 (tasks/todo-solver-7niveles.md, sección 2.5): fina esperada por
 // id de competición, para las 10 demo (mock-data.ts `demoCompetitions`) y las
-// 2 importadas del seed FBM (`fbm-calendar/fbm-seed.json`).
+// 2 importadas del seed FBM (`fbm-calendar/fbm-seed.json`). Spot-checks
+// exactos: fijan casos concretos ya validados con el usuario, no se amplían
+// al crecer el catálogo (para eso están los tests de invariantes de abajo).
 const EXPECTED_FINE_CATEGORY: Record<string, string> = {
   'comp-001': 'nacional', // Liga VIPS Masculina
   'comp-002': 'nacional', // Liga VIPS Femenina
@@ -20,19 +23,75 @@ const EXPECTED_FINE_CATEGORY: Record<string, string> = {
   'fbm-comp-JUNIOR-MASCULINO-ORO': 'junior_especial_oro', // Junior Masculino ORO (import)
 }
 
+// Dominio completo de `CompetitionCategory` (referee-eligibility.ts), repetido
+// aquí como objeto exhaustivo: si el union type gana o pierde un miembro sin
+// tocar este test, `typecheck` falla (falta/sobra clave), no un `undefined`
+// silencioso en runtime.
+const KNOWN_FINE_CATEGORIES: Record<CompetitionCategory, true> = {
+  nacional: true,
+  primera_aut_oro: true,
+  primera_aut_plata: true,
+  primera_aut_fem: true,
+  segunda_aut_oro: true,
+  segunda_aut_plata: true,
+  segunda_aut_bronce: true,
+  junior_pref: true,
+  junior_especial_oro: true,
+  junior_especial_plata: true,
+  junior_especial_bronce: true,
+  sub22_oro: true,
+  sub22_plata: true,
+  sub22_bronce: true,
+  cadete_pref: true,
+  infantil_pref: true,
+  minibasket: true,
+}
+
 describe('resolveFineCategory', () => {
-  it('resuelve la fina esperada (D1) para cada competición demo + las 2 del seed FBM', () => {
-    for (const comp of mockCompetitions) {
-      const want = EXPECTED_FINE_CATEGORY[comp.id]
-      expect(want, `competición sin caso esperado en el test: ${comp.id}`).toBeDefined()
-      expect(resolveFineCategory(comp)).toBe(want)
+  it('resuelve la fina esperada (D1) para los spot-checks conocidos', () => {
+    for (const [id, want] of Object.entries(EXPECTED_FINE_CATEGORY)) {
+      const comp = mockCompetitions.find((c) => c.id === id)
+      expect(comp, `spot-check obsoleto: ${id} ya no existe en mockCompetitions`).toBeDefined()
+      expect(resolveFineCategory(comp!)).toBe(want)
     }
   })
 
-  it('cubre el catálogo completo de mockCompetitions (sin casos huérfanos)', () => {
-    expect(mockCompetitions.map((c) => c.id).sort()).toEqual(
-      Object.keys(EXPECTED_FINE_CATEGORY).sort(),
-    )
+  // Invariante de dominio (no heurística de cobertura, no tolerancia): toda
+  // competición del catálogo resuelve a una categoría fina VÁLIDA, o cae en
+  // una de las excepciones EXPLÍCITAS y justificadas que ya documenta
+  // `CANONICALS_WITHOUT_FINE_CATEGORY` (competition-fine-category.ts). Un
+  // `null` fuera de esas excepciones, o una categoría fuera del dominio
+  // conocido, es un hallazgo real que hay que reportar, no un test que relajar.
+  it('toda competición de mockCompetitions resuelve a fina válida o cae en excepción explícita', () => {
+    const exceptionNames = new Set(CANONICALS_WITHOUT_FINE_CATEGORY)
+    const unexpectedNulls: string[] = []
+    const invalidCategories: string[] = []
+
+    for (const comp of mockCompetitions) {
+      const result = resolveFineCategory(comp)
+      if (result === null) {
+        if (!exceptionNames.has(comp.name)) {
+          unexpectedNulls.push(`${comp.id} :: ${comp.name}`)
+        }
+        continue
+      }
+      if (!(result in KNOWN_FINE_CATEGORIES)) {
+        invalidCategories.push(`${comp.id} :: ${comp.name} -> ${result}`)
+      }
+    }
+
+    expect(unexpectedNulls, 'competiciones sin tag fino y sin excepción justificada').toEqual([])
+    expect(
+      invalidCategories,
+      'competiciones resueltas a una categoría fuera del dominio conocido',
+    ).toEqual([])
+  })
+
+  // Falla ruidosamente si el catálogo cambia de tamaño (seed nuevo, import
+  // nuevo): recuerda revisar la cobertura de invariantes de arriba, no exige
+  // reenumerar casos a mano.
+  it('el tamaño del catálogo es el esperado', () => {
+    expect(mockCompetitions.length).toBe(58)
   })
 
   it('nombre desconocido devuelve null (sin tag → fallback legacy, D2)', () => {

@@ -1,10 +1,33 @@
-// BENCH TEMPORAL — borrar antes de entregar.
+// Arnés PERMANENTE de rendimiento y equivalencia del solver. Demuestra que
+// una optimización de rendimiento en solver.ts no cambia ni una sola
+// asignación producida. Dos piezas:
+//
+// 1. "barrido de escala" — mide ms de solve() en tamaños crecientes hasta el
+//    pico real de producción (1309 partidos x 1279 personas). El caso más
+//    grande tarda minutos, así que solo corre con BENCH=1:
+//      BENCH=1 pnpm vitest run src/lib/__tests__/solver.bench.test.ts
+//
+// 2. "equivalencia de salida" — compara el fingerprint() de solve() contra
+//    la baseline COMMITEADA en __fixtures__/solver-fingerprint-baseline.json.
+//    Corre siempre, sin variables de entorno (casos 200x120 en la suite
+//    normal; los de 400x240, ~15s cada uno, se añaden solo con BENCH=1). Si
+//    el fingerprint no coincide con la baseline, el test FALLA: es la señal
+//    de que un cambio movió una asignación real, no solo un tiempo. Nunca se
+//    regenera en silencio.
+//
+//    Para regenerar la baseline (solo tras confirmar que el cambio de
+//    asignaciones es intencional, sobre árbol limpio):
+//      UPDATE_BASELINE=1 pnpm vitest run src/lib/__tests__/solver.bench.test.ts
+//
 // Reutiliza la cabecera de mocks de solver.test.ts, pero con la MISMA
 // complejidad algoritmica que mock-data.ts real (indice de disponibilidad
 // O(1), distancias en Map) para que las medidas reflejen produccion.
 
-import { describe, it, vi } from 'vitest'
-import { writeFileSync, readFileSync, existsSync } from 'fs'
+import { describe, it, expect, vi } from 'vitest'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { SolverInput, EnrichedMatch, EnrichedPerson } from '../types'
 import type { DesignationPosition } from '../designation-positions'
 import type { CompetitionCategory, RefereeLevel } from '../referee-eligibility'
@@ -430,9 +453,14 @@ function fingerprint(out: ReturnType<typeof solve>) {
   }
 }
 
-const SCRATCH =
-  'C:/Users/javie/AppData/Local/Temp/claude/C--Users-javie-Desktop-proyectos-FBM-arbitros/7e792b6e-6a8f-4010-89dc-43c24cb5d861/scratchpad'
-const LABEL = process.env.BENCH_LABEL ?? 'before'
+// Directorio de volcado para inspección manual (p.ej. comparar a ojo dos
+// ejecuciones con BENCH_LABEL distinto). NO es la garantía del test: la
+// garantía es solo la baseline commiteada en __fixtures__, comparada abajo.
+const BENCH_DIR = process.env.BENCH_DIR ?? os.tmpdir()
+const LABEL = process.env.BENCH_LABEL ?? 'run'
+
+const FIXTURES_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '__fixtures__')
+const BASELINE_FILE = path.join(FIXTURES_DIR, 'solver-fingerprint-baseline.json')
 
 // ── Suites ─────────────────────────────────────────────────────────────────
 
@@ -445,10 +473,40 @@ const SIZES: [number, number][] = [
   [1309, 1279],
 ]
 
+/** Compara dos fingerprints y devuelve las diferencias legibles (vacio = iguales). */
+function diffFingerprints(
+  expected: ReturnType<typeof fingerprint>,
+  actual: ReturnType<typeof fingerprint>,
+): string[] {
+  const diffs: string[] = []
+  if (expected.status !== actual.status) {
+    diffs.push(`status: ${expected.status} -> ${actual.status}`)
+  }
+  if (JSON.stringify(expected.metrics) !== JSON.stringify(actual.metrics)) {
+    diffs.push(`metrics: ${JSON.stringify(expected.metrics)} -> ${JSON.stringify(actual.metrics)}`)
+  }
+  const maxA = Math.max(expected.assignments.length, actual.assignments.length)
+  for (let i = 0; i < maxA; i++) {
+    if (expected.assignments[i] !== actual.assignments[i]) {
+      diffs.push(`assign[${i}]: ${expected.assignments[i]} -> ${actual.assignments[i]}`)
+      if (diffs.length > 8) break
+    }
+  }
+  const maxU = Math.max(expected.unassigned.length, actual.unassigned.length)
+  for (let i = 0; i < maxU; i++) {
+    if (expected.unassigned[i] !== actual.unassigned[i]) {
+      diffs.push(`unassigned[${i}]: ${expected.unassigned[i]} -> ${actual.unassigned[i]}`)
+      if (diffs.length > 16) break
+    }
+  }
+  return diffs
+}
+
 describe('solver bench', () => {
-  it(
-    'barrido de escala',
-    () => {
+  // Barrido completo hasta el pico de produccion: minutos de duracion, solo
+  // bajo BENCH=1. La suite normal lo salta por completo.
+  describe.skipIf(!process.env.BENCH)('barrido de escala (BENCH=1)', () => {
+    it('mide ms de solve() por tamaño', () => {
       const rows: string[] = []
       let prev = 0
       for (const [nm, np] of SIZES) {
@@ -463,60 +521,60 @@ describe('solver bench', () => {
         )
       }
       console.log(`\n=== BENCH [${LABEL}] ===\n` + rows.join('\n') + '\n')
-    },
-    { timeout: 1_800_000 },
-  )
+    }, 1_800_000)
+  })
 
-  it(
-    'equivalencia de salida',
-    () => {
-      const cases: Record<string, unknown> = {}
-      for (const [nm, np, seed] of [
-        [200, 120, undefined],
-        [200, 120, 1],
-        [400, 240, undefined],
-        [400, 240, 7],
-      ] as [number, number, number | undefined][]) {
-        const input = buildScenario(nm, np)
-        const out = seed === undefined ? solve(input) : solve(input, seed)
-        cases[`${nm}x${np}#${seed ?? 'noseed'}`] = fingerprint(out)
-      }
-      const file = `${SCRATCH}/fp-${LABEL}.json`
-      writeFileSync(file, JSON.stringify(cases, null, 2))
-      console.log(`fingerprint escrito: ${file}`)
+  it('equivalencia de salida (fingerprint estable vs baseline commiteada)', () => {
+    const scenarios: [number, number, number | undefined][] = [
+      [200, 120, undefined],
+      [200, 120, 1],
+    ]
+    // Casos grandes (~15s cada uno): solo bajo BENCH, para no inflar la
+    // suite normal.
+    if (process.env.BENCH) {
+      scenarios.push([400, 240, undefined], [400, 240, 7])
+    }
 
-      const ref = `${SCRATCH}/fp-before.json`
-      if (LABEL !== 'before' && existsSync(ref)) {
-        const before = JSON.parse(readFileSync(ref, 'utf8'))
-        const now = JSON.parse(JSON.stringify(cases))
-        for (const key of Object.keys(before)) {
-          const b = before[key]
-          const a = (now as Record<string, { assignments: string[]; unassigned: string[] }>)[key]
-          const diffs: string[] = []
-          if (JSON.stringify(b.metrics) !== JSON.stringify(a.metrics)) {
-            diffs.push(`metrics: ${JSON.stringify(b.metrics)} -> ${JSON.stringify(a.metrics)}`)
-          }
-          for (let i = 0; i < Math.max(b.assignments.length, a.assignments.length); i++) {
-            if (b.assignments[i] !== a.assignments[i]) {
-              diffs.push(`assign[${i}]: ${b.assignments[i]} -> ${a.assignments[i]}`)
-              if (diffs.length > 8) break
-            }
-          }
-          for (let i = 0; i < Math.max(b.unassigned.length, a.unassigned.length); i++) {
-            if (b.unassigned[i] !== a.unassigned[i]) {
-              diffs.push(`unassigned[${i}]: ${b.unassigned[i]} -> ${a.unassigned[i]}`)
-              if (diffs.length > 16) break
-            }
-          }
-          console.log(
-            diffs.length === 0
-              ? `EQUIV OK  ${key} (${b.assignments.length} asignaciones, ${b.unassigned.length} huecos)`
-              : `EQUIV FAIL ${key}\n  ` + diffs.join('\n  '),
-          )
-          if (diffs.length > 0) throw new Error(`Divergencia en ${key}`)
-        }
-      }
-    },
-    { timeout: 600_000 },
-  )
+    const cases: Record<string, ReturnType<typeof fingerprint>> = {}
+    for (const [nm, np, seed] of scenarios) {
+      const input = buildScenario(nm, np)
+      const out = seed === undefined ? solve(input) : solve(input, seed)
+      cases[`${nm}x${np}#${seed ?? 'noseed'}`] = fingerprint(out)
+    }
+
+    // Volcado de inspección manual, no forma parte de la garantía.
+    const dumpFile = path.join(BENCH_DIR, `solver-fingerprint-${LABEL}.json`)
+    writeFileSync(dumpFile, JSON.stringify(cases, null, 2))
+    console.log(`fingerprint escrito (inspección manual): ${dumpFile}`)
+
+    if (process.env.UPDATE_BASELINE === '1') {
+      mkdirSync(FIXTURES_DIR, { recursive: true })
+      writeFileSync(BASELINE_FILE, JSON.stringify(cases, null, 2) + '\n')
+      console.log(`Baseline regenerada: ${BASELINE_FILE}`)
+      return
+    }
+
+    expect(
+      existsSync(BASELINE_FILE),
+      `Falta la baseline commiteada (${BASELINE_FILE}). Generarla con ` +
+        `UPDATE_BASELINE=1 pnpm vitest run src/lib/__tests__/solver.bench.test.ts`,
+    ).toBe(true)
+    const baseline = JSON.parse(readFileSync(BASELINE_FILE, 'utf8')) as Record<
+      string,
+      ReturnType<typeof fingerprint>
+    >
+
+    for (const [key, actual] of Object.entries(cases)) {
+      const expected = baseline[key]
+      expect(
+        expected,
+        `Falta el caso "${key}" en la baseline. Regenerarla con UPDATE_BASELINE=1.`,
+      ).toBeDefined()
+      const diffs = diffFingerprints(expected, actual)
+      expect(diffs, `Divergencia en ${key} respecto a la baseline`).toEqual([])
+      console.log(
+        `EQUIV OK  ${key} (${actual.assignments.length} asignaciones, ${actual.unassigned.length} huecos)`,
+      )
+    }
+  }, 600_000)
 })

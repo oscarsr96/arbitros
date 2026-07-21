@@ -28,7 +28,20 @@ afterAll(() => {
   rmSync(dataDir, { recursive: true, force: true })
 })
 
-const match = mockMatches[0] // partido FBM real: refereesNeeded 2, scorersNeeded 3
+// Fixture propio del test, no el partido real del índice 0: con 24.508 partidos
+// agrupados por competición, qué categoría cae primera (y su scorersNeeded)
+// cambia con cada regeneración del seed (ver mock-data.ts, fbmSeed.matches).
+// Se clona un partido real solo para heredar venueId/competitionId válidos y se
+// fijan refereesNeeded/scorersNeeded a los valores que estos tests necesitan,
+// luego se registra en mockMatches para que getMockMatch(matchId) lo resuelva
+// como un partido cualquiera.
+const match = {
+  ...mockMatches[0],
+  id: 'test-match-fixture-001',
+  refereesNeeded: 2,
+  scorersNeeded: 3,
+}
+mockMatches.push(match)
 const referees = ['person-001', 'person-002', 'person-003'] // demo, role arbitro
 const scorers = mockPersons
   .filter((p) => p.role === 'anotador')
