@@ -4,6 +4,8 @@ import {
   mockDesignations,
   mockPersons,
   mockHistoricalMatchdays,
+  getMockVenue,
+  calculateDailyTravelCost,
   type MockDesignation,
 } from '@/lib/mock-data'
 import { GET } from '../route'
@@ -121,6 +123,45 @@ describe('GET /api/admin/reports — agregación de temporada/mes (NO se acota)'
       expect(body.costByMatchday).toEqual([])
       expect(body.monthlyLiquidation).toEqual([])
     } finally {
+      mockDesignations.push(...backup)
+    }
+  })
+
+  it('coste demo y coste real no se suman nunca bajo el mismo matchday', async () => {
+    // Caso más estricto que el anterior: aquí SÍ hay una designación real en
+    // matchday 13 (el mismo número que el fixture legacy). Si el histórico se
+    // mezclase, el total incluiría también las 14 designaciones fabricadas de
+    // mockHistoricalMatchdays[0] (persons 001-009, costes 3.0/1.3/1.5/...).
+    const match13 = mockMatches.find((m) => m.matchday === 13)
+    expect(match13).toBeDefined()
+    const venue = getMockVenue(match13!.venueId)
+    expect(venue).toBeDefined()
+    const person = mockPersons[0]
+    const expected = calculateDailyTravelCost(person.municipalityId, [venue!.municipalityId])
+
+    const backup = [...mockDesignations]
+    mockDesignations.push({
+      id: 'test-md13-real',
+      matchId: match13!.id,
+      personId: person.id,
+      role: person.role,
+      travelCost: '0',
+      distanceKm: '0',
+      status: 'notified',
+      notifiedAt: null,
+      createdAt: new Date(),
+    })
+    try {
+      const res = await GET()
+      const body = await res.json()
+      const entry = body.costByMatchday.find((c: { matchday: number }) => c.matchday === 13)
+      expect(entry).toBeDefined()
+      // matches = 1 (solo la designación real añadida), NUNCA 1 + 14 (las del
+      // fixture legacy) ni el propio conteo del fixture (14).
+      expect(entry.matches).toBe(1)
+      expect(entry.cost).toBe(expected.cost)
+    } finally {
+      mockDesignations.length = 0
       mockDesignations.push(...backup)
     }
   })
