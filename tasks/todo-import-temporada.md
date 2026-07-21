@@ -886,6 +886,10 @@ después: no puede quedar en el repo.
 ## Cabos sueltos que NO se tocaron
 
 - Selector de jornada en el dashboard (hoy solo mostrará la jornada por defecto).
+- La cabecera de `(admin)/layout.tsx` deriva el "Jornada N" del **primer partido** de la
+  ventana, no de la moda. Correcto para los datos de hoy (una ventana = una jornada), pero
+  si alguna vez entran partidos con números de jornada mezclados en la misma ventana
+  viernes→jueves, mostrará el del primero en vez del mayoritario. Anotado por R1.
 - 10 nombres de equipo truncados de 843 (cosmético, viene del PDF de origen).
 - Tarifas en € sin modelar (Fase 4, fuente localizada en Bases Generales p. 25).
 - El escenario sintético de `buildScenario()` en el bench no reproduce la contención real:
