@@ -4,6 +4,7 @@ import {
   filterMatchesByRange,
   getMatchesDateRange,
   listJornadas,
+  resolveDefaultJornada,
 } from '../match-query'
 
 // 2025-09-27 es sábado → jornada = viernes 26 … jueves 2025-10-02.
@@ -132,5 +133,43 @@ describe('getMatchesDateRange', () => {
 
   it('devuelve null sin partidos', () => {
     expect(getMatchesDateRange([])).toBeNull()
+  })
+})
+
+describe('resolveDefaultJornada', () => {
+  it('dentro de temporada: devuelve la jornada de hoy si tiene partidos', () => {
+    // 2025-09-29 (lunes) cae en el bloque lunes-jueves de la jornada del 27/09.
+    const result = resolveDefaultJornada(matches, '2025-09-29')
+    expect(result).toEqual({
+      saturday: '2025-09-27',
+      from: '2025-09-26',
+      to: '2025-10-02',
+      count: 5,
+    })
+  })
+
+  it('fuera por delante (pretemporada): devuelve la primera jornada futura con partidos', () => {
+    // Muy anterior a la primera jornada del fixture (2025-09-20).
+    const result = resolveDefaultJornada(matches, '2025-09-01')
+    expect(result?.saturday).toBe('2025-09-20')
+  })
+
+  it('fuera por detrás (fin de temporada): devuelve la última jornada con partidos', () => {
+    // Reproduce el caso real: hoy 2026-07-21, temporada terminada el 2026-05-10.
+    const seasonEnd = [{ date: '2026-04-25' }, { date: '2026-05-09' }]
+    const result = resolveDefaultJornada(seasonEnd, '2026-07-21')
+    expect(result?.saturday).toBe('2026-05-09')
+  })
+
+  it('sábado sin partidos entre jornadas: salta a la siguiente jornada futura con partidos', () => {
+    // Sin partidos la semana del 04/10 (salto de 27/09 a 11/10).
+    const sparse = [{ date: '2025-09-27' }, { date: '2025-10-11' }]
+    // 2025-10-06 (lunes) cae en el bloque lunes-jueves de la jornada del 04/10, vacía.
+    const result = resolveDefaultJornada(sparse, '2025-10-06')
+    expect(result?.saturday).toBe('2025-10-11')
+  })
+
+  it('sin partidos devuelve null', () => {
+    expect(resolveDefaultJornada([], '2026-07-21')).toBeNull()
   })
 })

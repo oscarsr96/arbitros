@@ -85,6 +85,36 @@ export function listJornadas<T extends MatchLike>(matches: T[]): JornadaSummary[
     .sort((a, b) => a.saturday.localeCompare(b.saturday))
 }
 
+/**
+ * Jornada por defecto para rutas que no reciben parámetros de rango (dashboard,
+ * optimize sin `dateFrom`/`dateTo`). Regla determinista:
+ *   (a) la jornada de `todayISO` si tiene partidos;
+ *   (b) si no, la primera jornada FUTURA con partidos (pretemporada, antes de
+ *       que arranque el calendario);
+ *   (c) si no hay futuras, la ÚLTIMA jornada con partidos (fuera de temporada
+ *       por el final, ej. verano sin calendario cargado aún).
+ *
+ * `todayISO` entra por parámetro para que el helper sea puro y testeable: el
+ * `new Date()` real vive solo en el route handler, nunca en un módulo (un
+ * `new Date()` de módulo rompería la hidratación SSR, ver matchday-availability.ts).
+ */
+export function resolveDefaultJornada<T extends MatchLike>(
+  matches: T[],
+  todayISO: string,
+): JornadaSummary | null {
+  const jornadas = listJornadas(matches)
+  if (jornadas.length === 0) return null
+
+  const todaySaturday = getJornadaSaturdayForDate(todayISO)
+  const exact = jornadas.find((j) => j.saturday === todaySaturday)
+  if (exact) return exact
+
+  const future = jornadas.find((j) => j.saturday > todaySaturday)
+  if (future) return future
+
+  return jornadas[jornadas.length - 1]
+}
+
 /** Primera y última fecha del calendario, para que la UI sepa qué jornada pedir. */
 export function getMatchesDateRange<T extends MatchLike>(
   matches: T[],

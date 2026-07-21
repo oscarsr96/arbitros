@@ -24,6 +24,26 @@ import {
 } from 'lucide-react'
 import type { DashboardStats, DashboardAlert } from '@/lib/types'
 
+interface JornadaWindow {
+  saturday: string
+  from: string
+  to: string
+}
+
+/** "Jornada del 8 al 14 de mayo de 2026" a partir de la ventana viernes→jueves. */
+function formatJornadaLine(j: JornadaWindow): string {
+  const from = new Date(j.from + 'T00:00:00').toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'long',
+  })
+  const to = new Date(j.to + 'T00:00:00').toLocaleDateString('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  return `Jornada del ${from} al ${to}`
+}
+
 type DemoScenario = 'real' | 'good' | 'low_refs' | 'low_all'
 
 const DEMO_SCENARIOS: { value: DemoScenario; label: string; description: string }[] = [
@@ -66,6 +86,7 @@ interface AlertLogEntry {
 export function DashboardView() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [alerts, setAlerts] = useState<DashboardAlert[]>([])
+  const [jornada, setJornada] = useState<JornadaWindow | null>(null)
   const [loading, setLoading] = useState(true)
   const [alertDialogOpen, setAlertDialogOpen] = useState(false)
   const [alertLog, setAlertLog] = useState<AlertLogEntry[]>([])
@@ -83,6 +104,7 @@ export function DashboardView() {
       .then((data) => {
         setStats(data.stats)
         setAlerts(data.alerts)
+        setJornada(data.jornada ?? null)
       })
       .finally(() => setLoading(false))
     fetchAlertLog()
@@ -142,7 +164,9 @@ export function DashboardView() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">Resumen del estado de la jornada actual.</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {jornada ? formatJornadaLine(jornada) : 'Resumen del estado de la jornada actual.'}
+          </p>
         </div>
         <Button
           onClick={() => setAlertDialogOpen(true)}
