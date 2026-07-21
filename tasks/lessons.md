@@ -26,11 +26,11 @@
 - **Why:** pasó 3 veces en una sesión (un `</content>` ya borrado, un `materialize-import.ts` a medio commit, un `getMockDesignationsForMatch` en refactorización). Cada una costó una ronda.
 - **How to apply:** `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. No editar un fichero que otro está escribiendo: avisar a su dueño.
 
-## Escala: lo importado hay que medirlo, no extrapolarlo
+## Medir el problema ANTES de planificar su solución
 
-- **Regla:** al multiplicar por 75× el volumen, medir bundle, payload y CPU antes de dar la carga por buena.
-- **Why:** el seed viajaba entero al cliente (9,5 MB en un chunk compartido), la ruta de partidos devolvía 21 MB y el solver pasó de 0,2 s a minutos. Todo con typecheck y tests en verde.
-- **How to apply:** `verify:bundle` en CI tras el build; filtrar por jornada en servidor; barrido con `performance.now()` antes de declarar rendimiento aceptable. Ver [[import-temporada-completa]].
+- **Regla:** una cifra de rendimiento extrapolada no es una medición. Antes de planificar una optimización, medir el escenario real, con datos de producción, en proceso frío y mediana de 3.
+- **Why:** dos veces, en direcciones opuestas. Al importar 75× el volumen, medir destapó problemas invisibles en verde (seed de 9,5 MB al bundle cliente, ruta de 21 MB). Y al revés: se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió (era extrapolación de un punto que contradecía su propia curva); medido de verdad, 20,8 s de mediana, ya bajo el objetivo. Estuvo a punto de gastarse el modelo más caro en rediseñar un algoritmo que no tenía problema.
+- **How to apply:** `verify:bundle` en CI tras el build; filtrar por jornada en servidor; `performance.now()` sobre el seed real, nunca sobre el generador sintético (el de `solver.bench` da 3,7-6,7 s donde el real da 15-27 s: no reproduce la contención de disponibilidad, solapes y elegibilidad). Si la premisa de un plan es un número, el primer paso del plan es re-medirlo. Ver [[import-temporada-completa]].
 
 ## `pnpm typecheck` obligatorio, no solo vitest
 

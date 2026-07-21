@@ -536,3 +536,332 @@ Desde `apps/web`, todos re-medidos por G1:
 6. Dashboard, reports, optimize y demo: < 200 ms por request con la temporada completa
    designada, salida equivalente a la previa.
 7. Todo commiteado en commits lógicos; ningún fichero temporal de bench/captura en el repo.
+
+---
+
+# 9. Revisión de B1 tras la regla semana a semana (2026-07-21)
+
+Planner: `planner-rendimiento`. La regla del usuario ("hay que designar semana a semana,
+nunca una temporada completa de golpe") cambia la naturaleza de R1 y R4 y amplía R3.
+**Esta sección SUSTITUYE a las filas R1, R3 y R4 de la tabla de la sección 3 y al
+criterio global 6.** R2 se mantiene (con alcance ampliado, ver abajo). Todo lo que sigue
+está verificado leyendo el código, con file:line.
+
+## Hallazgos (respuestas a las 5 preguntas)
+
+### 1. Dashboard: CONFIRMADO, es un bug de producto, no (solo) de rendimiento
+
+- `dashboard/route.ts:12`: `export async function GET()` **sin parámetros** (ni `request`
+  ni `searchParams`): no acepta jornada ni rango de ningún tipo.
+- Agrega la TEMPORADA entera: `totalMatches = mockMatches.length` (`:13`), bucle de
+  cobertura sobre `mockMatches` completo (`:20-32`), coste estimado sumando TODAS las
+  designaciones de cada persona (`:47-50`), y disponibilidad de toda la temporada (`:38-44`).
+- El frontend llama sin parámetros: `dashboard-view.tsx:81` → `fetch('/api/admin/dashboard')`.
+- **Lo que ve el designador HOY en pantalla**: "24.508 partidos totales", cobertura de la
+  temporada completa, una alerta roja tipo "~24.000 partidos sin ninguna asignación" y un
+  "coste estimado" que es el de la TEMPORADA. Contra la spec del CLAUDE.md (Fase 2:
+  "Resumen de jornada: partidos totales, cubiertos, pendientes, coste estimado") es
+  incorrecto, y la regla del usuario lo confirma: nadie opera a escala temporada.
+- **El arreglo primario es acotar, no indexar.** Matiz importante: el índice NO queda
+  irrelevante, queda subordinado. `mockDesignations` es de temporada (122.670 entradas),
+  así que incluso acotado a 1.309 partidos, resolver designaciones por partido con
+  `getMockDesignationsForMatch` seguiría siendo 1.309 × 122.670 ≈ 160 M. El índice
+  `Map` por request (una pasada, O(D)) sigue haciendo falta: es una línea del patrón ya
+  establecido en `matches/route.ts:51-56`, no "el arreglo".
+- Cuadrático ADICIONAL no listado en el mapa original: `:47-50` itera
+  `mockPersons` (1.279) × `mockDesignations.filter` (122.670) ≈ 157 M para el coste.
+  Con el acotado por jornada + índice por persona desaparece.
+
+### 2. Optimize: el default a jornada entra en R3 (decisión 3 aprobada)
+
+- Hoy: `optimize/route.ts:43-45` usa `filterMatchesByRange(mockMatches, body.dateFrom,
+body.dateTo)` de `lib/optimize-range.ts:25-36`, que **sin rango devuelve la lista
+  completa** (`:30`).
+- La convención viernes→jueves YA existe y está en producción en la ruta matches:
+  `lib/match-query.ts:30-40` (`parseMatchRange` con `?jornada=` → `getMatchdayWindow`),
+  sobre `lib/matchday-availability.ts:47-57` (`getMatchdayWindow`) y `:110-116`
+  (`getJornadaSaturdayForDate`, la inversa). También existe `listJornadas`
+  (`match-query.ts:74-86`), que enumera las jornadas CON partidos.
+- **Fuera de temporada no es hipotético, es el caso de hoy**: seed 2025-09-20 →
+  2026-05-10 y hoy es 2026-07-21. `getJornadaSaturdayForDate(hoy)` daría un sábado sin
+  partidos → jornada vacía → solve() sobre 0 partidos. Hace falta una regla de fallback.
+- Nota de higiene: hay DOS `filterMatchesByRange` (en `optimize-range.ts` y en
+  `match-query.ts`, firmas distintas). No se consolidan en esta tanda (cambio quirúrgico);
+  queda anotado como cabo.
+
+### 3. Demo: los maps del POST NO son problema; el problema es el GET y es de producto
+
+- El POST **trunca y regenera sus propios partidos**: `demo/route.ts:298`
+  (`mockMatches.length = 0`) y `:361-370` genera `numMatches` partidos sintéticos
+  (**default 20**, `:280`). Los dos maps del POST (`:448-473` para alimentar el solver,
+  `:721-739` para la respuesta) iteran ESOS partidos generados, no la temporada: N≈20-100
+  por construcción. Indexarlos no arregla nada real.
+- El único map expuesto a la temporada real es el del **GET** (`:238-256`): enriquece
+  `mockMatches` ENTERO → con el seed real son 24.508 partidos enriquecidos, ~20 MB por
+  response y el cuadrático completo.
+- **La ruta está huérfana**: `grep 'admin/demo'` sobre TODO el repo solo aparece en
+  `tasks/*.md` (documentación); ningún componente la llama. Encaja con la nota del
+  CLAUDE.md: `demo-view.tsx` se eliminó en la Tanda 2.
+- Footgun agravado por el seed real (ya anotado en `todo-personal-arbitral.md:12,115`):
+  un POST `generate` accidental BORRA la temporada cargada en memoria (`:298`) y además
+  persiste (`persistDesignations()`, `:741`). Con el seed de 324 partidos era molesto;
+  con la importación real es destructivo.
+
+### 4. Reports: CONFIRMADO como excepción legítima, con un matiz
+
+- La agregación de temporada/mes es el propósito de la ruta (CLAUDE.md Fase 4: "coste
+  total por jornada / mes / temporada"; `costByMatchday` `:126-141`, `monthlyLiquidation`
+  `:169-218`). Acotarla sería romperla: **el índice es el arreglo correcto y R2 se queda**.
+- Alcance ampliado de R2: además del cuadrático de `:65-66` (partidos × designaciones),
+  hay DOS pasadas persona × designaciones (`:81` y `:96`, 1.279 × 122.670 ≈ 157 M cada
+  una) → añadir también `designationsByPerson: Map` al mismo patrón por request.
+- Matiz (NO se toca en R2, cabo nuevo): `CURRENT_MATCHDAY = 15` hardcodeado (`:21`)
+  agrupa TODAS las designaciones actuales como "jornada 15", y `:139` + `:223` reportan
+  `mockMatches.length` (24.508) como partidos de "la jornada actual". Con el seed
+  completo esas cifras de "jornada actual" son ficción. Arreglarlo (agrupar por jornada
+  real con `getJornadaSaturdayForDate`) cambia la salida y es decisión de producto:
+  fuera de esta tanda, anotado como **cabo para la siguiente**.
+
+### 5. Criterio global 6: se reescribe (ver abajo)
+
+Byte-idéntico solo puede exigirse donde la semántica no cambia (reports). Para las rutas
+acotadas el criterio pasa a ser: tiempo sobre la jornada punta + assert de acotamiento.
+
+## Tareas reescritas
+
+### R1' — Dashboard por jornada (corrección de producto + índice) `[sonnet, effort: high]`
+
+Ficheros (dueño exclusivo): `src/app/api/admin/dashboard/route.ts`,
+`src/lib/match-query.ts` (helper nuevo), `src/app/(admin)/dashboard/dashboard-view.tsx`
+(mínimo), tests de `match-query` y de la ruta.
+
+1. **Helper compartido** en `lib/match-query.ts` (lo consume también R3'):
+   `resolveDefaultJornada(matches: MatchLike[], todayISO: string): JornadaSummary | null`.
+   Regla determinista: (a) si la jornada de `todayISO` (vía `getJornadaSaturdayForDate`)
+   tiene partidos → esa; (b) si no, la primera jornada FUTURA con partidos (pretemporada);
+   (c) si no hay futuras, la ÚLTIMA jornada con partidos (caso de hoy: fuera de temporada
+   por el final → jornada del 2026-05-09/10). `todayISO` entra por parámetro (puro y
+   testeable; el `new Date()` vive solo en el route handler, nunca en el módulo).
+2. **Ruta**: `GET` pasa a leer `searchParams` con `parseMatchRange` (mismo contrato que
+   `matches/route.ts`: `?jornada=YYYY-MM-DD` o `?from/?to`); sin parámetros → ventana de
+   `resolveDefaultJornada`. TODAS las métricas se acotan a la ventana: partidos y
+   cobertura (partidos de la jornada), coste estimado (designaciones de esos partidos,
+   agrupadas por persona con `getPersonTravelCost` sobre SOLO esas designaciones),
+   disponibilidad (persona disponible = ≥1 slot cuya fecha, `weekStart`+`dayOfWeek`, cae
+   dentro de la ventana viernes→jueves). Índices por request: `designationsByMatch` y
+   `designationsByPerson` (patrón `matches/route.ts:51-56`).
+3. **Respuesta**: mantiene `{ stats, alerts }` y AÑADE `jornada: { saturday, from, to }`
+   (aditivo, no rompe al cliente actual).
+4. **UI mínima**: `dashboard-view.tsx` muestra la jornada que se está resumiendo (una
+   línea con la fecha de la ventana). Sin selector de jornada en esta tanda (cabo UI).
+
+Aceptación: (a) tests del helper: dentro de temporada, fuera por delante, fuera por
+detrás (hoy 2026-07-21 → jornada del 2026-05-09) y sábado sin partidos entre jornadas;
+(b) con el seed completo designado, `GET /api/admin/dashboard` sin parámetros devuelve
+`stats.totalMatches` = partidos de la jornada default (≈1.300, NUNCA 24.508) y
+`jornada.saturday = '2026-05-09'`; (c) handler < 200 ms medido con `performance.now()`;
+(d) suma de `covered+partiallyCovered+uncovered = totalMatches`; (e) `pnpm typecheck` y
+suite en verde. La equivalencia byte a byte NO aplica (cambio de semántica intencionado).
+
+### R3' — Optimize: default a jornada actual + enriquecido indexado `[sonnet, effort: high]`
+
+Ficheros: `src/app/api/optimize/route.ts`, tests de la ruta. Depende de R1' (helper
+`resolveDefaultJornada`), además de P6.
+
+1. **Default aprobado (decisión 3)**: si `!partial && !body.dateFrom && !body.dateTo`,
+   derivar la ventana con `resolveDefaultJornada(mockMatches, todayISO)` y usar
+   `from=friday, to=thursday` en `filterMatchesByRange` (`optimize/route.ts:43-45`).
+   Si el calendario está vacío (helper devuelve null) → 400 con mensaje claro.
+   La UI de Asignación no cambia: ya envía rango siempre (el default solo afecta a
+   llamadas API directas).
+2. **Transparencia**: la respuesta añade `appliedRange: { from, to, defaulted: boolean }`
+   (aditivo).
+3. **Enriquecido indexado** (por request): `venuesById`, `competitionsById`,
+   `designationsByMatch` para `:48-53`, y `designationsByPerson` para el
+   `mockDesignations.filter` por persona de `:73` (1.279 × 122.670 ≈ 157 M hoy).
+4. El comentario de `:41-45` se actualiza (ya no "sin rango = temporada completa").
+
+Aceptación: (a) test: body sin rango → `appliedRange.defaulted === true` y ventana de la
+jornada del 2026-05-09 (fuera de temporada hoy); (b) test: con `dateFrom/dateTo`
+explícitos el comportamiento es EXACTAMENTE el anterior (byte-idéntico); (c) enriquecido
+de la jornada punta < 200 ms medido (sin contar `solve()`); (d) los fixtures de
+fingerprint del solver siguen verdes (el default no toca `solve()`, solo qué entra);
+(e) typecheck y suite en verde.
+
+### R4' — Demo: degradada a decisión de producto + arreglo mínimo del GET
+
+**La tarea original ("3 maps indexados") era el arreglo equivocado**: dos de los tres
+maps operan sobre ~20 partidos generados por el propio POST y no tienen problema de
+escala; el tercero (GET) no debe devolver la temporada en absoluto. Nueva **decisión de
+usuario D4**, la ruta está huérfana (sin consumidores en `src`, página demo eliminada en
+Tanda 2):
+
+- **(a) Retirarla** (borrar `api/admin/demo/route.ts`): recomendada. Elimina de paso el
+  footgun de que un POST accidental borre la temporada en memoria Y en la persistencia
+  JSON (`:298` + `:741`). Borrar ficheros requiere confirmación del usuario.
+- **(b) Conservarla como herramienta manual**: entonces R4-lite `[sonnet, effort: low]`,
+  ficheros: `src/app/api/admin/demo/route.ts`. Solo el GET: eliminar `matchesDetail` de
+  la respuesta (`:238-256`, sin consumidores conocidos) o acotarlo a `?jornada=` con el
+  patrón de índice. Los maps del POST NO se tocan. El footgun del wipe queda anotado
+  como cabo (no se arregla en una tanda de rendimiento).
+
+Aceptación (b): `GET /api/admin/demo` con seed completo < 200 ms y respuesta < 1 MB;
+typecheck y suite en verde. Aceptación (a): ruta eliminada, `pnpm build` y suite verdes.
+
+## Criterio global 6 (REESCRITO)
+
+Sustituye al de la sección 8:
+
+6a. **Rutas acotadas** (dashboard sin parámetros, optimize sin rango): < 200 ms por
+request sobre la **jornada punta** con la temporada completa designada, Y assert de
+acotamiento verificable: ninguna cifra ni partido de la respuesta proviene de fuera
+de la ventana (dashboard: `stats.totalMatches` ≤ partidos de la jornada; optimize:
+todos los `match.date` de la propuesta dentro de `appliedRange`).
+6b. **Reports** (agregación legítima de temporada): < 200 ms por request con la
+temporada completa designada y salida **byte-idéntica** a la previa (solo índices,
+sin cambio de semántica).
+6c. **Demo**: según D4 (eliminada, o GET < 200 ms y < 1 MB).
+
+## Impacto en el grafo y en la tabla
+
+- R1' sigue en Ola 1 (la urgencia aumenta: era bug de producto visible).
+- R3' pasa a depender de **R1' + P6** (consume `resolveDefaultJornada`); sigue en Ola 2.
+- R2 sigue en Ola 2 con alcance ampliado (`designationsByPerson` para reports `:81`/`:96`).
+- R4' queda BLOQUEADA por la decisión D4 y FUERA del camino crítico (no bloquea S1, D1
+  ni G1).
+
+## Cabos nuevos anotados (no se tocan en esta tanda)
+
+1. Reports agrupa todo lo actual como `CURRENT_MATCHDAY = 15` y reporta 24.508 como
+   partidos de "la jornada actual" (`reports/route.ts:21,139,223`): decisión de producto
+   pendiente (agrupar por jornada real).
+2. Doble `filterMatchesByRange` (`optimize-range.ts` vs `match-query.ts`): consolidar
+   cuando se toque una de las dos por otra razón.
+3. Selector de jornada en el dashboard (UI): hoy solo se muestra cuál se resume.
+4. Footgun del POST demo (wipe + persistencia) si el usuario elige conservar la ruta.
+
+## Decisión nueva que necesita al usuario
+
+**D4**: ¿retirar la ruta `/api/admin/demo` (recomendado: huérfana desde Tanda 2 y
+footgun destructivo con el seed real) o conservarla como herramienta manual con el
+arreglo mínimo del GET (R4-lite)?
+
+---
+
+## 10. MEDICIÓN REAL DEL SOLVER (2026-07-21, team-lead) — invalida la premisa de la tanda
+
+Medido contra el SEED REAL (24.508 partidos, 1.279 personas activas), replicando el
+enriquecido de `api/optimize/route.ts`. Jornada punta: **2025-10-25, 1.309 partidos**,
+ventana viernes→jueves, **3.686 slots**. Instrumento temporal, ya borrado.
+
+| Escenario                                                    | `solve()`                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Jornada punta, temporada SIN designar (5 procesos fríos)     | 15,07 · 16,59 · 20,77 · 26,04 · 26,87 s → **mediana 20,8 s** |
+| Jornada punta, temporada YA designada (67.872 designaciones) | **2,15 s**                                                   |
+| Enriquecido de la jornada (partidos + personas)              | 0,69 s                                                       |
+
+**Conclusiones que cambian el plan:**
+
+1. **Los "4,5-7 min" nunca se midieron.** Eran extrapolación del punto 800×480 → 61,9 s del
+   barrido sintético, que además contradice al resto de la curva. La memoria
+   `import-temporada-completa` debe corregirse.
+2. **El objetivo <30 s ya se cumple hoy**, sin optimizar: mediana 20,8 s. Pero el peor caso
+   observado (26,9 s) queda solo un 10% por debajo, con una varianza de casi 2x entre
+   procesos. No hay margen cómodo.
+3. **El cuadrático del bucle de designaciones NO es el cuello**: con la temporada designada
+   el solve baja a 2,15 s, porque `forceExisting` deja pocos slots que resolver. El caso
+   caro es la jornada VACÍA, que es justamente la operación real (designar de cero).
+   El coste dominante es el bucle de candidatos, O(slots × personas).
+4. **El barrido sintético de `solver.bench.test.ts` NO es representativo**: da 3,7-6,7 s para
+   1.309×1.279 frente a los 15-27 s reales. `buildScenario()` no reproduce la contención real
+   (disponibilidad, solapes, elegibilidad). NO usarlo como prueba del objetivo.
+
+**Efecto sobre las tareas:**
+
+- **A1 (rediseño algorítmico, fable) se DESCARTA.** No hay problema que rediseñar.
+- **S1 se mantiene**, pero cambia de propósito: ya no rescata un fallo, construye margen
+  sobre un objetivo que hoy se cumple por poco. Effort baja de `xhigh` a `high`.
+- **D1 se redefine**: se mide la JORNADA REAL en proceso frío, mediana de 3, nunca el
+  barrido sintético. Criterio: mediana ≤ 30 s y peor caso de los 3 ≤ 30 s.
+
+---
+
+# ESTADO AL CIERRE — 2026-07-21 (sesión de rendimiento) · CÓMO RETOMAR
+
+## Lo primero que tienes que saber
+
+**La premisa de esta tanda era falsa.** Se planificó contra un solver "de 4,5-7 min por
+jornada". Medido de verdad contra el seed real (sección 10): **mediana 20,8 s**, ya por
+debajo del objetivo de 30 s. No hay emergencia de rendimiento. Lo que sí apareció, y es lo
+valioso, son **tres bugs de producto de alcance** que el volumen real destapó, todos de la
+misma familia: pantallas del flujo de designación que agregan la temporada entera cuando el
+usuario opera **semana a semana**.
+
+## Commits de la sesión
+
+- `22528e6` — checkpoint T1-T8 (import de la temporada completa; se commiteó a propósito con
+  4 tests en rojo, para tener punto de retorno antes de lanzar subagentes en paralelo).
+- `0c69448` — los 4 tests arreglados + bench convertido en arnés permanente + retirada de
+  `api/admin/demo`.
+
+Gate en ese commit: `pnpm typecheck` 0 errores, suite 384 verdes.
+
+## EN VUELO (sin commitear, a propósito)
+
+**R1 — dashboard por jornada.** Ficheros tocados y NO commiteados:
+`api/admin/dashboard/route.ts` (+141), `lib/match-query.ts` (+30), `lib/__tests__/match-query.test.ts`,
+`(admin)/dashboard/dashboard-view.tsx`, `(admin)/layout.tsx`.
+Spec en la sección 9, tarea **R1'**. Estaba a medias al cerrar; su informe no llegó.
+
+⚠️ **1 test rojo**: `api/optimize/__tests__/optimize-range.test.ts` → "sin rango, el
+comportamiento actual queda intacto (todos los partidos)". Asserta la semántica ANTIGUA de
+optimize. **Diagnostica primero si lo rompió R1** (por `match-query.ts`) o si es
+independiente. Ese test tiene que cambiar cuando entre R3', porque el usuario aprobó el
+cambio de semántica, pero no debería estar rojo ANTES de R3'.
+
+**Primer paso de la próxima sesión**: leer el diff de R1, decidir si se termina o se
+descarta (`git checkout` esos 5 ficheros), y dejar la suite en verde antes de seguir.
+
+## Tareas pendientes, en orden
+
+1. **Terminar R1'** (sonnet, high) — sección 9. Dashboard acotado por jornada + helper
+   `resolveDefaultJornada` + cabecera del layout con temporada y jornada reales.
+2. **P6 — baselines** (sonnet, low). Regenerar
+   `__fixtures__/solver-fingerprint-baseline.json` con `UPDATE_BASELINE=1` sobre árbol
+   limpio, y añadir el fingerprint de la jornada real. Es lo que después demuestra "mismas
+   asignaciones". Hacerlo ANTES de tocar `solver.ts`.
+3. **R2 — reports** (sonnet, low→high). Índice de designaciones + `designationsByPerson`
+   para los dos cuadráticos persona×designaciones (`:81`, `:96`). **Ampliado por decisión
+   del usuario**: arreglar también `CURRENT_MATCHDAY=15` hardcodeado (`:21,139,223`), que
+   reporta los 24.508 partidos como "jornada actual". Reports SÍ agrega temporada/mes por
+   diseño: ahí el índice es el arreglo correcto, no acotar.
+4. **R3' — optimize** (sonnet, high) — sección 9. Default a jornada actual (aprobado) +
+   enriquecido indexado. Hoy 2026-07-21 estamos FUERA de temporada (seed 2025-09-20 →
+   2026-05-10), así que el caso por defecto real es "no hay jornada actual" → última con
+   partidos (2026-05-09). Actualizar el test de optimize-range a la semántica nueva.
+5. **S1 — factor constante del solver** (sonnet, **high**, bajado de xhigh). Cambió de
+   propósito: ya no rescata un fallo, construye margen. La mediana es 20,8 s contra un
+   objetivo de 30, con varianza de casi 2x entre procesos y un peor caso observado de 26,9 s.
+   Los 4 puntos siguen en la sección B2. Ojo: el cuello NO es el bucle de designaciones
+   (con temporada designada el solve baja a 2,15 s); es el bucle de candidatos O(slots × personas).
+6. **D1 — medición** (team-lead). REDEFINIDO: jornada real en proceso frío, mediana de 3,
+   **nunca el barrido sintético** (no es representativo). Criterio: mediana y peor caso ≤ 30 s.
+7. **G1 — gate + review adversarial** (fable, max).
+
+**A1 (rediseño algorítmico con fable) queda DESCARTADA.** No hay problema que rediseñar.
+
+## Cómo medir el solver de verdad (el instrumento se borró; recrearlo así)
+
+Test temporal en `apps/web/src/lib/__tests__/`, que replique el enriquecido de
+`api/optimize/route.ts` (partidos y personas), acote a la jornada punta **2025-10-25**
+(ventana viernes→jueves = 1.309 partidos, 3.686 slots) y cronometre `solve()` con
+`performance.now()`. Ejecutarlo 3 veces en procesos separados y tomar la mediana. Borrarlo
+después: no puede quedar en el repo.
+
+## Cabos sueltos que NO se tocaron
+
+- Selector de jornada en el dashboard (hoy solo mostrará la jornada por defecto).
+- 10 nombres de equipo truncados de 843 (cosmético, viene del PDF de origen).
+- Tarifas en € sin modelar (Fase 4, fuente localizada en Bases Generales p. 25).
+- El escenario sintético de `buildScenario()` en el bench no reproduce la contención real:
+  o se mejora, o se documenta que solo sirve para comparar A/B, nunca para validar objetivos.
