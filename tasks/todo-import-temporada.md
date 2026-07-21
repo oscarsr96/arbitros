@@ -885,6 +885,18 @@ después: no puede quedar en el repo.
 
 ## Cabos sueltos que NO se tocaron
 
+- **Designaciones persistidas huérfanas (descubierto 2026-07-21, NO arreglado).** Las 120
+  designaciones de `apps/web/.fbm-data/designations.json` apuntan a 24 `matchId` que **no
+  existen** en el seed: los 24 son huérfanos. El esquema de IDs cambió al importar la
+  temporada completa y no se migró lo ya persistido.
+  `fbm-match-NAC-PAR-J01-JANSENBT-ARGANZUELACENT` (viejo, mayúsculas y abreviado) contra
+  `fbm-match-2-div-aut-fem-oro-grupo-1-j01-19102025-cabrini-...` (nuevo, slug con fecha).
+  Consecuencias: (a) el panel de reportes sale vacío hoy, correctamente, porque no hay NADA
+  designado que resuelva; (b) el fingerprint de jornada real de P6 se grabó con **cero**
+  designaciones efectivas, no con 120, así que el bucle de designaciones queda aún menos
+  ejercitado de lo que dice su commit (`f008736`); (c) lo que se designara bajo el esquema
+  viejo está perdido. Decidir si se migran los IDs o se descartan como dato de demo.
+
 - Selector de jornada en el dashboard (hoy solo mostrará la jornada por defecto).
 - La cabecera de `(admin)/layout.tsx` deriva el "Jornada N" del **primer partido** de la
   ventana, no de la moda. Correcto para los datos de hoy (una ventana = una jornada), pero
