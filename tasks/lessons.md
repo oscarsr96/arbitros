@@ -24,7 +24,7 @@
 
 - **Regla:** con varias tandas en el mismo árbol, re-verificar contra el estado ACTUAL antes de escalar un fallo como "bug de X".
 - **Why:** pasó 3 veces en una sesión (un `</content>` ya borrado, un `materialize-import.ts` a medio commit, un `getMockDesignationsForMatch` en refactorización). Cada una costó una ronda.
-- **How to apply:** `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. No editar un fichero que otro está escribiendo: avisar a su dueño.
+- **How to apply:** `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. No editar un fichero que otro está escribiendo: avisar a su dueño. **El que coordina también es un vecino del árbol**: 2026-07-21 borré el arnés de un subagente dándolo por terminado, seguía vivo, lo reescribió apuntando a un módulo ya eliminado y dejó `typecheck` en rojo. Antes de limpiar lo de otro, confirmar que ha parado.
 
 ## Medir el problema ANTES de planificar su solución
 
