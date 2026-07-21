@@ -806,7 +806,24 @@ usuario opera **semana a semana**.
 
 Gate en ese commit: `pnpm typecheck` 0 errores, suite 384 verdes.
 
-## EN VUELO (sin commitear, a propósito)
+## ⚠️ ACTUALIZACIÓN FINAL (lo de abajo quedó obsoleto en los últimos minutos de la sesión)
+
+**R1' se terminó y está commiteada** (`6c69634`). **No hay nada en vuelo y el árbol está
+limpio.** Verificado de forma independiente: `pnpm typecheck` 0 errores y **390 tests verdes,
+cero rojos** (28 ficheros). El test de `optimize-range` **también pasa**: confirmado que su
+fallo era un timeout dependiente de la carga de la máquina (fallaba con 6 agentes corriendo
+vitest a la vez, pasa en reposo), no un fallo real. Sigue siendo una mina latente y R3' debe
+reescribirlo a la semántica nueva de todas formas.
+
+Empieza por la tarea **2 (P6, baselines)** de la lista de abajo, no por R1.
+
+Único punto sin verificar: `pnpm verify:bundle` NO se ejecutó (requiere `pnpm build` y el
+dev server del usuario comparte `.next`). R1 metió `mockMatches` en `(admin)/layout.tsx`
+como Server Component; `mock-data.ts` tiene `import 'server-only'`, que rompe el build si
+algo lo arrastra al bundle cliente. **Corre `pnpm verify:bundle` con el dev server parado
+antes de dar la sesión anterior por cerrada.**
+
+## EN VUELO (OBSOLETO — ver actualización final arriba)
 
 **R1 — dashboard por jornada.** Ficheros tocados y NO commiteados:
 `api/admin/dashboard/route.ts` (+141), `lib/match-query.ts` (+30), `lib/__tests__/match-query.test.ts`,
