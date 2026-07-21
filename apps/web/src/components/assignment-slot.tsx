@@ -6,15 +6,12 @@ import { X, Plus, MapPin } from 'lucide-react'
 import type { EnrichedDesignation } from '@/lib/types'
 import { POSITION_LABELS, positionForSlot } from '@/lib/designation-positions'
 import { refereeLevelLabel } from '@/lib/referee-eligibility'
-import { isPersonAvailable } from '@/lib/mock-data'
 
 interface AssignmentSlotProps {
   role: 'arbitro' | 'anotador'
   index: number
   designation?: EnrichedDesignation
   isActive?: boolean
-  matchDate: string
-  matchTime: string
   onActivate?: () => void
   onRemove?: (designationId: string) => void
 }
@@ -44,8 +41,6 @@ export function AssignmentSlot({
   index,
   designation,
   isActive,
-  matchDate,
-  matchTime,
   onActivate,
   onRemove,
 }: AssignmentSlotProps) {
@@ -57,7 +52,10 @@ export function AssignmentSlot({
       ? (refereeLevelLabel(person.refereeLevel) ??
         (person.category ? (categoryLabels[person.category] ?? person.category) : null))
       : null
-    const available = isPersonAvailable(designation.personId, matchDate, matchTime)
+    // Disponibilidad resuelta en servidor y servida con la designación
+    // (ver EnrichedDesignation.isAvailable): calcularla en cliente exigía
+    // importar mock-data y con él el seed de partidos.
+    const available = designation.isAvailable ?? true
 
     return (
       <div

@@ -27,5 +27,13 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
+      - name: Test
+        run: pnpm run test
+
       - name: Build
         run: pnpm run build
+
+      # Debe ir DESPUÉS del build: inspecciona los chunks de producción.
+      # Falla si el seed de partidos (~10 MB) vuelve a colarse en el cliente.
+      - name: Verify client bundle
+        run: pnpm run verify:bundle

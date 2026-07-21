@@ -9,18 +9,20 @@ describe('mapCategory', () => {
       scorersNeeded: 1,
       minRefCategory: 'provincial',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
-  it('mapea "Cadete Masc. Pref." a Cadete Masculino Preferente', () => {
+  // Bases p. 25: "Cadete Preferente — 1 árbitro y 1 Of. Mesa". Es la única
+  // categoría de club que se pita en solitario junto a infantil y minibasket.
+  it('mapea "Cadete Masc. Pref." a Cadete Masculino Preferente (1 árbitro)', () => {
     expect(mapCategory('Cadete Masc. Pref.')).toEqual({
       canonical: 'Cadete Masculino Preferente',
-      refereesNeeded: 2,
+      refereesNeeded: 1,
       scorersNeeded: 1,
       minRefCategory: 'provincial',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
@@ -28,10 +30,10 @@ describe('mapCategory', () => {
     expect(mapCategory('Sub 22 Masc. PLATA')).toEqual({
       canonical: 'Sub-22 Masculina PLATA',
       refereesNeeded: 2,
-      scorersNeeded: 1,
+      scorersNeeded: 2,
       minRefCategory: 'provincial',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
@@ -39,10 +41,10 @@ describe('mapCategory', () => {
     expect(mapCategory('2ª Div Aut Masc BRONCE')).toEqual({
       canonical: '2ª División Autonómica Masculina BRONCE',
       refereesNeeded: 2,
-      scorersNeeded: 1,
+      scorersNeeded: 2,
       minRefCategory: 'autonomico',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
@@ -50,10 +52,10 @@ describe('mapCategory', () => {
     expect(mapCategory('2ª Div Aut Fem PLATA')).toEqual({
       canonical: '2ª División Autonómica Femenina PLATA',
       refereesNeeded: 2,
-      scorersNeeded: 1,
+      scorersNeeded: 2,
       minRefCategory: 'autonomico',
       gender: 'femenino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
@@ -64,7 +66,7 @@ describe('mapCategory', () => {
       scorersNeeded: 3,
       minRefCategory: 'provincial',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
     // Nombre comercial completo del CSV
     expect(mapCategory('Junior Masculino LIGA AHORRAMAS - ORO')?.canonical).toBe(
@@ -81,7 +83,7 @@ describe('mapCategory', () => {
       scorersNeeded: 3,
       minRefCategory: 'autonomico',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
@@ -92,22 +94,38 @@ describe('mapCategory', () => {
       scorersNeeded: 3,
       minRefCategory: 'autonomico',
       gender: 'femenino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     })
   })
 
-  it('rechaza "Junior Femenino ORO" (no hay entrada femenina confirmada)', () => {
-    expect(mapCategory('Junior Femenino ORO')).toBeNull()
+  // Antes se rechazaba (no había familia femenina confirmada). Las Bases (p. 6,
+  // B.1.2) sí convocan Junior Femenino ORO y los calendarios lo traen.
+  it('mapea "Junior Femenino ORO" con el mismo arbitraje que el masculino', () => {
+    expect(mapCategory('Junior Femenino ORO')).toEqual({
+      canonical: 'Junior Femenino ORO',
+      refereesNeeded: 2,
+      scorersNeeded: 3,
+      minRefCategory: 'provincial',
+      gender: 'femenino',
+      needsConfirmation: false,
+    })
+  })
+
+  it('no confunde el género por la subcadena "MAS" de "AHORRAMAS"', () => {
+    expect(inferGender('Cadete Femenino LIGA AHORRAMAS - ORO')).toBe('femenino')
+    expect(mapCategory('Cadete Femenino LIGA AHORRAMAS - ORO')?.canonical).toBe(
+      'Cadete Femenino ORO',
+    )
   })
 
   it('tolera variantes de espaciado y de forma completa vs abreviada', () => {
     const expected = {
       canonical: 'Sub-22 Masculina PLATA',
       refereesNeeded: 2,
-      scorersNeeded: 1,
+      scorersNeeded: 2,
       minRefCategory: 'provincial',
       gender: 'masculino',
-      needsConfirmation: true,
+      needsConfirmation: false,
     }
     expect(mapCategory('Sub22 Masculino PLATA')).toEqual(expected)
     expect(mapCategory('  sub   22   masc   plata  ')).toEqual(expected)

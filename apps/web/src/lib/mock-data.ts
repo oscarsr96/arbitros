@@ -1,6 +1,16 @@
 // Datos mock para desarrollo sin Supabase/PostgreSQL
 // Mismo formato que las tablas del schema Drizzle
 
+// Este módulo importa `fbm-calendar/fbm-seed.json`, que con el calendario real de
+// temporada pesa ~10 MB. `server-only` convierte en ERROR DE COMPILACIÓN que un
+// componente cliente lo importe (antes se colaba en silencio y acababa en un chunk
+// compartido de 9,65 MB que cargaban 5 rutas). Lo que necesite el cliente vive en
+// `mock-data-client.ts` (helpers puros y catálogos pequeños) o llega por fetch.
+//
+// Nota: el paquete resuelve a un módulo que lanza excepción salvo bajo la condición
+// `react-server`, así que vitest lo aliasa a su `empty.js` (ver vitest.config.ts).
+import 'server-only'
+
 import { generateReferees, generateScorers, type MockPerson } from './referee-roster'
 // Seed de partidos derivado del CSV oficial de calendario FBM (solo Liga VIPS
 // Masculina + Junior Masculino ORO). Regenerar con scripts/generate-fbm-seed.ts.
@@ -11,6 +21,20 @@ import { generateSeasonAvailability, type GeneratedAvailabilitySlot } from './av
 // Posiciones nombradas de designación (Principal/Auxiliar, Anotador/Crono/24").
 // Módulo hoja: sin ciclo con mock-data.
 import type { DesignationPosition } from './designation-positions'
+import type { MockCourt, DesignationStatus, MatchdayAvailability } from './mock-data-client'
+// Capa client-safe (helpers de fecha, pistas, DEMO_PERSON_ID): vive aparte para
+// que los componentes cliente puedan consumirla sin arrastrar el seed. Este
+// módulo la reexporta entera, así que los consumidores de servidor siguen
+// importando todo desde '@/lib/mock-data'.
+import {
+  formatLocalDate,
+  nextSaturday,
+  nextSunday,
+  weekStart,
+  nextWeek,
+  mockCourts,
+  DEMO_PERSON_ID,
+} from './mock-data-client'
 
 // ── Store compartido en globalThis (fix HMR / rutas frías, ver CLAUDE.md) ───
 //
@@ -30,7 +54,7 @@ interface FbmMockStore {
   availabilities?: GeneratedAvailabilitySlot[]
   matchdayAvailabilities?: MatchdayAvailability[]
   incompatibilities?: MockIncompatibility[]
-  courts?: MockCourt[]
+  // `courts` lo respalda mock-data-client.ts (misma instancia de store).
   venues?: MockVenue[]
   competitions?: Array<(typeof demoCompetitions)[number]>
   alertLog?: MockAlert[]
@@ -93,6 +117,35 @@ export const mockMunicipalities = [
   { id: 'muni-029', name: 'Humanes de Madrid', province: 'Madrid' },
   { id: 'muni-030', name: 'Ciempozuelos', province: 'Madrid' },
   { id: 'muni-031', name: 'Villaviciosa de Odón', province: 'Madrid' },
+  // ── Ampliación (calendario real de temporada, ~24.500 partidos, 62 valores
+  // de POBLACIÓN distintos frente a los 31 municipios originales) ──────────
+  { id: 'muni-032', name: 'Algete', province: 'Madrid' },
+  { id: 'muni-033', name: 'Arroyomolinos', province: 'Madrid' },
+  { id: 'muni-034', name: 'Becerril de la Sierra', province: 'Madrid' },
+  { id: 'muni-035', name: 'Camarma de Esteruelas', province: 'Madrid' },
+  { id: 'muni-036', name: 'Collado Mediano', province: 'Madrid' },
+  { id: 'muni-037', name: 'Daganzo de Arriba', province: 'Madrid' },
+  { id: 'muni-038', name: 'El Escorial', province: 'Madrid' },
+  { id: 'muni-039', name: 'Fresno de Torote', province: 'Madrid' },
+  { id: 'muni-040', name: 'Fuente el Saz de Jarama', province: 'Madrid' },
+  { id: 'muni-041', name: 'Griñón', province: 'Madrid' },
+  { id: 'muni-042', name: 'Guadarrama', province: 'Madrid' },
+  { id: 'muni-043', name: 'Hoyo de Manzanares', province: 'Madrid' },
+  { id: 'muni-044', name: 'Manzanares el Real', province: 'Madrid' },
+  { id: 'muni-045', name: 'Mejorada del Campo', province: 'Madrid' },
+  { id: 'muni-046', name: 'Moralzarzal', province: 'Madrid' },
+  { id: 'muni-047', name: 'Paracuellos de Jarama', province: 'Madrid' },
+  { id: 'muni-048', name: 'San Agustín de Guadalix', province: 'Madrid' },
+  { id: 'muni-049', name: 'San Lorenzo de El Escorial', province: 'Madrid' },
+  { id: 'muni-050', name: 'San Martín de la Vega', province: 'Madrid' },
+  { id: 'muni-051', name: 'San Martín de Valdeiglesias', province: 'Madrid' },
+  { id: 'muni-052', name: 'Soto del Real', province: 'Madrid' },
+  { id: 'muni-053', name: 'Torrejón de la Calzada', province: 'Madrid' },
+  { id: 'muni-054', name: 'Torres de la Alameda', province: 'Madrid' },
+  { id: 'muni-055', name: 'Valdeolmos-Alalpardo', province: 'Madrid' },
+  { id: 'muni-056', name: 'Villalbilla', province: 'Madrid' },
+  { id: 'muni-057', name: 'Villanueva del Pardillo', province: 'Madrid' },
+  { id: 'muni-058', name: 'Villarejo de Salvanés', province: 'Madrid' },
 ]
 
 // ── Distancias entre municipios ─────────────────────────────────────────────
@@ -130,6 +183,38 @@ const MUNI_COORDS: Record<string, { x: number; y: number }> = {
   'muni-029': { x: -12, y: -18 }, // Humanes de Madrid (sur)
   'muni-030': { x: 2, y: -32 }, // Ciempozuelos (sur lejano)
   'muni-031': { x: -20, y: -5 }, // Villaviciosa de Odón (suroeste)
+  // ── Ampliación: mismo sistema x/y (km desde Madrid), calculado por
+  // regresión lineal x=f(lon), y=f(lat) sobre las 31 coordenadas de arriba
+  // (lat/lon reales conocidas) frente a su x/y hardcodeado, R²=0,98/0,97.
+  // La misma transformación se aplica a la lat/lon real de cada municipio
+  // nuevo. Ver informe de la tarea para el detalle de la regresión.
+  'muni-032': { x: 15, y: 17 }, // Algete (norte)
+  'muni-033': { x: -19, y: -16 }, // Arroyomolinos (suroeste)
+  'muni-034': { x: -25, y: 28 }, // Becerril de la Sierra (norte lejano, sierra)
+  'muni-035': { x: 24, y: 12 }, // Camarma de Esteruelas (este)
+  'muni-036': { x: -27, y: 27 }, // Collado Mediano (noroeste lejano, sierra)
+  'muni-037': { x: 18, y: 12 }, // Daganzo de Arriba (este)
+  'muni-038': { x: -35, y: 16 }, // El Escorial (noroeste lejano, sierra)
+  'muni-039': { x: 22, y: 17 }, // Fresno de Torote (norte, pedanía Serracines)
+  'muni-040': { x: 14, y: 21 }, // Fuente el Saz de Jarama (norte)
+  'muni-041': { x: -14, y: -22 }, // Griñón (sur)
+  'muni-042': { x: -32, y: 25 }, // Guadarrama (noroeste lejano, sierra)
+  'muni-043': { x: -18, y: 20 }, // Hoyo de Manzanares (norte)
+  'muni-044': { x: -14, y: 30 }, // Manzanares el Real (norte lejano, sierra)
+  'muni-045': { x: 16, y: -3 }, // Mejorada del Campo (este)
+  'muni-046': { x: -23, y: 25 }, // Moralzarzal (noroeste lejano, sierra)
+  'muni-047': { x: 12, y: 8 }, // Paracuellos de Jarama (norte)
+  'muni-048': { x: 5, y: 25 }, // San Agustín de Guadalix (norte)
+  'muni-049': { x: -36, y: 17 }, // San Lorenzo de El Escorial (noroeste lejano, sierra)
+  'muni-050': { x: 9, y: -22 }, // San Martín de la Vega (sur)
+  'muni-051': { x: -58, y: -7 }, // San Martín de Valdeiglesias (oeste lejano)
+  'muni-052': { x: -8, y: 33 }, // Soto del Real (norte lejano, sierra)
+  'muni-053': { x: -9, y: -23 }, // Torrejón de la Calzada (sur)
+  'muni-054': { x: 26, y: -2 }, // Torres de la Alameda (este)
+  'muni-055': { x: 18, y: 21 }, // Valdeolmos-Alalpardo (norte, localidad Alalpardo)
+  'muni-056': { x: 30, y: 0 }, // Villalbilla (este)
+  'muni-057': { x: -22, y: 6 }, // Villanueva del Pardillo (oeste)
+  'muni-058': { x: 32, y: -26 }, // Villarejo de Salvanés (sureste lejano)
 }
 
 function generateDistances(): { originId: string; destId: string; distanceKm: number }[] {
@@ -1377,18 +1462,8 @@ export const mockVenues: MockVenue[] = (__fbmStore.venues ??= [
 ])
 
 // ── Pistas ──────────────────────────────────────────────────────────────────
-
-export interface MockCourt {
-  id: string
-  venueId: string
-  name: string
-}
-
-export const mockCourts: MockCourt[] = (__fbmStore.courts ??= [
-  { id: 'court-001', venueId: 'venue-001', name: 'Pista 1' },
-  { id: 'court-002', venueId: 'venue-001', name: 'Pista 2' },
-  { id: 'court-003', venueId: 'venue-007', name: 'Pista Central' },
-])
+// `mockCourts`/`getMockCourt`/`MockCourt` viven en mock-data-client.ts (los
+// consumen componentes cliente) y se reexportan al final de este módulo.
 
 // ── Personas ────────────────────────────────────────────────────────────────
 
@@ -1588,26 +1663,7 @@ export const mockIncompatibilities: MockIncompatibility[] = (__fbmStore.incompat
 
 // ── Helpers de fecha (local timezone, sin UTC shift) ────────────────────────
 
-function formatLocalDate(d: Date): string {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 // ── Partidos ────────────────────────────────────────────────────────────────
-
-const nextSaturday = (() => {
-  const d = new Date()
-  d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7))
-  return formatLocalDate(d)
-})()
-
-const nextSunday = (() => {
-  const d = new Date()
-  d.setDate(d.getDate() + ((7 - d.getDay() + 7) % 7 || 7))
-  return formatLocalDate(d)
-})()
 
 export interface MockMatch {
   id: string
@@ -1623,6 +1679,12 @@ export interface MockMatch {
   seasonId: string
   matchday: number
   courtId?: string | null
+  // true = `time` es una estimación sintetizada por el importador porque el
+  // calendario oficial FBM emitió el partido con HORA=00:00 (ver
+  // fbm-calendar/synthesize-schedule.ts). Ausente o false = hora real del
+  // calendario. Opcional para no obligar a los partidos legacy (seed y ruta
+  // XLSX) a declararla: ninguno de ellos tiene horas sintetizadas.
+  timeIsEstimated?: boolean
 }
 
 // Partidos por defecto = calendario FBM real (Liga VIPS Masculina + Junior
@@ -1633,8 +1695,6 @@ export const mockMatches: MockMatch[] = (__fbmStore.matches ??= [
 ])
 
 // ── Designaciones ───────────────────────────────────────────────────────────
-
-export type DesignationStatus = 'pending' | 'notified' | 'completed'
 
 export interface MockDesignation {
   id: string
@@ -1658,25 +1718,6 @@ export interface MockDesignation {
 export const mockDesignations: MockDesignation[] = (__fbmStore.designations ??= [])
 
 // ── Disponibilidades de ejemplo ─────────────────────────────────────────────
-
-function getCurrentWeekStart(): string {
-  const d = new Date()
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1)
-  d.setDate(diff)
-  return formatLocalDate(d)
-}
-
-function getNextWeekStart(): string {
-  const d = new Date()
-  const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1) + 7
-  d.setDate(diff)
-  return formatLocalDate(d)
-}
-
-const weekStart = getCurrentWeekStart()
-const nextWeek = getNextWeekStart()
 
 // Generar disponibilidades para todas las personas en sabado/domingo
 function generateAvailabilities() {
@@ -1863,27 +1904,6 @@ export const mockAvailabilities: GeneratedAvailabilitySlot[] = (__fbmStore.avail
 
 // ── Disponibilidad de jornada (formulario simplificado sabado/domingo/entre semana) ──
 
-export interface AvailabilitySlot {
-  personId: string
-  weekStart: string
-  dayOfWeek: number
-  startTime: string
-  endTime: string
-}
-
-export interface MatchdayAvailability {
-  id: string
-  personId: string
-  saturdayDate: string // ISO YYYY-MM-DD, sabado de la jornada
-  saturdayMorning: boolean
-  saturdayAfternoon: boolean
-  sundayMorning: boolean
-  sundayAfternoon: boolean
-  weekdayDays: number[] // 0=lunes..4=viernes, franja alta 17:30-22:00
-  notes: string | null
-  updatedAt: string
-}
-
 export const mockMatchdayAvailabilities: MatchdayAvailability[] =
   (__fbmStore.matchdayAvailabilities ??= [
     {
@@ -1934,11 +1954,6 @@ export function getMockVenue(venueId: string) {
   return mockVenues.find((v) => v.id === venueId)
 }
 
-export function getMockCourt(courtId: string | null | undefined) {
-  if (!courtId) return undefined
-  return mockCourts.find((c) => c.id === courtId)
-}
-
 export function getMockMatch(matchId: string) {
   return mockMatches.find((m) => m.id === matchId)
 }
@@ -1966,27 +1981,50 @@ export function getMockDesignationsForPerson(personId: string) {
     })
 }
 
+/**
+ * Enriquecimiento de las designaciones de UN partido, con el partido y las
+ * designaciones ya resueltos por el llamador.
+ *
+ * Existe aparte de `getMockDesignationsForMatch` para que quien tenga que
+ * enriquecer MUCHOS partidos en una sola pasada (la ruta de `/api/admin/matches`
+ * con una jornada de ~1.300 partidos) pueda indexar `mockDesignations` una vez
+ * y evitar el `filter` por partido, que es O(partidos × designaciones). La forma
+ * del dato de salida es exactamente la misma en ambos caminos.
+ */
+export function enrichMatchDesignations(
+  match: MockMatch | undefined,
+  designations: MockDesignation[],
+) {
+  return designations.map((d) => {
+    const person = getMockPerson(d.personId)
+    const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
+    const personWithAddress = person
+      ? {
+          id: person.id,
+          name: person.name,
+          role: person.role,
+          category: person.category,
+          nick: person.nick ?? null,
+          refereeLevel: person.refereeLevel ?? null,
+          municipalityId: person.municipalityId,
+          hasCar: person.hasCar,
+          address: person.address,
+        }
+      : undefined
+    // Disponibilidad resuelta en SERVIDOR: `isPersonAvailable` depende de
+    // `mockAvailabilities`, que se genera a partir de las fechas de todos los
+    // partidos. El badge de assignment-slot la consumía importando el helper
+    // en cliente, lo que arrastraba el seed al bundle.
+    const isAvailable = match ? isPersonAvailable(d.personId, match.date, match.time) : undefined
+    return { ...d, person: personWithAddress, municipality, isAvailable }
+  })
+}
+
 export function getMockDesignationsForMatch(matchId: string) {
-  return mockDesignations
-    .filter((d) => d.matchId === matchId)
-    .map((d) => {
-      const person = getMockPerson(d.personId)
-      const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
-      const personWithAddress = person
-        ? {
-            id: person.id,
-            name: person.name,
-            role: person.role,
-            category: person.category,
-            nick: person.nick ?? null,
-            refereeLevel: person.refereeLevel ?? null,
-            municipalityId: person.municipalityId,
-            hasCar: person.hasCar,
-            address: person.address,
-          }
-        : undefined
-      return { ...d, person: personWithAddress, municipality }
-    })
+  return enrichMatchDesignations(
+    getMockMatch(matchId),
+    mockDesignations.filter((d) => d.matchId === matchId),
+  )
 }
 
 export function getMockAvailabilitiesForPerson(personId: string, weekStart: string) {
@@ -2518,9 +2556,26 @@ export function resetMockData() {
   invalidateAvailabilityIndex()
 }
 
-// ── Exports para generación demo ──────────────────────────────────────────
+// ── Reexport de la capa client-safe ───────────────────────────────────────
+//
+// Todo lo de mock-data-client.ts se reexporta aquí para que los consumidores de
+// servidor sigan importando desde '@/lib/mock-data' sin cambios. Los
+// componentes cliente deben importar de '@/lib/mock-data-client' directamente:
+// pasar por este módulo les metería el seed de partidos en el bundle.
 
-export { nextSaturday, nextSunday, weekStart, nextWeek, formatLocalDate }
-
-// Usuario demo por defecto (Carlos Martínez)
-export const DEMO_PERSON_ID = 'person-001'
+export {
+  nextSaturday,
+  nextSunday,
+  weekStart,
+  nextWeek,
+  formatLocalDate,
+  mockCourts,
+  DEMO_PERSON_ID,
+}
+export { getMockCourt } from './mock-data-client'
+export type {
+  MockCourt,
+  DesignationStatus,
+  AvailabilitySlot,
+  MatchdayAvailability,
+} from './mock-data-client'

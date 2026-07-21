@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { DesignationCard } from '@/components/designation-card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
-import { DEMO_PERSON_ID, getMockPerson, getPersonTravelCost } from '@/lib/mock-data'
+import { DEMO_PERSON_ID } from '@/lib/mock-data-client'
 
 interface Designation {
   id: string
@@ -28,29 +28,34 @@ interface Designation {
   }
 }
 
+interface PersonSummary {
+  address: string
+  hasCar: boolean
+}
+
 export function DesignationsView() {
   const [designations, setDesignations] = useState<Designation[]>([])
+  // Persona y coste total los sirve /api/designations: ambos dependen del
+  // calendario completo (mock-data importa el seed, ~10 MB) y no pueden
+  // resolverse en cliente.
+  const [person, setPerson] = useState<PersonSummary | null>(null)
+  const [totalCost, setTotalCost] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch(`/api/designations?personId=${DEMO_PERSON_ID}`)
       .then((res) => res.json())
-      .then((data) => setDesignations(data.designations ?? []))
+      .then((data) => {
+        setDesignations(data.designations ?? [])
+        setPerson(data.person ?? null)
+        setTotalCost(data.totalTravelCost ?? 0)
+      })
       .catch(() => setDesignations([]))
       .finally(() => setLoading(false))
   }, [])
 
-  const demoPerson = getMockPerson(DEMO_PERSON_ID)
   const pending = designations.filter((d) => d.status === 'pending' || d.status === 'notified')
   const completed = designations.filter((d) => d.status === 'completed')
-
-  // Coste real por persona y día (regla FBM), no la suma de costes por
-  // partido: cada travelCost individual (badges) sigue siendo una estimación
-  // por partido.
-  const totalCost = getPersonTravelCost(
-    DEMO_PERSON_ID,
-    designations.filter((d) => d.match).map((d) => ({ matchId: d.match!.id })),
-  ).totalCost
 
   if (loading) {
     return (
@@ -99,8 +104,8 @@ export function DesignationsView() {
             <DesignationCard
               key={d.id}
               designation={d}
-              personAddress={demoPerson?.address}
-              personHasCar={demoPerson?.hasCar}
+              personAddress={person?.address}
+              personHasCar={person?.hasCar}
             />
           ))}
           {designations.length === 0 && (
@@ -115,8 +120,8 @@ export function DesignationsView() {
             <DesignationCard
               key={d.id}
               designation={d}
-              personAddress={demoPerson?.address}
-              personHasCar={demoPerson?.hasCar}
+              personAddress={person?.address}
+              personHasCar={person?.hasCar}
             />
           ))}
           {pending.length === 0 && (
@@ -131,8 +136,8 @@ export function DesignationsView() {
             <DesignationCard
               key={d.id}
               designation={d}
-              personAddress={demoPerson?.address}
-              personHasCar={demoPerson?.hasCar}
+              personAddress={person?.address}
+              personHasCar={person?.hasCar}
             />
           ))}
           {completed.length === 0 && (

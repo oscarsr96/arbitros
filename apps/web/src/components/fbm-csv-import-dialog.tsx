@@ -23,8 +23,16 @@ type FbmImportSummary = {
   matchesLoaded: number
   duplicatesSkipped: number
   skippedNoDate: number
-  skippedUnmappedCategory: number
-  timeTBD: number
+  // Reparto de horarios. Los calendarios FBM emiten ~87% de los partidos con
+  // HORA=00:00 y el importador les sintetiza una hora escalonada por pabellón
+  // y día (ver lib/fbm-calendar/synthesize-schedule.ts).
+  schedule: {
+    realTimes: number
+    synthesizedTimes: number
+    venueDaysWithParallelTracks: number
+    maxParallelTracks: number
+    matchesOnParallelTracks: number
+  }
   venuesCreated: number
   competitions: {
     id: string
@@ -98,7 +106,7 @@ export function FbmCsvImportDialog({ open, onOpenChange, onImported }: FbmCsvImp
     try {
       const data = await submit(false)
       if (!data) return
-      const omitted = data.skippedNoDate + data.skippedUnmappedCategory
+      const omitted = data.skippedNoDate
       toast.success(
         `${data.matchesLoaded} partido${data.matchesLoaded !== 1 ? 's' : ''} cargado${data.matchesLoaded !== 1 ? 's' : ''}` +
           (omitted > 0 ? ` (${omitted} omitido${omitted !== 1 ? 's' : ''})` : ''),
@@ -193,16 +201,24 @@ export function FbmCsvImportDialog({ open, onOpenChange, onImported }: FbmCsvImp
                   {summary.skippedNoDate} sin fecha
                 </Badge>
               )}
-              {summary.skippedUnmappedCategory > 0 && (
-                <Badge className="bg-amber-100 text-amber-700">
-                  <AlertTriangle className="mr-1 h-3 w-3" />
-                  {summary.skippedUnmappedCategory} categoría no mapeada
+              {summary.schedule.realTimes > 0 && (
+                <Badge className="bg-blue-100 text-blue-700">
+                  {summary.schedule.realTimes} hora
+                  {summary.schedule.realTimes !== 1 ? 's' : ''} real
+                  {summary.schedule.realTimes !== 1 ? 'es' : ''}
                 </Badge>
               )}
-              {summary.timeTBD > 0 && (
+              {summary.schedule.synthesizedTimes > 0 && (
                 <Badge className="bg-amber-100 text-amber-700">
                   <AlertTriangle className="mr-1 h-3 w-3" />
-                  {summary.timeTBD} hora por confirmar
+                  {summary.schedule.synthesizedTimes} hora
+                  {summary.schedule.synthesizedTimes !== 1 ? 's' : ''} estimada
+                  {summary.schedule.synthesizedTimes !== 1 ? 's' : ''}
+                </Badge>
+              )}
+              {summary.schedule.venueDaysWithParallelTracks > 0 && (
+                <Badge className="bg-blue-100 text-blue-700">
+                  {summary.schedule.venueDaysWithParallelTracks} pabellón-día en pista paralela
                 </Badge>
               )}
               {summary.unresolvedMunicipalities.length > 0 && (

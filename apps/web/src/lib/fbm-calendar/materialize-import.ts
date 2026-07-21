@@ -1,7 +1,12 @@
 import { mockCompetitions, type MockMatch, type MockVenue } from '@/lib/mock-data'
 import type { ParsedCsvMatch } from './parse-calendar-csv'
-import { mapCategory } from './category-mapping'
+import { basesCategoryOf, mapCategory } from './category-mapping'
 import { resolveMunicipality } from './resolve-municipality'
+import {
+  synthesizeSchedules,
+  type SchedulableMatch,
+  type SynthesisStats,
+} from './synthesize-schedule'
 
 // Convierte el resultado PURO de parseCalendarCsv en partidos/pabellones/
 // competiciones mock listos para cargar. No muta ningún array global: la
@@ -22,14 +27,33 @@ function slugUpper(text: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+/**
+ * Una o más categorías del CSV no están en `category-mapping.ts`. Aborta el
+ * import ENTERO: con ~24.500 partidos por temporada, descartar en silencio las
+ * filas de una categoría desconocida perdería miles de partidos sin que nadie
+ * se entere. Se acumulan TODAS las categorías fallidas antes de lanzar, para
+ * que el operador vea la lista completa de una sola vez.
+ */
+export class UnmappedCategoryError extends Error {
+  constructor(readonly categories: { category: string; matchCount: number }[]) {
+    const detail = categories.map((c) => `"${c.category}" (${c.matchCount} partidos)`).join(', ')
+    super(
+      `Import abortado: ${categories.length} categoría(s) sin mapear en category-mapping.ts: ${detail}`,
+    )
+    this.name = 'UnmappedCategoryError'
+  }
+}
+
 export type ImportSummary = {
   filesProcessed: number
   matchesParsed: number
   matchesLoaded: number
   duplicatesSkipped: number
   skippedNoDate: number
-  skippedUnmappedCategory: number
+  /** Partidos que el CSV emitió con HORA=00:00; su hora se ha sintetizado. */
   timeTBD: number
+  /** Métricas del reparto escalonado de horarios (ver synthesize-schedule.ts). */
+  schedule: SynthesisStats
   venuesCreated: number
   competitions: {
     id: string
@@ -76,10 +100,11 @@ export function materializeImport(
   const unresolvedMunicipalities: string[] = []
   const seenUnresolved = new Set<string>()
   const matches: MockMatch[] = []
+  const schedulable: SchedulableMatch[] = []
 
   let skippedNoDate = 0
-  let skippedUnmappedCategory = 0
   let timeTBD = 0
+  const unmappedCategories = new Map<string, number>()
 
   for (const p of deduped) {
     if (p.date === null) {
@@ -89,8 +114,9 @@ export function materializeImport(
 
     const mapping = mapCategory(p.category)
     if (mapping === null) {
-      skippedUnmappedCategory++
-      warnings.push(`categoría no mapeada: ${p.category}`)
+      // No se descarta la fila: se anota y al terminar el bucle se aborta el
+      // import entero con la lista completa (ver UnmappedCategoryError).
+      unmappedCategories.set(p.category, (unmappedCategories.get(p.category) ?? 0) + 1)
       continue
     }
 
@@ -144,16 +170,15 @@ export function materializeImport(
       needsConfirmationById.set(compId, mapping.needsConfirmation)
     }
 
-    let time = p.time
-    if (time === null) {
-      timeTBD++
-      time = ''
-    }
+    if (p.time === null) timeTBD++
 
-    matches.push({
+    const match: MockMatch = {
       id: `fbm-match-${p.sourceId}`,
       date: p.date,
-      time,
+      // Provisional: la hora definitiva (real o sintetizada) la fija la
+      // segunda pasada de synthesizeSchedules, que necesita el pabellón-día
+      // completo.
+      time: p.time ?? '',
       venueId: venue.id,
       competitionId: comp.id,
       homeTeam: p.homeTeam,
@@ -164,7 +189,35 @@ export function materializeImport(
       seasonId: SEASON_ID,
       matchday: p.matchday ?? 0,
       courtId: null,
+      timeIsEstimated: p.time === null,
+    }
+    matches.push(match)
+    schedulable.push({
+      id: match.id,
+      date: match.date,
+      venueId: match.venueId,
+      realTime: p.time,
+      basesCategory: basesCategoryOf(p.category),
     })
+  }
+
+  if (unmappedCategories.size > 0) {
+    throw new UnmappedCategoryError(
+      Array.from(unmappedCategories, ([category, matchCount]) => ({ category, matchCount })).sort(
+        (a, b) => b.matchCount - a.matchCount,
+      ),
+    )
+  }
+
+  // Horarios escalonados: segunda pasada, cuando ya está formado el grupo
+  // completo de cada (pabellón, fecha). Las horas reales del CSV se preservan;
+  // las que venían 00:00 se sintetizan dentro de la franja de su categoría.
+  const { times, stats: schedule } = synthesizeSchedules(schedulable)
+  for (const match of matches) {
+    const assigned = times.get(match.id)
+    if (assigned === undefined) continue
+    match.time = assigned.time
+    match.timeIsEstimated = assigned.timeIsEstimated
   }
 
   const venues = Array.from(venuesById.values())
@@ -180,8 +233,8 @@ export function materializeImport(
       matchesLoaded: matches.length,
       duplicatesSkipped,
       skippedNoDate,
-      skippedUnmappedCategory,
       timeTBD,
+      schedule,
       venuesCreated: venues.length,
       competitions: competitions.map((c) => ({
         id: c.id,

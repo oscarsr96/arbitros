@@ -14,26 +14,12 @@ import { useAdminStore } from '@/stores/admin-store'
 import { Send, Zap, Loader2, MapPin, RotateCcw, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrichedMatch, AssignmentValidation, ProposedAssignment, Proposal } from '@/lib/types'
-import {
-  mockPersons,
-  mockMatchdayAvailabilities,
-  calculateMockTravelCost,
-  isPersonAvailable,
-  hasTimeOverlap,
-  getPersonIncompatibilities,
-  getMockMunicipality,
-  getMockVenue,
-  getMockPerson,
-  getMockDistance,
-} from '@/lib/mock-data'
 import { getJornadaSaturdayForDate, getMatchdayWindow } from '@/lib/matchday-availability'
 import {
   mapDesignationsToSlots,
   positionForSlot,
   firstFreePosition,
 } from '@/lib/designation-positions'
-import { checkSlotEligibility, isRefereeLevel } from '@/lib/referee-eligibility'
-import { resolveFineCategory } from '@/lib/competition-fine-category'
 import {
   getPublishConflicts,
   type PublishConflictHelpers,
@@ -54,6 +40,9 @@ interface PickerPerson {
   matchdayNotes: string | null
 }
 
+/** Matriz de distancias entre municipios, servida por /api/catalog. */
+type DistanceLookup = (originMuniId: string, destMuniId: string) => number
+
 export function AsignacionView() {
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,6 +56,11 @@ export function AsignacionView() {
   const [dateTo, setDateTo] = useState('')
   const [rangeInitialized, setRangeInitialized] = useState(false)
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const [pickerPersons, setPickerPersons] = useState<PickerPerson[]>([])
+  const [pickerLoading, setPickerLoading] = useState(false)
+  // Matriz de distancias entre municipios (~465 pares fijos), por fetch: vive en
+  // mock-data, que importa el seed de partidos y no puede entrar en el bundle.
+  const [distanceKm, setDistanceKm] = useState<DistanceLookup>(() => () => 35)
   const { activeSlot, setActiveSlot, expandedMatchIds, toggleExpandedMatch } = useAdminStore()
 
   const {
@@ -84,30 +78,65 @@ export function AsignacionView() {
     clearAllProposals,
   } = useAdminStore()
 
-  const fetchMatches = useCallback(() => {
-    fetch('/api/admin/matches')
+  // Default del rango: la primera JORNADA COMPLETA del calendario (viernes→jueves, vía
+  // getMatchdayWindow), no solo el fin de semana. El piloto tiene partidos entre semana
+  // (lunes→jueves) que deben entrar en la designación y contar para el tope de carga por
+  // jornada.
+  //
+  // El rango se pide con `?meta=1` (solo minDate/maxDate y total) ANTES de pedir los
+  // partidos: derivarlo del array de partidos obligaba a descargarse el calendario
+  // entero, que con la temporada real son ~24.500 partidos ≈ 20 MB. Solo se calcula una
+  // vez; cambios posteriores del usuario no se sobrescriben.
+  useEffect(() => {
+    fetch('/api/admin/matches?meta=1')
       .then((r) => r.json())
-      .then((data) => setMatches(data.matches))
-      .finally(() => setLoading(false))
+      .then((data) => {
+        if (data.range?.minDate) {
+          const jornadaWindow = getMatchdayWindow(getJornadaSaturdayForDate(data.range.minDate))
+          setDateFrom(jornadaWindow.friday)
+          setDateTo(jornadaWindow.thursday)
+        }
+      })
+      .finally(() => setRangeInitialized(true))
   }, [])
+
+  // Matriz de distancias para el cálculo de conflictos pre-publicación. Se indexa
+  // una vez en un Map; el fallback de 35 km replica el de `getMockDistance`.
+  useEffect(() => {
+    fetch('/api/catalog')
+      .then((r) => r.json())
+      .then((data: { distances?: { originId: string; destId: string; distanceKm: number }[] }) => {
+        const index = new Map<string, number>()
+        for (const d of data.distances ?? []) {
+          index.set(`${d.originId}|${d.destId}`, d.distanceKm)
+          index.set(`${d.destId}|${d.originId}`, d.distanceKm)
+        }
+        setDistanceKm(() => (originId: string, destId: string) => {
+          if (originId === destId) return 0
+          return index.get(`${originId}|${destId}`) ?? 35
+        })
+      })
+      .catch(() => {
+        /* se mantiene el fallback fijo */
+      })
+  }, [])
+
+  // Los partidos se piden YA FILTRADOS por el servidor con el rango activo.
+  const fetchMatches = useCallback(() => {
+    if (!rangeInitialized) return
+    const params = new URLSearchParams()
+    if (dateFrom) params.set('from', dateFrom)
+    if (dateTo) params.set('to', dateTo)
+    setLoading(true)
+    fetch(`/api/admin/matches?${params}`)
+      .then((r) => r.json())
+      .then((data) => setMatches(data.matches ?? []))
+      .finally(() => setLoading(false))
+  }, [rangeInitialized, dateFrom, dateTo])
 
   useEffect(() => {
     fetchMatches()
   }, [fetchMatches])
-
-  // Default del rango: la primera JORNADA COMPLETA del calendario (viernes→jueves, vía
-  // getMatchdayWindow), no solo el fin de semana. El piloto tiene partidos entre semana
-  // (lunes→jueves) que deben entrar en la designación y contar para el tope de carga por
-  // jornada. Solo se calcula una vez, la primera vez que llegan partidos; cambios
-  // posteriores del usuario no se sobrescriben en refetches subsiguientes.
-  useEffect(() => {
-    if (rangeInitialized || matches.length === 0) return
-    const minDate = matches.reduce((min, m) => (m.date < min ? m.date : min), matches[0].date)
-    const jornadaWindow = getMatchdayWindow(getJornadaSaturdayForDate(minDate))
-    setDateFrom(jornadaWindow.friday)
-    setDateTo(jornadaWindow.thursday)
-    setRangeInitialized(true)
-  }, [matches, rangeInitialized])
 
   // Rango normalizado: si desde > hasta, se intercambian silenciosamente.
   const handleDateFromChange = (value: string) => {
@@ -417,106 +446,38 @@ export function AsignacionView() {
     }
   }
 
-  // Build person picker data for active slot. Memoizado: con ~1279 personas,
-  // recalcularlo en cada render (en vez de solo cuando cambian activeSlot/matches)
-  // provoca jank perceptible al abrir el picker.
-  const pickerPersons = useMemo((): PickerPerson[] => {
-    if (!activeSlot) return []
-
-    const match = matches.find((m) => m.id === activeSlot.matchId)
-    if (!match) return []
-
-    const venue = match.venue ? getMockVenue(match.venueId) : undefined
-    const saturdayDate = getJornadaSaturdayForDate(match.date)
-    // Categoría fina (T6): `/api/admin/matches` no la enriquece (solo lo hace el
-    // enrich del solver), así que se resuelve aquí por nombre canónico. Igual que
-    // `slotPosition`, es la misma para las ~1279 personas del picker: se calcula
-    // una vez, no dentro del `.map()`.
-    const fineCategory = match.competition ? resolveFineCategory(match.competition) : null
-    const slotPosition =
-      activeSlot.position === 'principal' || activeSlot.position === 'auxiliar'
-        ? activeSlot.position
-        : undefined
-
-    // Carga actual por persona a partir del estado `matches` (datos reales del
-    // servidor), NO del `mockDesignations` importado (copia estática del seed en
-    // cliente, siempre 0). Se precomputa una vez (O(designaciones)) en vez de
-    // recontar por persona (O(matches×personas)) dentro del map de abajo.
-    const assignedByPerson = new Map<string, number>()
-    for (const m of matches) {
-      for (const d of m.designations) {
-        assignedByPerson.set(d.personId, (assignedByPerson.get(d.personId) ?? 0) + 1)
-      }
+  // Candidatos del hueco activo: los calcula el servidor (/api/admin/picker →
+  // lib/candidate-picker.ts). Antes se construían aquí, lo que exigía importar
+  // mockPersons + isPersonAvailable + hasTimeOverlap de mock-data y arrastraba el
+  // seed de partidos (~10 MB) al bundle de cliente; además `mockAvailabilities` se
+  // genera a partir de las fechas de TODOS los partidos, así que el cliente pagaba
+  // también generar la disponibilidad de temporada de 1.279 personas al arrancar.
+  // Depende de `matches` para que la carga por persona se refresque tras asignar.
+  useEffect(() => {
+    if (!activeSlot) {
+      setPickerPersons([])
+      return
     }
+    const params = new URLSearchParams({ matchId: activeSlot.matchId, role: activeSlot.role })
+    if (activeSlot.position) params.set('position', activeSlot.position)
 
-    return mockPersons
-      .filter((p) => p.role === activeSlot.role && p.active)
-      .map((person) => {
-        const municipality = getMockMunicipality(person.municipalityId)
-        const { cost, km } = calculateMockTravelCost(
-          person.municipalityId,
-          venue?.municipalityId ?? '',
-        )
-
-        const assigned = assignedByPerson.get(person.id) ?? 0
-
-        const matchdayAvail = mockMatchdayAvailabilities.find(
-          (a) => a.personId === person.id && a.saturdayDate === saturdayDate,
-        )
-        const matchdayNotes = matchdayAvail?.notes?.trim() ? matchdayAvail.notes : null
-
-        const alreadyAssigned = match.designations.some((d) => d.personId === person.id)
-
-        let validation: AssignmentValidation = { valid: true }
-
-        if (alreadyAssigned) {
-          validation = { valid: false, reason: 'Ya asignado a este partido' }
-        } else if (!isPersonAvailable(person.id, match.date, match.time)) {
-          validation = { valid: false, reason: 'No disponible en esta franja' }
-        } else if (hasTimeOverlap(person.id, match.id)) {
-          validation = { valid: false, reason: 'Solapamiento con otro partido' }
-        } else if (
-          activeSlot.role === 'arbitro' &&
-          match.competition &&
-          !checkSlotEligibility(
-            { role: person.role, category: person.category, refereeLevel: person.refereeLevel },
-            { fineCategory, minRefCategory: match.competition.minRefCategory },
-            slotPosition,
-          )
-        ) {
-          validation = {
-            valid: false,
-            reason:
-              fineCategory && isRefereeLevel(person.refereeLevel)
-                ? 'Nivel no elegible para esta competición'
-                : `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
-          }
-        } else {
-          const incomps = getPersonIncompatibilities(person.id)
-          const hasIncompat = incomps.some(
-            (inc) =>
-              match.homeTeam.toLowerCase().includes(inc.teamName.toLowerCase()) ||
-              match.awayTeam.toLowerCase().includes(inc.teamName.toLowerCase()),
-          )
-          if (hasIncompat) {
-            validation = { valid: false, reason: 'Incompatibilidad con equipo' }
-          }
-        }
-
-        return {
-          id: person.id,
-          name: person.name,
-          role: person.role,
-          category: person.category,
-          municipalityId: person.municipalityId,
-          municipalityName: municipality?.name ?? '',
-          travelCost: cost,
-          travelKm: km,
-          matchesAssigned: assigned,
-          validation,
-          matchdayNotes,
-        }
+    let cancelled = false
+    setPickerLoading(true)
+    fetch(`/api/admin/picker?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setPickerPersons(data.candidates ?? [])
       })
+      .catch(() => {
+        if (!cancelled) setPickerPersons([])
+      })
+      .finally(() => {
+        if (!cancelled) setPickerLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [activeSlot, matches])
 
   // Get proposed assignments for a specific match slot from the active proposal
@@ -544,26 +505,28 @@ export function AsignacionView() {
   ).size
 
   // Conflictos de horario para el panel de verificación pre-publicación (E2, Tanda 2).
-  // Misma fuente de designaciones que el resto del diálogo (`allDesignations`) y MISMA
-  // fuente de partidos (`matches`, del servidor): un partido importado (CSV) no existe
-  // en la copia cliente de mock-data, así que resolverlo con getMockMatch lo saltaría
-  // silenciosamente. Personas y distancias sí son estáticas (roster determinista +
-  // matriz fija), por eso esos helpers siguen usando mock-data.
+  // Todo se resuelve desde el estado `matches` (datos del servidor): partidos, municipio
+  // del pabellón y persona vienen ya enriquecidos en la respuesta de la API, y las
+  // distancias del catálogo (`distanceKm`). Antes personas y distancias salían de
+  // mock-data, que arrastra el seed de partidos al bundle de cliente.
   const conflicts = useMemo<ScheduleConflict[]>(() => {
     const matchById = new Map(matches.map((m) => [m.id, m]))
     const muniByVenue = new Map<string, string>()
+    const personById = new Map<string, NonNullable<(typeof allDesignations)[number]['person']>>()
     for (const m of matches) {
       if (m.venue?.municipalityId) muniByVenue.set(m.venueId, m.venue.municipalityId)
+      for (const d of m.designations) {
+        if (d.person) personById.set(d.personId, d.person)
+      }
     }
     const helpers: PublishConflictHelpers = {
       getMatch: (matchId) => {
         const match = matchById.get(matchId)
         return match ? { date: match.date, time: match.time, venueId: match.venueId } : undefined
       },
-      getVenueMunicipality: (venueId) =>
-        muniByVenue.get(venueId) ?? getMockVenue(venueId)?.municipalityId,
+      getVenueMunicipality: (venueId) => muniByVenue.get(venueId),
       getPerson: (personId) => {
-        const person = getMockPerson(personId)
+        const person = personById.get(personId)
         return person
           ? {
               name: person.name,
@@ -573,10 +536,10 @@ export function AsignacionView() {
             }
           : undefined
       },
-      getDistanceKm: getMockDistance,
+      getDistanceKm: distanceKm,
     }
     return getPublishConflicts(allDesignations, helpers)
-  }, [matches, allDesignations])
+  }, [matches, allDesignations, distanceKm])
 
   // Etiquetas legibles ("Local vs Visitante (hora)") para los partidos citados en las
   // filas de conflicto del diálogo de publicación.
@@ -860,8 +823,6 @@ export function AsignacionView() {
                                     index={i}
                                     designation={existingDesig}
                                     isActive={false}
-                                    matchDate={match.date}
-                                    matchTime={match.time}
                                     onRemove={handleRemove}
                                   />
                                 ) : proposedForSlot ? (
@@ -879,8 +840,6 @@ export function AsignacionView() {
                                         activeSlot?.role === 'arbitro' &&
                                         activeSlot?.position === slotPosition
                                       }
-                                      matchDate={match.date}
-                                      matchTime={match.time}
                                       onActivate={() =>
                                         setActiveSlot({
                                           matchId: match.id,
@@ -937,8 +896,6 @@ export function AsignacionView() {
                                     index={i}
                                     designation={existingDesig}
                                     isActive={false}
-                                    matchDate={match.date}
-                                    matchTime={match.time}
                                     onRemove={handleRemove}
                                   />
                                 ) : proposedForSlot ? (
@@ -956,8 +913,6 @@ export function AsignacionView() {
                                         activeSlot?.role === 'anotador' &&
                                         activeSlot?.position === slotPosition
                                       }
-                                      matchDate={match.date}
-                                      matchTime={match.time}
                                       onActivate={() =>
                                         setActiveSlot({
                                           matchId: match.id,
@@ -1003,6 +958,7 @@ export function AsignacionView() {
             <div className="sticky top-20">
               <PersonPicker
                 persons={pickerPersons}
+                loading={pickerLoading}
                 activeSlot={activeSlot}
                 onAssign={handleAssign}
                 sortBy={sortBy}

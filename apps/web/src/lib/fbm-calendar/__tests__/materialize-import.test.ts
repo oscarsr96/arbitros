@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { materializeImport } from '../materialize-import'
+import { materializeImport, UnmappedCategoryError } from '../materialize-import'
 import type { ParsedCsvMatch } from '../parse-calendar-csv'
 import { mockCompetitions, mockMatches, mockVenues } from '@/lib/mock-data'
 
@@ -41,22 +41,42 @@ describe('materializeImport', () => {
     expect(result.summary.matchesParsed).toBe(1)
     expect(result.summary.matchesLoaded).toBe(1)
     expect(result.summary.skippedNoDate).toBe(0)
-    expect(result.summary.skippedUnmappedCategory).toBe(0)
     expect(result.summary.timeTBD).toBe(0)
     expect(result.summary.venuesCreated).toBe(1)
   })
 
-  it('categoría no mapeada: no carga el partido y cuenta skippedUnmappedCategory', () => {
-    const result = materializeImport(
-      [buildMatch({ sourceId: '1002', category: 'Categoría Inventada' })],
-      [],
-      1,
-    )
+  // Con ~24.500 partidos por temporada, descartar en silencio las filas de una
+  // categoría desconocida perdería miles de partidos sin avisar: se aborta.
+  it('categoría no mapeada: aborta el import entero con UnmappedCategoryError', () => {
+    expect(() =>
+      materializeImport([buildMatch({ sourceId: '1002', category: 'Categoría Inventada' })], [], 1),
+    ).toThrow(UnmappedCategoryError)
+  })
 
-    expect(result.matches).toHaveLength(0)
-    expect(result.summary.skippedUnmappedCategory).toBe(1)
-    expect(result.summary.matchesLoaded).toBe(0)
-    expect(result.summary.warnings.some((w) => w.includes('Categoría Inventada'))).toBe(true)
+  it('el error lista TODAS las categorías sin mapear, ordenadas por nº de partidos', () => {
+    let thrown: UnmappedCategoryError | null = null
+    try {
+      materializeImport(
+        [
+          buildMatch({ sourceId: '2001', category: 'Categoría Inventada' }),
+          buildMatch({ sourceId: '2002', category: 'Otra Rara' }),
+          buildMatch({ sourceId: '2003', category: 'Otra Rara' }),
+          buildMatch({ sourceId: '2004', category: 'Junior Masc. Pref.' }),
+        ],
+        [],
+        1,
+      )
+    } catch (err) {
+      thrown = err as UnmappedCategoryError
+    }
+
+    expect(thrown).toBeInstanceOf(UnmappedCategoryError)
+    expect(thrown?.categories).toEqual([
+      { category: 'Otra Rara', matchCount: 2 },
+      { category: 'Categoría Inventada', matchCount: 1 },
+    ])
+    expect(thrown?.message).toContain('Otra Rara')
+    expect(thrown?.message).toContain('Categoría Inventada')
   })
 
   it('date null: no carga el partido y cuenta skippedNoDate', () => {
@@ -67,12 +87,44 @@ describe('materializeImport', () => {
     expect(result.summary.matchesLoaded).toBe(0)
   })
 
-  it('time null: carga el partido con time "" y cuenta timeTBD', () => {
+  it('time null: sintetiza la hora dentro de la franja y la marca como estimada', () => {
     const result = materializeImport([buildMatch({ sourceId: '1004', time: null })], [], 1)
 
     expect(result.matches).toHaveLength(1)
-    expect(result.matches[0].time).toBe('')
+    expect(result.matches[0].time).toMatch(/^\d{2}:\d{2}$/)
+    expect(result.matches[0].time >= '09:00').toBe(true)
+    expect(result.matches[0].time <= '20:30').toBe(true)
+    expect(result.matches[0].timeIsEstimated).toBe(true)
     expect(result.summary.timeTBD).toBe(1)
+    expect(result.summary.schedule.synthesizedTimes).toBe(1)
+  })
+
+  it('hora real del CSV: se preserva tal cual y no se marca como estimada', () => {
+    const result = materializeImport([buildMatch({ sourceId: '1005', time: '18:45' })], [], 1)
+
+    expect(result.matches[0].time).toBe('18:45')
+    expect(result.matches[0].timeIsEstimated).toBe(false)
+    expect(result.summary.schedule.realTimes).toBe(1)
+    expect(result.summary.schedule.synthesizedTimes).toBe(0)
+  })
+
+  it('mismo pabellón y fecha: los partidos sin hora se escalonan cada 90 min', () => {
+    const result = materializeImport(
+      [
+        buildMatch({ sourceId: '8001', time: null }),
+        buildMatch({ sourceId: '8002', time: null }),
+        buildMatch({ sourceId: '8003', time: null }),
+      ],
+      [],
+      1,
+    )
+
+    const mins = result.matches.map((m) => {
+      const [h, min] = m.time.split(':').map(Number)
+      return h * 60 + min
+    })
+    expect(mins[1] - mins[0]).toBe(90)
+    expect(mins[2] - mins[1]).toBe(90)
   })
 
   it('dos partidos con mismo sourceId (entre ficheros) se cargan como un único match', () => {

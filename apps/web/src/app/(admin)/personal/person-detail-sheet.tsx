@@ -5,7 +5,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { MapPin, Mail, Phone, Calendar, AlertTriangle } from 'lucide-react'
-import { getPersonTravelCost } from '@/lib/mock-data'
 import { refereeLevelLabel } from '@/lib/referee-eligibility'
 
 interface PersonDetail {
@@ -41,6 +40,7 @@ interface PersonDetail {
     teamName: string
     reason: string
   }[]
+  totalTravelCost: number
 }
 
 const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -80,13 +80,9 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
 
   // Coste real por persona y día (regla FBM), no la suma de costes por
   // partido: cada d.travelCost individual sigue siendo una estimación por
-  // partido, informativa en la lista de arriba.
-  const totalTravelCost = data
-    ? getPersonTravelCost(
-        data.person.id,
-        data.designations.map((d) => ({ matchId: d.matchId })),
-      ).totalCost
-    : 0
+  // partido, informativa en la lista de arriba. Lo calcula el servidor
+  // (/api/admin/persons/[id]): depende del calendario completo.
+  const totalTravelCost = data?.totalTravelCost ?? 0
 
   return (
     <Sheet

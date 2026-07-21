@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { mockMatches, mockVenues, mockCompetitions, mockDesignations } from '@/lib/mock-data'
 import { parseCalendarCsv, type ParsedCsvMatch } from '@/lib/fbm-calendar/parse-calendar-csv'
-import { materializeImport } from '@/lib/fbm-calendar/materialize-import'
+import { materializeImport, UnmappedCategoryError } from '@/lib/fbm-calendar/materialize-import'
 import { persistDesignations } from '@/lib/designation-persistence'
 
 // Importador del CSV oficial de calendario de partidos de la FBM. El fichero
@@ -36,15 +36,25 @@ export async function POST(request: Request) {
     allWarnings.push(...warnings.map((w) => `${file.name}: ${w}`))
   }
 
-  const { matches, venues, competitions, summary } = materializeImport(
-    allParsed,
-    allWarnings,
-    files.length,
-  )
+  // Una categoría sin mapear aborta el import entero (no se descarta en
+  // silencio): se devuelve 400 con la lista para que el diálogo la muestre.
+  let materialized
+  try {
+    materialized = materializeImport(allParsed, allWarnings, files.length)
+  } catch (err) {
+    if (err instanceof UnmappedCategoryError) {
+      return NextResponse.json(
+        { error: err.message, unmappedCategories: err.categories },
+        { status: 400 },
+      )
+    }
+    throw err
+  }
+  const { matches, venues, competitions, summary } = materialized
 
   // No mutar si el import no produjo partidos: confirmar un CSV vacío o
-  // rechazado (p. ej. re-guardado como UTF-8 → cabecera ilegible, o todas las
-  // categorías sin mapear) NO debe borrar los partidos/designaciones actuales.
+  // rechazado (p. ej. re-guardado como UTF-8 → cabecera ilegible) NO debe
+  // borrar los partidos/designaciones actuales.
   if (!dryRun && matches.length > 0) {
     mockMatches.length = 0
     mockMatches.push(...matches)

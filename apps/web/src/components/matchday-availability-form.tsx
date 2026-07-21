@@ -16,8 +16,8 @@ import {
 } from '@/components/ui/select'
 import { AlertTriangle, CalendarClock } from 'lucide-react'
 import { toast } from 'sonner'
-import { nextSaturday, formatLocalDate } from '@/lib/mock-data'
-import type { MatchdayAvailability } from '@/lib/mock-data'
+import { nextSaturday, formatLocalDate } from '@/lib/mock-data-client'
+import type { MatchdayAvailability } from '@/lib/mock-data-client'
 import { getAvailabilityDeadline } from '@/lib/availability-deadline'
 
 const WEEKDAY_LABELS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']

@@ -11,7 +11,7 @@
 // es el mismo pabellón.
 
 import { pairOverlap, timeToMinutes, MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN } from './overlap'
-import type { DesignationStatus } from './mock-data'
+import type { DesignationStatus } from './mock-data-client'
 
 export { MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN }
 

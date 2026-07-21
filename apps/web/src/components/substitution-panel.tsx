@@ -1,26 +1,12 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { MapPin, Check, X, AlertTriangle } from 'lucide-react'
 import type { EnrichedMatch, AssignmentValidation } from '@/lib/types'
-import {
-  mockPersons,
-  calculateMockTravelCost,
-  isPersonAvailable,
-  hasTimeOverlap,
-  getPersonIncompatibilities,
-  getMockMunicipality,
-  getMockVenue,
-} from '@/lib/mock-data'
-import {
-  POSITION_LABELS,
-  firstFreePosition,
-  type DesignationPosition,
-} from '@/lib/designation-positions'
-import { checkSlotEligibility, isRefereeLevel } from '@/lib/referee-eligibility'
-import { resolveFineCategory } from '@/lib/competition-fine-category'
+import { POSITION_LABELS, type DesignationPosition } from '@/lib/designation-positions'
 
 export interface SubstitutionContext {
   matchId: string
@@ -48,106 +34,53 @@ interface SubstitutionPanelProps {
   onSubstitute: (personId: string) => void
 }
 
-function getCandidates(
-  match: EnrichedMatch,
-  role: 'arbitro' | 'anotador',
-  matches: EnrichedMatch[],
-  removedPosition?: DesignationPosition,
-): CandidatePerson[] {
-  const venue = match.venue ? getMockVenue(match.venueId) : undefined
-  // Categoría fina (T6): `matches` viene de `/api/admin/matches`, que no la
-  // enriquece (solo lo hace el enrich del solver), así que se resuelve aquí
-  // por nombre canónico.
-  const fineCategory = match.competition ? resolveFineCategory(match.competition) : null
+// Los candidatos y su validación los calcula el servidor
+// (/api/admin/picker → lib/candidate-picker.ts). Antes se calculaban aquí, lo
+// que obligaba a importar mock-data (disponibilidad y solapamientos dependen
+// del calendario) y metía el seed de partidos, ~10 MB, en el bundle de cliente.
+// De paso, `hasTimeOverlap` ahora es correcto: en cliente leía la copia
+// estática de mockDesignations, siempre vacía, y nunca detectaba nada.
+function useCandidates(context: SubstitutionContext | null) {
+  const [candidates, setCandidates] = useState<CandidatePerson[]>([])
+  const [loading, setLoading] = useState(false)
 
-  // Posición efectiva del hueco (Fix A1, review 7 niveles): si la designación
-  // eliminada llevaba `position`, esa es la vacante. Si era legacy (sin
-  // `position`, las ~90 reales del piloto), se deriva de las designaciones
-  // RESTANTES del partido (ya sin la eliminada: `match` viene del estado
-  // `matches`, recién refrescado tras el DELETE) con la MISMA regla que
-  // aplicará el POST de sustitución (`autoFillPosition`/`mapDesignationsToSlots`).
-  // Sin esto, un hueco Principal se validaba con la regla genérica de "pita en
-  // algún rol" en vez de exigir el rol `principal`.
-  const needed = role === 'arbitro' ? match.refereesNeeded : match.scorersNeeded
-  const effectivePosition = removedPosition ?? firstFreePosition(match.designations, role, needed)
-  const slotPosition =
-    effectivePosition === 'principal' || effectivePosition === 'auxiliar'
-      ? effectivePosition
-      : undefined
-
-  const assignedCounts = new Map<string, number>()
-  for (const m of matches) {
-    for (const d of m.designations) {
-      assignedCounts.set(d.personId, (assignedCounts.get(d.personId) ?? 0) + 1)
+  useEffect(() => {
+    if (!context) {
+      setCandidates([])
+      return
     }
-  }
+    const params = new URLSearchParams({ matchId: context.matchId, role: context.role })
+    if (context.position) params.set('position', context.position)
 
-  return mockPersons
-    .filter((p) => p.role === role && p.active)
-    .map((person) => {
-      const municipality = getMockMunicipality(person.municipalityId)
-      const { cost, km } = calculateMockTravelCost(
-        person.municipalityId,
-        venue?.municipalityId ?? '',
-      )
-      const assigned = assignedCounts.get(person.id) ?? 0
-
-      const alreadyAssigned = match.designations.some((d) => d.personId === person.id)
-
-      let validation: AssignmentValidation = { valid: true }
-
-      if (alreadyAssigned) {
-        validation = { valid: false, reason: 'Ya asignado a este partido' }
-      } else if (!isPersonAvailable(person.id, match.date, match.time)) {
-        validation = { valid: false, reason: 'No disponible en esta franja' }
-      } else if (hasTimeOverlap(person.id, match.id)) {
-        validation = { valid: false, reason: 'Solapamiento con otro partido' }
-      } else if (
-        role === 'arbitro' &&
-        match.competition &&
-        !checkSlotEligibility(
-          { role: person.role, category: person.category, refereeLevel: person.refereeLevel },
-          { fineCategory, minRefCategory: match.competition.minRefCategory },
-          slotPosition,
+    let cancelled = false
+    setLoading(true)
+    fetch(`/api/admin/picker?${params}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return
+        // Válidos primero, luego por coste (mismo orden que antes).
+        const list: CandidatePerson[] = data.candidates ?? []
+        setCandidates(
+          [...list].sort((a, b) => {
+            if (a.validation.valid && !b.validation.valid) return -1
+            if (!a.validation.valid && b.validation.valid) return 1
+            return a.travelCost - b.travelCost
+          }),
         )
-      ) {
-        validation = {
-          valid: false,
-          reason:
-            fineCategory && isRefereeLevel(person.refereeLevel)
-              ? 'Nivel no elegible para esta competición'
-              : `Categoría insuficiente (mín. ${match.competition.minRefCategory})`,
-        }
-      } else {
-        const incomps = getPersonIncompatibilities(person.id)
-        const hasIncompat = incomps.some(
-          (inc) =>
-            match.homeTeam.toLowerCase().includes(inc.teamName.toLowerCase()) ||
-            match.awayTeam.toLowerCase().includes(inc.teamName.toLowerCase()),
-        )
-        if (hasIncompat) {
-          validation = { valid: false, reason: 'Incompatibilidad con equipo' }
-        }
-      }
+      })
+      .catch(() => {
+        if (!cancelled) setCandidates([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-      return {
-        id: person.id,
-        name: person.name,
-        role: person.role,
-        category: person.category,
-        municipalityName: municipality?.name ?? '',
-        travelCost: cost,
-        travelKm: km,
-        matchesAssigned: assigned,
-        validation,
-      }
-    })
-    .sort((a, b) => {
-      // Valid candidates first, then by cost
-      if (a.validation.valid && !b.validation.valid) return -1
-      if (!a.validation.valid && b.validation.valid) return 1
-      return a.travelCost - b.travelCost
-    })
+    return () => {
+      cancelled = true
+    }
+  }, [context])
+
+  return { candidates, loading }
 }
 
 export function SubstitutionPanel({
@@ -158,10 +91,9 @@ export function SubstitutionPanel({
 }: SubstitutionPanelProps) {
   const match = context ? matches.find((m) => m.id === context.matchId) : null
   // La posición efectiva del hueco (la de la designación eliminada, o la
-  // derivada de las restantes si era legacy) se calcula dentro de
-  // `getCandidates` — ver comentario ahí (Fix A1).
-  const candidates =
-    match && context ? getCandidates(match, context.role, matches, context.position) : []
+  // derivada de las restantes si era legacy) la resuelve el servidor cuando
+  // `position` no viaja en la query — ver buildCandidates (Fix A1).
+  const { candidates, loading } = useCandidates(context)
   const validCount = candidates.filter((c) => c.validation.valid).length
 
   return (
@@ -194,13 +126,19 @@ export function SubstitutionPanel({
 
             {/* Candidates count */}
             <p className="text-xs font-medium text-gray-600">
-              {validCount} candidato{validCount !== 1 ? 's' : ''} disponible
-              {validCount !== 1 ? 's' : ''} de {candidates.length} total
-              {candidates.length !== 1 ? 'es' : ''}
+              {loading
+                ? 'Buscando candidatos…'
+                : `${validCount} candidato${validCount !== 1 ? 's' : ''} disponible${
+                    validCount !== 1 ? 's' : ''
+                  } de ${candidates.length} total${candidates.length !== 1 ? 'es' : ''}`}
             </p>
 
             {/* Candidates list */}
             <div className="space-y-2">
+              {loading &&
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-100" />
+                ))}
               {candidates.map((candidate) => (
                 <div
                   key={candidate.id}

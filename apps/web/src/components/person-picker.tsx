@@ -34,6 +34,8 @@ interface PersonPickerProps {
   onAssign: (personId: string) => void
   sortBy?: 'cost' | 'load'
   onSortChange?: (sort: 'cost' | 'load') => void
+  /** Los candidatos los sirve /api/admin/picker: mientras llegan, esqueleto. */
+  loading?: boolean
 }
 
 const categoryLabels: Record<string, string> = {
@@ -50,6 +52,7 @@ export function PersonPicker({
   onAssign,
   sortBy = 'cost',
   onSortChange,
+  loading = false,
 }: PersonPickerProps) {
   const [search, setSearch] = useState('')
 
@@ -185,7 +188,11 @@ export function PersonPicker({
               </Button>
             </div>
           ))}
-          {sorted.length === 0 && (
+          {loading &&
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-gray-100" />
+            ))}
+          {!loading && sorted.length === 0 && (
             <p className="py-8 text-center text-sm text-gray-400">
               No hay personas disponibles para este slot.
             </p>

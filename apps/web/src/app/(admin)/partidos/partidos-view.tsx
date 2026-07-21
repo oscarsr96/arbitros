@@ -13,7 +13,28 @@ import { useAdminStore } from '@/stores/admin-store'
 import { Upload, ChevronDown, ChevronUp, CalendarDays } from 'lucide-react'
 import { toast } from 'sonner'
 import type { EnrichedMatch, CSVMatchRow, ParsedXlsxMatch } from '@/lib/types'
-import { mockMunicipalities, mockCompetitions } from '@/lib/mock-data'
+import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
+import type { JornadaSummary } from '@/lib/match-query'
+
+/** Respuesta de `?shape=list`: partidos sin designaciones + catálogos deduplicados. */
+interface ListMatchesResponse {
+  matches: (Omit<EnrichedMatch, 'venue' | 'competition' | 'designations'> & {
+    venueId: string
+    competitionId: string
+  })[]
+  venues?: Record<string, EnrichedMatch['venue']>
+  competitions?: Record<string, EnrichedMatch['competition']>
+}
+
+/** "sáb 27 sep 2025" a partir del sábado que identifica la jornada. */
+function formatJornadaLabel(j: JornadaSummary): string {
+  return new Date(j.saturday + 'T00:00:00').toLocaleDateString('es-ES', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 export function PartidosView() {
   const [matches, setMatches] = useState<EnrichedMatch[]>([])
@@ -21,19 +42,97 @@ export function PartidosView() {
   const [csvOpen, setCsvOpen] = useState(false)
   const [xlsxOpen, setXlsxOpen] = useState(false)
   const [fbmOpen, setFbmOpen] = useState(false)
+  // Catálogo de municipios por fetch: vive en mock-data, que importa el seed de
+  // partidos (~10 MB) y por tanto no puede entrar en el bundle de cliente.
+  const [municipalities, setMunicipalities] = useState<{ id: string; name: string }[]>([])
+  // Índice de jornadas (~29 entradas) y jornada seleccionada. La vista carga UNA
+  // jornada, igual que Asignación: el calendario completo son ~24.500 partidos
+  // (~21 MB) y esta tabla nunca los mostró todos a la vez (el subtítulo ya decía
+  // "en la jornada").
+  const [jornadas, setJornadas] = useState<JornadaSummary[]>([])
+  const [jornada, setJornada] = useState('')
+  // Designaciones cargadas al desplegar cada fila: la lista no las trae (ver
+  // `?shape=list` en la ruta) porque una jornada designada serían 4,34 MB.
+  const [designationsByMatch, setDesignationsByMatch] = useState<
+    Record<string, EnrichedMatch['designations']>
+  >({})
   const { matchFilters, setMatchFilter, resetMatchFilters, expandedMatchIds, toggleExpandedMatch } =
     useAdminStore()
 
-  const fetchMatches = useCallback(() => {
-    fetch('/api/admin/matches')
+  // Jornada por defecto: la del primer partido del calendario, MISMO criterio que
+  // Asignación (`getMatchdayWindow(getJornadaSaturdayForDate(minDate))`), para que
+  // ambas vistas abran en la misma jornada.
+  useEffect(() => {
+    fetch('/api/admin/matches?meta=1')
       .then((r) => r.json())
-      .then((data) => setMatches(data.matches))
-      .finally(() => setLoading(false))
+      .then((data) => {
+        const list: JornadaSummary[] = data.jornadas ?? []
+        setJornadas(list)
+        if (data.range?.minDate) {
+          setJornada(getJornadaSaturdayForDate(data.range.minDate))
+        } else if (list.length > 0) {
+          setJornada(list[0].saturday)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch(() => setLoading(false))
   }, [])
+
+  const fetchMatches = useCallback(() => {
+    if (!jornada) return
+    setLoading(true)
+    fetch(`/api/admin/matches?jornada=${jornada}&shape=list`)
+      .then((r) => r.json())
+      .then((data: ListMatchesResponse) => {
+        // Rehidratar venue/competition desde los diccionarios: viajan
+        // deduplicados (~35 KB en vez de 409 B por partido) pero el render
+        // espera la forma completa de EnrichedMatch.
+        setMatches(
+          (data.matches ?? []).map((m) => ({
+            ...m,
+            venue: data.venues?.[m.venueId],
+            competition: data.competitions?.[m.competitionId],
+            designations: [],
+          })),
+        )
+        // Las designaciones cacheadas son de la jornada anterior: se descartan.
+        setDesignationsByMatch({})
+      })
+      .finally(() => setLoading(false))
+  }, [jornada])
 
   useEffect(() => {
     fetchMatches()
   }, [fetchMatches])
+
+  useEffect(() => {
+    fetch('/api/catalog')
+      .then((r) => r.json())
+      .then((data) => setMunicipalities(data.municipalities ?? []))
+      .catch(() => setMunicipalities([]))
+  }, [])
+
+  // Al desplegar una fila se cargan sus designaciones (una sola vez por partido).
+  const handleToggleMatch = useCallback(
+    (matchId: string) => {
+      const wasExpanded = expandedMatchIds.has(matchId)
+      toggleExpandedMatch(matchId)
+      if (wasExpanded || designationsByMatch[matchId]) return
+      fetch(`/api/admin/matches/${matchId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setDesignationsByMatch((prev) => ({
+            ...prev,
+            [matchId]: data.match?.designations ?? [],
+          }))
+        })
+        .catch(() => {
+          setDesignationsByMatch((prev) => ({ ...prev, [matchId]: [] }))
+        })
+    },
+    [expandedMatchIds, toggleExpandedMatch, designationsByMatch],
+  )
 
   const handleImport = async (rows: CSVMatchRow[]) => {
     const res = await fetch('/api/admin/matches/import', {
@@ -109,17 +208,18 @@ export function PartidosView() {
     return a.time.localeCompare(b.time)
   })
 
-  // Opciones de categoría: las del seed + las de los partidos ya cargados (las
-  // competiciones importadas no están en el mockCompetitions del bundle cliente,
-  // así que se derivan del fetch para poder filtrar lo importado).
+  // Opciones de categoría derivadas SOLO de los partidos cargados: el catálogo
+  // de competiciones vive en mock-data (que importa el seed de partidos) y su
+  // copia cliente tampoco incluía nunca las competiciones importadas en runtime.
   const categoryOptions = (() => {
     const byValue = new Map<string, string>()
-    for (const c of mockCompetitions) byValue.set(c.category, c.name)
     for (const m of matches) {
       if (m.competition?.category) byValue.set(m.competition.category, m.competition.name)
     }
     return Array.from(byValue, ([value, label]) => ({ value, label }))
   })()
+
+  const currentJornada = jornadas.find((j) => j.saturday === jornada)
 
   const filterDefs = [
     {
@@ -138,7 +238,7 @@ export function PartidosView() {
     {
       key: 'municipality',
       label: 'Municipio',
-      options: mockMunicipalities.map((m) => ({ value: m.id, label: m.name })),
+      options: municipalities.map((m) => ({ value: m.id, label: m.name })),
     },
     {
       key: 'coverage',
@@ -174,6 +274,31 @@ export function PartidosView() {
             Importar calendario FBM
           </Button>
         </div>
+      </div>
+
+      {/* Selector de jornada */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+        <label className="text-xs font-medium text-gray-500" htmlFor="partidos-jornada">
+          Jornada
+        </label>
+        <select
+          id="partidos-jornada"
+          value={jornada}
+          onChange={(e) => setJornada(e.target.value)}
+          disabled={jornadas.length === 0}
+          className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm"
+        >
+          {jornadas.map((j, i) => (
+            <option key={j.saturday} value={j.saturday}>
+              J{i + 1} · {formatJornadaLabel(j)} ({j.count})
+            </option>
+          ))}
+        </select>
+        {currentJornada && (
+          <span className="text-xs text-gray-400">
+            Viernes {currentJornada.from} a jueves {currentJornada.to}
+          </span>
+        )}
       </div>
 
       {/* Filters */}
@@ -227,9 +352,9 @@ export function PartidosView() {
                 return (
                   <MatchDetailRow
                     key={match.id}
-                    match={match}
+                    match={{ ...match, designations: designationsByMatch[match.id] ?? [] }}
                     expanded={expanded}
-                    onToggle={() => toggleExpandedMatch(match.id)}
+                    onToggle={() => handleToggleMatch(match.id)}
                     dateStr={dateStr}
                   />
                 )

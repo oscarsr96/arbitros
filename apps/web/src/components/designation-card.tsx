@@ -5,7 +5,7 @@ import { StatusBadge } from '@/components/status-badge'
 import { CostBadge } from '@/components/cost-badge'
 import { MapPin, Clock, Calendar, Users, Navigation } from 'lucide-react'
 import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
-import { getMockCourt } from '@/lib/mock-data'
+import { getMockCourt } from '@/lib/mock-data-client'
 
 interface DesignationCardProps {
   designation: {

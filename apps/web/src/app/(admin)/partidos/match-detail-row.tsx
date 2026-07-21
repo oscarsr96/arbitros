@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, MapPin, Navigation } from 'lucide-react'
 import { getDirectionsUrl, getDepartureInfo } from '@/lib/utils'
 import { POSITION_LABELS } from '@/lib/designation-positions'
 import { refereeLevelLabel } from '@/lib/referee-eligibility'
-import { getMockCourt } from '@/lib/mock-data'
+import { getMockCourt } from '@/lib/mock-data-client'
 import type { EnrichedMatch } from '@/lib/types'
 
 interface MatchDetailRowProps {

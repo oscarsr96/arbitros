@@ -5,6 +5,7 @@ import {
   getMockDesignationsForPerson,
   getMockAvailabilitiesForPerson,
   getPersonIncompatibilities,
+  getPersonTravelCost,
 } from '@/lib/mock-data'
 
 function getCurrentWeekStart(): string {
@@ -28,10 +29,16 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   const availability = getMockAvailabilitiesForPerson(person.id, weekStart)
   const incompatibilities = getPersonIncompatibilities(person.id)
 
+  // Coste real por persona y día (regla FBM), no la suma de los costes por
+  // partido. Se calcula aquí y no en el cliente: `getPersonTravelCost` resuelve
+  // fecha y municipio a partir del calendario completo (seed de ~10 MB).
+  const travelCost = getPersonTravelCost(person.id, designations)
+
   return NextResponse.json({
     person: { ...person, municipality },
     designations,
     availability,
     incompatibilities,
+    totalTravelCost: travelCost.totalCost,
   })
 }

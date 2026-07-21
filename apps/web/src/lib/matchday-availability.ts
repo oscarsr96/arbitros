@@ -3,8 +3,8 @@
 // Ver CLAUDE.md (decision 9): franjas fijas sabado/domingo (manana/tarde) + entre
 // semana (franja alta 17:30-22:00).
 
-import { formatLocalDate } from './mock-data'
-import type { AvailabilitySlot, MatchdayAvailability } from './mock-data'
+import { formatLocalDate } from './mock-data-client'
+import type { AvailabilitySlot, MatchdayAvailability } from './mock-data-client'
 
 // ── Franjas horarias fijas (decision 9) ─────────────────────────────────────
 

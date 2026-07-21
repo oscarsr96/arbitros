@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Upload, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { parseJornadaWorkbook } from '@/lib/xlsx-import'
-import { nextSaturday } from '@/lib/mock-data'
+import { nextSaturday } from '@/lib/mock-data-client'
 import type { ParsedXlsxMatch, XlsxImportResult } from '@/lib/types'
 
 interface XlsxImportDialogProps {

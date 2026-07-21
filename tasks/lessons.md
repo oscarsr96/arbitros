@@ -1,41 +1,45 @@
 # Lecciones — Sistema de Designaciones FBM
 
-## Datos FBM: export oficial + importador existente, no infra nueva
+> Tope 30 líneas (§3 CLAUDE.md). Lo desplazado vive en `lessons-archive.md`.
 
-- **Regla:** antes de scrapear, verificar `robots.txt` y preguntar por export oficial (CSV/XLSX/API); para fuentes nuevas del piloto (PDF, etc.), normalizarlas offline al CSV que ya acepta el importador FBM, no meter parser+ruta+dependencia en runtime.
-  - **Why:** fbm.es bloquea bots (`Disallow: /` para `User-agent: *`) → se pivotó a su export CSV oficial; y el usuario cortó el over-engineering ("nos estamos complicando"), reusando el pipeline probado (`parseCalendarCsv`→`materializeImport`) vía `scripts/fbm-pdf-to-csv.py` sin código frágil en runtime. La integración genérica se difiere.
-  - **How to apply:** check de `robots.txt` + oferta de export oficial como criterio de la 1ª tarea; normalizar fuentes nuevas al CSV existente offline; construir runtime solo cuando el usuario pida la integración general.
+## Normativa oficial antes de sintetizar datos de dominio
 
-## Testing de imports sobre mock-data en Next dev
+- **Regla:** si hay que inventar un dato de dominio (horarios, tarifas, nº de árbitros), buscar primero el documento normativo del cliente y preguntarle por él.
+- **Why:** propuse sintetizar horarios "por categoría" a ojo; el usuario respondió que las Bases Generales FBM ya traen la franja horaria Y el nº de árbitros/mesa por categoría. Lo inventado habría sido plausible y falso. Las Bases resultaron traer además la equivalencia patrocinador→categoría (Liga Ginos = 1ª Autonómica), que si no se habría inferido a ojo.
+- **How to apply:** ofrecer la síntesis como plan B, no como plan A. Preguntar "¿hay bases/reglamento/tarifario?" antes de generar. Ver [[cost-model]].
 
-- **Regla:** al smoke-testear una ruta que MUTA los arrays mock (import XLSX/CSV/FBM), calentar las rutas antes, o validar el pipeline puro con vitest.
-  - **Why:** en Next dev la 1ª compilación on-demand de cada ruta reevalúa el módulo `mock-data`; una mutación hecha por la ruta de import ANTES de que la ruta de lectura esté compilada se pierde (parece no persistir). En caliente sí persiste. Afecta a todos los importadores.
-  - **How to apply:** hacer una request de calentamiento a `/api/admin/matches` (o generar demo) antes del import, o testear `parseCalendarCsv`+`materializeImport` con vitest sin servidor.
-  - **Corolario (visto en vivo):** NO añadir una ruta NUEVA para mutar los arrays mock (una designación batch en `/api/.../apply`): la ruta fría re-evalúa `mock-data` y tiene su propio array AISLADO del que leen las rutas ya calientes → reporta éxito pero no persiste. Plegar la mutación en una ruta EXISTENTE que ya comparte módulo con el lector.
-  - **Corolario cliente (bug "Publicar" deshabilitado):** un componente `'use client'` que importa un array mock MUTABLE (`mockDesignations`) lee la copia ESTÁTICA del bundle de cliente (el seed, casi siempre vacío), NUNCA lo que mutan las rutas API en el server. Derivar contadores de UI (pendientes, carga, cobertura) del estado que viene de `fetch` (`matches[].designations`), no del array importado. **Fix de fondo YA IMPLEMENTADO (765106e):** arrays mock respaldados en `globalThis.__fbmMockStore` (`x ??= init`) + designaciones persistidas a `apps/web/.fbm-data/designations.json` (hidratación en `instrumentation.ts`, hidratación descarta huérfanas). Al añadir un array mutable NUEVO, respáldalo también en el store (mockAlertLog/mockCompetitions ya migrados; `fs` solo en `designation-persistence.ts` server-only, nunca en `mock-data.ts`).
-  - **Corolario getters seed (Tanda 2, panel de conflictos):** los GETTERS del seed (`getMockMatch`/`getMockVenue`) también devuelven la copia estática en el bundle cliente → se saltan en silencio los partidos importados por CSV (la vía real de datos). Cualquier cómputo cliente sobre partidos/designaciones (panel de verificación pre-publicación, etc.) debe resolver desde el estado `matches` del `fetch`, no desde `getMockMatch`.
+## Verificar el informe del subagente, no solo leerlo
 
-## No borrar entregables del usuario en la limpieza
+- **Regla:** re-medir el criterio de aceptación de forma independiente antes de cerrar una tanda.
+- **Why:** tres fallos reales sobrevivieron a informes en verde: 7 grupos con más partidos de los posibles (identidades de equipo fundidas), un cuadrático `partidos × designaciones` en una ruta, y un solver que tarda minutos con volumen real. Los tests pasaban con el seed pequeño.
+- **How to apply:** los verdes con datos de juguete no dicen nada del caso real. Medir con volumen de producción y con un invariante propio, no con el del autor.
 
-- **Regla:** en pasos de cleanup, borrar solo temporales propios (scratchpad, logs); dejar intactos los artefactos que son SALIDA para el usuario (CSV a subir, exports), aunque sean regenerables.
-  - **Why:** borré `calendario_piloto_fbm.csv` (el entregable a subir) al "limpiar" tras el smoke y tuve que regenerarlo; el usuario podría haberlo perdido.
-  - **How to apply:** antes de un `rm`, comprobar que el fichero no es algo que acabo de entregar al usuario para que lo use.
+## Invariantes de dominio > heurísticas de cobertura
 
-## Datos mock generados: deterministas y nicks únicos sin sufijos
+- **Regla:** para validar un parser, usar un invariante EXACTO del dominio, no una heurística con tolerancias.
+- **Why:** la heurística "coverage con tolerancia T-1" daba falsos positivos con los `DESCANSA` y no veía el bug real. El invariante `n*(n-1)` de liga a doble vuelta lo cazó: 259/272 exactos, 6 déficit, 7 imposibles.
+- **How to apply:** detectar EXCESO además de déficit (el exceso delata identidades colapsadas). Emparejar contra vocabulario cerrado por coincidencia MÁS LARGA, nunca la primera que encaja.
 
-- **Regla:** al generar datos mock por código (roster de personas, etc.), usar PRNG con semilla fija (nada de `Math.random()`/`Date.now()`); para identificadores/nicks únicos pedidos por el usuario, agotar un pool grande de valores DISTINTOS, nunca desambiguar con sufijos numéricos/romanos (II, III...).
-  - **Why:** `mock-data` se importa desde componentes cliente → con random no sembrado el server y el cliente generan distinto (mismatch de hidratación); y el usuario rechazó explícitamente "ALTOS II" como nick.
-  - **How to apply:** semilla fija + pool con holgura (motes de una palabra + compuestos "APODO DE LUGAR"); mapear categoría fina nueva a la `category` legacy para no tocar `meetsMinCategory`/UI; capturar `INITIAL_*` tras el spread para que `resetMockData` conserve lo generado.
-  - **Scripts de (re)generación con tsx:** usa extensión `.ts`, NO `.mts` (el proyecto es CJS → la interop ESM→CJS falla con "does not provide an export named X"); ponlo en `apps/web` para que el alias `@/` y el tsconfig resuelvan; si creas y borras un `.ts` temporal, limpia `tsconfig.tsbuildinfo` o el hook de typecheck falla con TS6053 (referencia a fichero borrado).
+## Árbol compartido: un gate en rojo puede ser un vecino a media escritura
 
-## Subagentes que editan `route.ts` deben correr typecheck, no solo vitest
+- **Regla:** con varias tandas en el mismo árbol, re-verificar contra el estado ACTUAL antes de escalar un fallo como "bug de X".
+- **Why:** pasó 3 veces en una sesión (un `</content>` ya borrado, un `materialize-import.ts` a medio commit, un `getMockDesignationsForMatch` en refactorización). Cada una costó una ronda.
+- **How to apply:** `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. No editar un fichero que otro está escribiendo: avisar a su dueño.
 
-- **Regla:** un fichero `app/**/route.ts` de Next SOLO puede exportar handlers HTTP (`GET`/`POST`/…) y config (`dynamic`, etc.). Extraer helpers puros a un `lib/*.ts` e importarlos; NUNCA `export function` auxiliar en el propio `route.ts`.
-  - **Why:** cualquier export extra rompe el tipo generado en `.next/types` (TS2344 "does not satisfy the constraint"), que `tsc --noEmit` detecta pero `vitest` NO. Un subagente que verificó solo con vitest dejó pasar el error al gate integrado.
-  - **How to apply:** al delegar edición de rutas, incluir `pnpm typecheck` en el criterio de verificación del subagente (no solo su test); helpers testeable → módulo `lib/`.
+## Escala: lo importado hay que medirlo, no extrapolarlo
 
-## Diagnóstico de "la app va fatal / no entra": no fiarse de la extensión del navegador
+- **Regla:** al multiplicar por 75× el volumen, medir bundle, payload y CPU antes de dar la carga por buena.
+- **Why:** el seed viajaba entero al cliente (9,5 MB en un chunk compartido), la ruta de partidos devolvía 21 MB y el solver pasó de 0,2 s a minutos. Todo con typecheck y tests en verde.
+- **How to apply:** `verify:bundle` en CI tras el build; filtrar por jornada en servidor; barrido con `performance.now()` antes de declarar rendimiento aceptable. Ver [[import-temporada-completa]].
 
-- **Regla:** cuando el navegador MCP falla en páginas admin con "Frame ... is showing error page" (o `read_page`/`get_page_text` fallan), NO asumir un 500: la extensión de Claude falla en las páginas admin de esta app aunque el server responda 200. Verificar con `curl` (Bash con `dangerouslyDisableSandbox`, porque el sandbox no alcanza `localhost`) al puerto real (:3001) antes de tocar código.
-  - **Why:** perdí varios turnos "arreglando" un 500 inexistente; el `curl` mostró la página completa (200) y APIs con datos. El síntoma real "va fatal / no entra" era saturación del dev server de un solo hilo bajo ráfaga de peticiones pesadas (matches 292 KB, 1279 personas), no un bug.
-  - **How to apply:** `curl -s localhost:3001/<ruta>` para ver el HTML/JSON real; para inconsistencias de datos entre rutas, poll x3 (converge = ok). Cambios de `next.config.js`/`instrumentation.ts` exigen reinicio COMPLETO del dev server, no HMR.
+## `pnpm typecheck` obligatorio, no solo vitest
+
+- **Regla:** un `app/**/route.ts` de Next SOLO exporta handlers HTTP y config; los helpers van a `lib/*.ts`.
+- **Why:** cualquier export extra rompe el tipo generado en `.next/types` (TS2344); `tsc` lo detecta, `vitest` NO.
+- **How to apply:** incluir `pnpm typecheck` en el criterio de verificación de todo subagente que toque rutas.
+
+## Datos generados: deterministas siempre
+
+- **Regla:** PRNG con semilla fija o derivada del dato (p. ej. FNV-1a de `venueId|date`). Nunca `Math.random()`/`Date.now()`.
+- **Why:** `mock-data` se importa desde cliente; el no-determinismo rompe la hidratación server/cliente.
+- **How to apply:** criterio de aceptación = regenerar dos veces y comparar hash.

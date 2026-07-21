@@ -5,6 +5,8 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "pnpm --filter @fbm/web test",
+    "verify:bundle": "pnpm --filter @fbm/web verify:bundle",
     "typecheck": "turbo typecheck",
     "db:generate": "pnpm --filter @fbm/web drizzle-kit generate",
     "db:migrate": "pnpm --filter @fbm/web drizzle-kit migrate",

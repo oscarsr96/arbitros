@@ -1,7 +1,7 @@
 // Tipos compartidos para el panel de administracion
 
 import type { DesignationPosition } from './designation-positions'
-import type { DesignationStatus } from './mock-data'
+import type { DesignationStatus } from './mock-data-client'
 import type { CompetitionCategory } from './referee-eligibility'
 
 export interface EnrichedMatch {
@@ -67,6 +67,9 @@ export interface EnrichedDesignation {
   status: DesignationStatus
   notifiedAt: Date | null
   createdAt: Date
+  // Disponibilidad de la persona en la franja del partido, resuelta en servidor
+  // (ver getMockDesignationsForMatch). `undefined` si el partido no se resolvió.
+  isAvailable?: boolean
   person?: {
     id: string
     name: string

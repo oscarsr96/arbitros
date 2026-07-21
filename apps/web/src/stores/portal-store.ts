@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { DEMO_PERSON_ID } from '@/lib/mock-data'
+import { DEMO_PERSON_ID } from '@/lib/mock-data-client'
 
 interface PortalState {
   currentPersonId: string
