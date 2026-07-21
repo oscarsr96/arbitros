@@ -813,11 +813,19 @@ Gate en ese commit: `pnpm typecheck` 0 errores, suite 384 verdes.
 `(admin)/dashboard/dashboard-view.tsx`, `(admin)/layout.tsx`.
 Spec en la sección 9, tarea **R1'**. Estaba a medias al cerrar; su informe no llegó.
 
-⚠️ **1 test rojo**: `api/optimize/__tests__/optimize-range.test.ts` → "sin rango, el
-comportamiento actual queda intacto (todos los partidos)". Asserta la semántica ANTIGUA de
-optimize. **Diagnostica primero si lo rompió R1** (por `match-query.ts`) o si es
-independiente. Ese test tiene que cambiar cuando entre R3', porque el usuario aprobó el
-cambio de semántica, pero no debería estar rojo ANTES de R3'.
+⚠️ **1 test rojo, ya diagnosticado**: `api/optimize/__tests__/optimize-range.test.ts` →
+"sin rango, el comportamiento actual queda intacto (todos los partidos)". **NO lo rompió R1
+ni el borrado de la ruta demo**: el test asserta la semántica ANTIGUA (sin rango = temporada
+completa), así que con el seed grande lanza `solve()` sobre los 24.508 partidos y revienta el
+**timeout de 90 s**. Al empezar la sesión pasaba raspando; se puso rojo cuando la máquina se
+cargó con varios subagentes corriendo vitest a la vez. Es una mina latente que fallará de
+forma intermitente según la carga, no un fallo puntual. Confirma por otra vía la medición de
+la sección 10: si una jornada son ~21 s, la temporada entera se va muy por encima de 90 s.
+
+**Lo arregla R3'** (tarea 4): al pasar el default a jornada, el test debe reescribirse a la
+semántica nueva (`appliedRange.defaulted === true` + ventana de la última jornada). No
+intentes arreglarlo antes ni subiéndole el timeout: el problema no es que sea lento, es que
+resuelve algo que el usuario dice que nunca se hace.
 
 **Primer paso de la próxima sesión**: leer el diff de R1, decidir si se termina o se
 descarta (`git checkout` esos 5 ficheros), y dejar la suite en verde antes de seguir.
