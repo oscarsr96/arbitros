@@ -3,73 +3,24 @@ import {
   mockMatches,
   mockDesignations,
   mockPersons,
-  mockVenues,
-  mockMunicipalities,
+  getMockPerson,
+  getMockMatch,
+  getMockVenue,
+  getMockMunicipality,
+  getMockDesignationsForMatch,
+  getPersonTravelCost,
   calculateDailyTravelCost,
-  calculatePersonTravelCost,
   calculateMockTravelCost,
   mockHistoricalMatchdays,
-  type MockDesignation,
 } from '@/lib/mock-data'
-import { formatLocalDate } from '@/lib/mock-data-client'
-import { resolveDefaultJornada, filterMatchesByRange } from '@/lib/match-query'
 
 // El coste de desplazamiento es POR PERSONA Y DÍA (regla FBM 2026-07-11), no la
 // suma de costes por partido: todas las agregaciones de dinero agrupan las
 // designaciones por (persona, día) y aplican calculateDailyTravelCost.
-//
-// A diferencia de dashboard/optimize, reports SÍ agrega por TEMPORADA y por
-// MES a propósito (CLAUDE.md Fase 4: "coste total por jornada / mes /
-// temporada"): no se acota a una jornada. Lo único que se resuelve como
-// "jornada actual" es `summary` (coste/cobertura de la jornada que el
-// designador está trabajando ahora mismo), vía `resolveDefaultJornada` — antes
-// era el literal `CURRENT_MATCHDAY = 15`, que etiquetaba TODAS las
-// designaciones reales (temporada entera) como si fueran de una única
-// jornada 15 ficticia.
+
+const CURRENT_MATCHDAY = 15
 
 export async function GET() {
-  const todayISO = formatLocalDate(new Date())
-  const defaultJornada = resolveDefaultJornada(mockMatches, todayISO)
-  const windowMatches = defaultJornada
-    ? filterMatchesByRange(mockMatches, { from: defaultJornada.from, to: defaultJornada.to })
-    : []
-  // Una ventana viernes→jueves es una única jornada FBM: todos sus partidos
-  // comparten `matchday`. Se toma del primero (mismo criterio simplificado que
-  // la cabecera de `(admin)/layout.tsx`, ver R1').
-  const currentMatchday = windowMatches[0]?.matchday ?? 0
-
-  // ── Índices por request ──────────────────────────────────────────────────
-  // Con la temporada real (24.508 partidos, ~122.670 designaciones si está
-  // toda diseñada), resolver cada matchId/personId/venueId con los helpers
-  // `getMock*` (que hacen `.find()` sobre el array entero) dentro de un bucle
-  // sobre TODAS las designaciones es un cuadrático severo: mismo patrón que
-  // `matches/route.ts:44-56` (medido ahí: 3.282 ms → 13 ms). Nada de caché de
-  // módulo: se reconstruyen en cada request.
-  const matchesById = new Map<string, (typeof mockMatches)[number]>()
-  for (const m of mockMatches) matchesById.set(m.id, m)
-
-  const venuesById = new Map<string, (typeof mockVenues)[number]>()
-  for (const v of mockVenues) venuesById.set(v.id, v)
-
-  const municipalitiesById = new Map<string, (typeof mockMunicipalities)[number]>()
-  for (const m of mockMunicipalities) municipalitiesById.set(m.id, m)
-
-  const personsById = new Map<string, (typeof mockPersons)[number]>()
-  for (const p of mockPersons) personsById.set(p.id, p)
-
-  const designationsByPerson = new Map<string, MockDesignation[]>()
-  const designationsByMatch = new Map<string, MockDesignation[]>()
-  for (const d of mockDesignations) {
-    const byPerson = designationsByPerson.get(d.personId)
-    if (byPerson) byPerson.push(d)
-    else designationsByPerson.set(d.personId, [d])
-
-    const byMatch = designationsByMatch.get(d.matchId)
-    if (byMatch) byMatch.push(d)
-    else designationsByMatch.set(d.matchId, [d])
-  }
-  const NO_DESIGNATIONS: MockDesignation[] = []
-
   // ── Normalizar designaciones (actuales + históricas) a días de persona ──
   type DayGroup = { personId: string; matchday: number; personMuni: string; munis: string[] }
   const groups = new Map<string, DayGroup>()
@@ -80,7 +31,7 @@ export async function GET() {
       g = {
         personId,
         matchday,
-        personMuni: personsById.get(personId)?.municipalityId ?? '',
+        personMuni: getMockPerson(personId)?.municipalityId ?? '',
         munis: [],
       }
       groups.set(key, g)
@@ -89,21 +40,12 @@ export async function GET() {
   }
 
   for (const d of mockDesignations) {
-    const match = matchesById.get(d.matchId)
+    const match = getMockMatch(d.matchId)
     if (!match) continue
-    const venue = venuesById.get(match.venueId)
-    // matchday REAL del partido (antes: CURRENT_MATCHDAY fijo, que metía la
-    // temporada entera bajo una única jornada ficticia).
-    push(d.personId, match.matchday, match.date, venue?.municipalityId ?? '')
+    const venue = getMockVenue(match.venueId)
+    push(d.personId, CURRENT_MATCHDAY, match.date, venue?.municipalityId ?? '')
   }
-  // mockHistoricalMatchdays es un residuo de 2 jornadas demo (13 y 14) previas
-  // a la importación de la temporada real, que ahora cubre matchday 1-26 —
-  // incluidos el 13 y el 14 reales. Se saltan las que ya tienen datos reales
-  // para no mezclar coste ficticio con coste real bajo el mismo número de
-  // jornada en costByMatchday/monthlyLiquidation.
-  const realMatchdays = new Set(mockMatches.map((m) => m.matchday))
   for (const h of mockHistoricalMatchdays) {
-    if (realMatchdays.has(h.matchday)) continue
     for (const d of h.designations) {
       // El histórico se agrupa por jornada (no hay fecha por partido).
       push(d.personId, h.matchday, `h${h.matchday}`, d.venueMunicipalityId)
@@ -116,15 +58,12 @@ export async function GET() {
     return { ...g, cost, km, matches: g.munis.length }
   })
 
-  // ── Cobertura de la jornada actual ──
-  // Acotada a windowMatches (no mockMatches entero): summary.totalMatches ya
-  // es el tamaño de esa ventana, así que covered+partial+uncovered tienen que
-  // sumar lo mismo o el % de cobertura de la UI se dispara por encima de 100.
+  // ── Cobertura (por partido, sin cambios) ──
   let covered = 0
   let partial = 0
   let uncovered = 0
-  for (const match of windowMatches) {
-    const desigs = designationsByMatch.get(match.id) ?? NO_DESIGNATIONS
+  for (const match of mockMatches) {
+    const desigs = getMockDesignationsForMatch(match.id)
     const refs = desigs.filter((d) => d.role === 'arbitro').length
     const scorers = desigs.filter((d) => d.role === 'anotador').length
     if (refs >= match.refereesNeeded && scorers >= match.scorersNeeded) covered++
@@ -134,28 +73,18 @@ export async function GET() {
 
   // ── Coste total de la jornada actual (por día) ──
   const totalCost = days
-    .filter((d) => d.matchday === currentMatchday)
+    .filter((d) => d.matchday === CURRENT_MATCHDAY)
     .reduce((sum, d) => sum + d.cost, 0)
 
   // ── Carga y coste por persona (jornada actual) ──
   const loadByPerson = mockPersons.map((person) => {
-    const desigs = designationsByPerson.get(person.id) ?? NO_DESIGNATIONS
-    // calculatePersonTravelCost en vez de getPersonTravelCost: esta última
-    // resuelve fecha y municipio con getMockMatch/getMockVenue (un `.find()`
-    // por designación sobre 24.508 partidos); match y venue ya están
-    // resueltos aquí vía los índices, así que se pasan directos y el
-    // resultado es idéntico (misma función de cálculo).
-    const items = desigs.map((d) => {
-      const match = matchesById.get(d.matchId)
-      const venue = match ? venuesById.get(match.venueId) : undefined
-      return { date: match?.date ?? '', venueMunicipalityId: venue?.municipalityId ?? '' }
-    })
+    const desigs = mockDesignations.filter((d) => d.personId === person.id)
     return {
       personId: person.id,
       name: person.name,
       role: person.role,
       matchesAssigned: desigs.length,
-      totalCost: calculatePersonTravelCost(person.municipalityId, items).totalCost,
+      totalCost: getPersonTravelCost(person.id, desigs).totalCost,
     }
   })
 
@@ -163,14 +92,11 @@ export async function GET() {
   //    ESTIMADO por partido, informativo) + total y desglose reales por día. ──
   const liquidation = mockPersons
     .map((person) => {
-      const municipality = municipalitiesById.get(person.municipalityId)
-      const desigs = designationsByPerson.get(person.id) ?? NO_DESIGNATIONS
-      const resolved = desigs.map((d) => {
-        const match = matchesById.get(d.matchId)
-        const venue = match ? venuesById.get(match.venueId) : undefined
-        return { d, match, venue }
-      })
-      const matches = resolved.map(({ d, match, venue }) => {
+      const municipality = getMockMunicipality(person.municipalityId)
+      const desigs = mockDesignations.filter((d) => d.personId === person.id)
+      const matches = desigs.map((d) => {
+        const match = getMockMatch(d.matchId)
+        const venue = match ? getMockVenue(match.venueId) : undefined
         const est = calculateMockTravelCost(person.municipalityId, venue?.municipalityId ?? '')
         return {
           matchId: d.matchId,
@@ -183,11 +109,7 @@ export async function GET() {
           distanceKm: est.km,
         }
       })
-      const items = resolved.map(({ match, venue }) => ({
-        date: match?.date ?? '',
-        venueMunicipalityId: venue?.municipalityId ?? '',
-      }))
-      const { totalCost: total, byDay } = calculatePersonTravelCost(person.municipalityId, items)
+      const { totalCost: total, byDay } = getPersonTravelCost(person.id, desigs)
       return {
         personId: person.id,
         name: person.name,
@@ -213,7 +135,8 @@ export async function GET() {
     .map(([matchday, e]) => ({
       matchday,
       cost: Number(e.cost.toFixed(2)),
-      matches: e.matches,
+      // matches actuales = nº de partidos de la jornada; histórico = designaciones
+      matches: matchday === CURRENT_MATCHDAY ? mockMatches.length : e.matches,
     }))
     .sort((a, b) => a.matchday - b.matchday)
 
@@ -222,7 +145,7 @@ export async function GET() {
   // municipio propio → el fijo se atribuye al municipio propio.
   const muniCostMap: Record<string, { totalCost: number; count: number }> = {}
   const addMuni = (muniId: string, cost: number) => {
-    const name = municipalitiesById.get(muniId)?.name ?? muniId
+    const name = getMockMunicipality(muniId)?.name ?? muniId
     if (!muniCostMap[name]) muniCostMap[name] = { totalCost: 0, count: 0 }
     muniCostMap[name].totalCost += cost
     muniCostMap[name].count++
@@ -260,8 +183,8 @@ export async function GET() {
   > = {}
   for (const d of days) {
     if (!monthlyMap[d.personId]) {
-      const person = personsById.get(d.personId)
-      const municipality = person ? municipalitiesById.get(person.municipalityId) : undefined
+      const person = getMockPerson(d.personId)
+      const municipality = person ? getMockMunicipality(person.municipalityId) : undefined
       monthlyMap[d.personId] = {
         personId: d.personId,
         name: person?.name ?? d.personId,
@@ -297,11 +220,11 @@ export async function GET() {
   return NextResponse.json({
     summary: {
       totalCost: Number(totalCost.toFixed(2)),
-      totalMatches: windowMatches.length,
+      totalMatches: mockMatches.length,
       covered,
       partial,
       uncovered,
-      matchday: currentMatchday,
+      matchday: CURRENT_MATCHDAY,
     },
     loadByPerson,
     liquidation,
