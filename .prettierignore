@@ -3,3 +3,8 @@ node_modules
 dist
 build
 pnpm-lock.yaml
+
+# Datasets geográficos generados (OSM): se guardan minificados por su tamaño
+# (addresses-cm.json ~1,6 MB); prettier los expandiría a cientos de miles de
+# líneas. Se regeneran con scripts/geo (ver su README).
+apps/web/src/lib/data/*.json
