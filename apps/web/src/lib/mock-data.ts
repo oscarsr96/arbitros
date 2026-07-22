@@ -18,6 +18,10 @@ import fbmSeed from './fbm-calendar/fbm-seed.json'
 // Generador determinista de disponibilidad de temporada para las 1279 personas
 // (ver mini-spec Parte 1, tasks/todo.md). Módulo hoja: sin ciclo con mock-data.
 import { generateSeasonAvailability, type GeneratedAvailabilitySlot } from './availability-roster'
+// Coordenadas reales (OSM) por pabellón: geocode de Nominatim o centroide del
+// municipio como red de seguridad (ver scripts/geo/README.md). Se inyectan en
+// `mockVenues` por lookup, sin editar los literales de demoVenues ni el seed.
+import venueCoords from './data/venue-coords.json'
 // Posiciones nombradas de designación (Principal/Auxiliar, Anotador/Crono/24").
 // Módulo hoja: sin ciclo con mock-data.
 import type { DesignationPosition } from './designation-positions'
@@ -374,6 +378,16 @@ export interface MockVenue {
   metro?: string
   bus?: string
   observations?: string
+  // Coordenadas reales (OSM) del pabellón, pobladas por lookup desde
+  // data/venue-coords.json al ensamblar mockVenues (geocode real o centroide del
+  // municipio). Opcionales: un venue sin entrada (sin geocode ni centroide) las
+  // deja undefined. Ver scripts/geo/README.md.
+  latitude?: number
+  longitude?: number
+  // true si lat/lon son el centroide del municipio (Nominatim no geocodificó el
+  // pabellón), no su posición exacta. Un futuro modelo de coste por coordenadas
+  // debe tratarlas como aproximadas (~1-3 km de error). Ausente = geocode exacto.
+  coordsApprox?: boolean
 }
 
 const demoVenues: MockVenue[] = [
@@ -1456,10 +1470,17 @@ const demoVenues: MockVenue[] = [
 ]
 
 // Catálogo demo + pabellones reales importados del calendario FBM.
+const VENUE_COORDS = venueCoords as Record<string, { lat: number; lon: number; approx?: boolean }>
 export const mockVenues: MockVenue[] = (__fbmStore.venues ??= [
   ...demoVenues,
   ...(fbmSeed.venues as MockVenue[]),
-])
+].map((v) => {
+  const c = VENUE_COORDS[v.id]
+  if (!c) return v
+  return c.approx
+    ? { ...v, latitude: c.lat, longitude: c.lon, coordsApprox: true }
+    : { ...v, latitude: c.lat, longitude: c.lon }
+}))
 
 // ── Pistas ──────────────────────────────────────────────────────────────────
 // `mockCourts`/`getMockCourt`/`MockCourt` viven en mock-data-client.ts (los

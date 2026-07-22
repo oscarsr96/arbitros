@@ -20,6 +20,12 @@
 - **Why:** la heurística "coverage con tolerancia T-1" daba falsos positivos con los `DESCANSA` y no veía el bug real. El invariante `n*(n-1)` de liga a doble vuelta lo cazó: 259/272 exactos, 6 déficit, 7 imposibles.
 - **How to apply:** detectar EXCESO además de déficit (el exceso delata identidades colapsadas). Emparejar contra vocabulario cerrado por coincidencia MÁS LARGA, nunca la primera que encaja.
 
+## Datos externos geográficos (OSM/geocoders): restringir la query y validar con bbox
+
+- **Regla:** al generar datos desde una fuente externa por NOMBRE (Overpass, Nominatim), acotar la query a la región Y validar cada coordenada de salida contra un bbox de dominio como test permanente. El pipeline en verde NO garantiza datos correctos.
+- **Why:** `rel["name"="Madrid"]` sin bbox trajo Madrid, IOWA (y Pinto→Argentina, Arroyomolinos→Cáceres): centroide y direcciones de la capital (45% del roster) en EE.UU., con los tests de consistencia en verde. Lo cazó un invariante propio (todo punto dentro de la CM), no el pipeline. Aparte: el límite OSM viene partido en varios `way` que hay que COSER en anillos (tratar cada segmento como anillo daba ~0 puntos dentro del polígono en municipios multi-way). Ver [[import-temporada-completa]].
+- **How to apply:** bbox de región en la query por nombre; test que exija el 100% de coords dentro del bbox de dominio (umbrales laxos ocultan homónimos); coser anillos multi-way; medir `inside≈raw` por municipio.
+
 ## Árbol compartido: un gate en rojo puede ser un vecino a media escritura
 
 - **Regla:** con varias tandas en el mismo árbol, re-verificar contra el estado ACTUAL antes de escalar un fallo como "bug de X".

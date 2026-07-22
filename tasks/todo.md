@@ -1,3 +1,166 @@
+# Plan: Terminar la geolocalización real (direcciones de personas + coords de venues) (2026-07-22)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (gate + review adversarial fable) · SIN COMMITEAR (pendiente push) · project-claude · tipo ampliar+modificar · tamaño M · ejecutor: MIXTO (fetch mecánico en background + sesión cableado/tests + fable review)
+Decisiones del usuario (AskUserQuestion 2026-07-22): (1) alcance = **A+B** (direcciones de personas Y coordenadas de venues); (2) los fetch externos (Overpass/Nominatim) los corre la sesión en background.
+
+## Fase 4 — resultado (2026-07-22)
+
+Gate: **typecheck 0 · 407 tests / 0 fallos (2 skipped) · build OK 38s** (sin violar server-only; First Load JS
+compartido 87,5 kB pese a 1,6 MB de addresses-cm.json → server-only mantiene los datos en servidor). Un fallo
+transitorio de test bajo carga concurrente (no reproducido en la corrida limpia, no era de los tests de geo).
+
+Cobertura final: 57/58 municipios con direcciones reales (16.213 puntos, 0 CP fuera de la CM); solo **Griñón**
+sin cobertura (Overpass da "sin relation" para ese nombre) → sus ~2-5 personas quedan con lat/lon undefined,
+anotado. Venues: **394/394 con coordenada** (305 geocode real + 89 centroide `approx`), 0 fuera de la CM.
+
+Review adversarial fable → **LISTO CON RESERVAS, 0 blockers**. Reservas aplicadas por la sesión:
+
+- [IMPORTANTE] flag `approx` se perdía en el lookup de venues → propagado a `MockVenue.coordsApprox` (para el
+  futuro coste por coordenadas: distingue centroide de geocode exacto).
+- [MENOR] 3 puntos con CP 13200 (Ciudad Real, tagging OSM) → guard "CP debe empezar por 28" en el build + test.
+- [MENOR] tests de venues laxos (umbral 97%) → endurecidos a exacto (394/394, 0 fuera CM) + test de coordsApprox.
+- [MENOR] `byName` last-wins silencioso → warn en nombre duplicado.
+- [COSMÉTICO] comentario contradictorio en referee-roster (server-only) → corregido.
+- No aplicadas (anotadas): municipalities.json es copia manual de mockMunicipalities (deriva asumida, doc en
+  README); PRNG shift materializa la orfandad ya declarada de designations.json; `eval` en extract-venues
+  (one-shot, offline). Griñón sin resolver.
+
+Cambios: `point-in-polygon.mjs` (cosido de anillos), `fetch-boundaries-bulk.mjs`/`fetch-overpass.mjs` (CM_BBOX),
+`build-address-dataset.mjs` (CP guard), nuevo `merge-venue-coords.mjs`, `referee-roster.ts` (pickRealAddress +
+lat/lon + server-only), `mock-data.ts` (MockVenue lat/lon/coordsApprox + lookup), nuevos datasets
+`lib/data/{addresses-cm,venue-coords}.json`, nuevo `geo-data.test.ts` (12 tests), `README.md`, `.gitignore`.
+Caché OSM (`scripts/geo/cache/`, MB) fuera del repo. **Pendiente: commit + push (ofrecido al usuario).**
+
+## Progreso y hallazgos (2026-07-22, sesión en curso)
+
+Fetch completados: geocode venues 394/394 (305 real + 89 fallo→centroide). Boundaries/raw 57/58 (solo
+**Griñón** sin resolver: Overpass da "sin relation" para ese nombre; municipio diminuto → fallback anotado).
+
+**BUG 1 (grave) — cosido de anillos en `point-in-polygon.mjs` (CORREGIDO)**: `extractOuterRings` trataba cada
+`way` miembro `outer` como anillo cerrado, pero OSM parte el límite en varios `way` que hay que COSER por
+extremos. Sin coser, municipios multi-way daban ~0 direcciones dentro del polígono (16 munis a 0; Alcorcón
+inside=5 de 1142). Fix = cosido por extremos coincidentes. Tras el fix: 16→1 muni a 0 (solo Griñón), invariante
+`inside≈raw` cumplido (Alcorcón 5→973).
+
+**BUG 2 (crítico) — boundary del municipio equivocado (CORRIGIENDO)**: la query Overpass por nombre sin
+restricción geográfica casaba homónimos: **muni-001 Madrid→Madrid IOWA**, muni-021 Pinto→Argentina,
+muni-033 Arroyomolinos→Cáceres. Contaminaba centroide Y direcciones (raw se fetch-eaba del bbox equivocado).
+Detectado por el test de bbox de venues (42 venues de Madrid caían en Iowa vía centroide). Fix = añadir
+`CM_BBOX=39.8,-4.7,41.2,-3.0` a las queries de boundary en `fetch-boundaries-bulk.mjs` y `fetch-overpass.mjs`;
+borrados los 3 boundary+raw contaminados; re-fetch en curso (bg `bgticmztq`). Guard permanente añadido a
+`geo-data.test.ts`: todo centroide y todo punto del dataset DEBE caer en la CM.
+
+Datasets consumibles generados (se regeneran tras el re-fetch): `apps/web/src/lib/data/addresses-cm.json`
+(~1,5 MB) y `venue-coords.json` (31 KB, 394/394 venues con coord). Cableado hecho: `MockVenue.latitude/longitude`
+
+- lookup en `mockVenues` (mock-data.ts); `referee-roster.ts` ya consumía addresses-cm. typecheck 0. Tests:
+  `geo-data.test.ts` nuevo (direcciones reales + coords venues + integridad CM). Falta: re-fetch → rebuild →
+  `pnpm test` verde → gate/build → review fable → commit. Griñón: 1 muni sin cobertura (fallback), anotado.
+
+## Contexto verificado (2026-07-22)
+
+Trabajo iniciado hoy y dejado a medias/sin commitear. Diff sin commitear: `referee-roster.ts` (+63/-10,
+ya cableado a `addresses-cm.json` + campos `latitude?/longitude?` en `MockPerson`), untracked
+`apps/web/src/lib/data/addresses-cm.json` (vacío `{}`) y `scripts/geo/` (pipeline).
+
+Pipeline offline (una vez, cacheado, reanudable) y su estado al empezar:
+
+| Paso                   | Script                              | Salida                                            | Estado inicial        |
+| ---------------------- | ----------------------------------- | ------------------------------------------------- | --------------------- |
+| Extraer venues         | `extract-venues.mjs`                | `venues-all.json` (394 = 108 demo + 286 fbm-seed) | ✅                    |
+| Municipios             | (input)                             | `municipalities.json` (58)                        | ✅                    |
+| Límites admin          | `fetch-boundaries-bulk.mjs`         | `cache/boundaries/<id>.json`                      | 55/58 (faltan 3)      |
+| **Nodos de dirección** | `fetch-overpass.mjs addresses`      | `cache/raw/<id>.json`                             | **0/58 — bloqueo**    |
+| Construir dataset      | `build-address-dataset.mjs`         | `apps/web/src/lib/data/addresses-cm.json`         | `{}` (por raw vacío)  |
+| Geocode venues         | `geocode-venues.mjs`                | `cache/nominatim/<id>.json`                       | 243/394 (~62%)        |
+| Consumir en roster     | `referee-roster.ts#pickRealAddress` | direcciones+coords reales por persona             | cableado, recibe `{}` |
+
+- `pickRealAddress(muni, rand)`: elige un punto real DENTRO del municipio (calle+nº+CP+lat/lon de OSM);
+  red de seguridad si el muni no tiene puntos → calle fabricada + **centroide** del muni (nunca lat/lon
+  vacío). El municipio NO se reshufflea: es input, se decide antes (madrid 45% / resto). Determinista por
+  la PRNG sembrada → sin riesgo de hidratación (lección: datos generados deterministas).
+- Seed de venues: `fbm-calendar/fbm-seed.json` (.venues, 286) + `demoVenues` (108, literal TS en
+  mock-data.ts). **NO existe** merge de coords geocodificadas de vuelta al seed → construirlo (Track B).
+- Consumidores actuales de `lat/lon`: solo `optimize/route.ts`, `solver.bench.jornada-real.test.ts`,
+  `db/schema.ts`. Payoff inmediato bajo (el coste usa `getMockDistance` muni→muni, no coords). Se cierra
+  igualmente por coherencia del dato y para no dejar trabajo a medias.
+
+## Task breakdown
+
+### Track A — direcciones reales de personas
+
+**A1. Completar boundaries (3 municipios que faltan)** · mecánico (background) · esfuerzo: `low`
+(a) `node scripts/geo/fetch-boundaries-bulk.mjs`. (b) Aceptación: `cache/boundaries/` = 58/58, o anotar los
+que Overpass no resuelva por nombre (caerán a fallback de centroide nulo → los cubre A3).
+
+**A2. Fetch de nodos de dirección (raw)** · mecánico (background) · esfuerzo: `low`
+(a) `node scripts/geo/fetch-overpass.mjs addresses` (bbox por municipio, ~1,2s + reintentos c/u).
+(b) Aceptación: `cache/raw/` con ≥55 ficheros; anotar municipios fallidos.
+
+**A3. Construir `addresses-cm.json` + revisar cobertura** · sesión · esfuerzo: `medium`
+(a) `node scripts/geo/build-address-dataset.mjs`; leer el informe de cobertura (municipios con 0
+direcciones). (b) Decisión: el código ya cae a centroide; si demasiados munis quedan a 0 se valora fase 3
+(fallback `highway` con nombre) o se acepta el centroide y se anota. (c) Aceptación: `addresses-cm.json`
+poblado (>0 KB, la mayoría de munis con `points`); verificar que los muni ids del roster (`mockMunicipalities`)
+están cubiertos por el dataset (reportar % de cobertura del roster, no solo de los 58).
+
+**A4. Verificar consumo en referee-roster** · sonnet · esfuerzo: `medium`
+(a) `referee-roster.ts` (+ test). (b) typecheck 0; test nuevo: toda persona generada tiene `address` que
+termina en el nombre de su municipio y `latitude/longitude` definidos (real o centroide); determinismo
+(doble generación idéntica). (c) Aceptación: `pnpm test` verde; sin persona con lat/lon `undefined` salvo
+municipios sin boundary (anotados).
+
+### Track B — coordenadas reales de venues
+
+**B1. Terminar geocode de venues (243→394)** · mecánico (background) · esfuerzo: `low`
+(a) `node scripts/geo/geocode-venues.mjs` (reanuda por caché). (b) Aceptación: `cache/nominatim/` = 394;
+anotar el nº de fallos (venues sin resultado tras 3 intentos) para el fallback de B3.
+
+**B2. Merge de coords al seed (script nuevo)** · sonnet (diseño de integración) · esfuerzo: `high`
+(a) Nuevo `scripts/geo/merge-venue-coords.mjs` + salida de datos consumible por la app.
+(b) Lee `cache/nominatim/*`; escribe `latitude/longitude` en cada venue. Decisión de integración (evitar
+editar 108 literales a mano): emitir un `apps/web/src/lib/data/venue-coords.json` (`{venueId: {lat, lon}}`)
+que mock-data haga lookup al construir `mockVenues` (demo + fbm-seed), en vez de mutar `fbm-seed.json`
+(14 MB) ni los literales. `MockVenue` ya tiene `latitude?/longitude?` (verificar en types) → poblarlos por
+lookup. (c) Aceptación: typecheck 0; todo venue de `mockVenues` con lat/lon; el import de temporada sigue OK.
+
+**B3. Fallback de venues sin geocodificar** · sesión · esfuerzo: `low`
+(a) En el lookup de B2: venue sin coord → centroide de su municipio (de `addresses-cm.json`), nunca vacío.
+(b) Aceptación: 0 venues con lat/lon `undefined`; los que caen a centroide, anotados.
+
+**B4. Tests de venues** · sonnet · esfuerzo: `low`
+(a) Test: `mockVenues` todos con lat/lon; los geocodificados dentro del bbox de su municipio (sanity
+check grosso). (b) Aceptación: `pnpm test` verde.
+
+### Cierre
+
+**G1. Higiene del repo + README** · sesión · esfuerzo: `low`
+(a) `scripts/geo/README.md` (orden del pipeline, ya referenciado por un comentario del código);
+`.gitignore` += `scripts/geo/cache/` (dumps OSM intermedios, MB) conservando scripts + inputs pequeños +
+las salidas consumibles (`addresses-cm.json`, `venue-coords.json`). (b) Aceptación: `git status` limpio de
+blobs de caché; el pipeline se puede regenerar siguiendo el README.
+
+**G2. Gate + review adversarial (Fase 4)** · PLANNER (fable, juez) · esfuerzo: `max`
+(a) Todo el diff. (b) `pnpm typecheck` + `pnpm test` (+ build cuando el user pare el dev :3001). Review:
+determinismo/hidratación (referee-roster con dataset real), surgical changes, huérfanos, que no se
+comprometan blobs enormes al repo, cobertura de municipios/venues, fallback siempre pobla lat/lon.
+(c) Aceptación: criterios globales. Commit + push.
+
+## Criterios de aceptación globales
+
+- `addresses-cm.json` poblado; toda persona generada con dirección real (o centroide) y lat/lon definidos.
+- `venue-coords.json` (o equivalente) integrado; todo `mockVenue` con lat/lon (real o centroide).
+- `pnpm typecheck` 0; `pnpm test` verde; sin mismatch de hidratación; determinismo (doble generación =).
+- `scripts/geo/cache/` fuera del repo; scripts + salidas consumibles + README commiteados.
+- Ni `fbm-seed.json` ni los 108 literales `demoVenues` editados a mano (integración por lookup).
+
+## Fuera de scope (anotado)
+
+- Recalcular la matriz de distancias con coords reales (el solver sigue con `getMockDistance` muni→muni).
+- Mapa/visualización de coords en la UI (no hay consumidor hoy; se deja el dato listo).
+
+---
+
 # Plan: Simplificar y mejorar designaciones — Tanda 1 (bug + persistencia + Guardar) (2026-07-12)
 
 Estado: ✅ EJECUTADO Y VERIFICADO (gate estático + review adversarial fable) · SIN COMMITEAR · project-claude · tipo modificar · tamaño L · ejecutor: MIXTO (sonnet impl T1-T4 + fable review T5)

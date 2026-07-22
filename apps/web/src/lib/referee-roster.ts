@@ -12,9 +12,14 @@
 // con el PRNG; árbitros consumen pool[0..769] y anotadores pool[770..1269].
 //
 // DETERMINISTA a propósito: usa un PRNG con semilla fija (mulberry32), sin
-// `Math.random()` ni `Date.now()`. Así el server y el cliente producen el mismo
-// roster (mock-data se importa desde componentes cliente) y no hay mismatch de
-// hidratación en Next.
+// `Math.random()` ni `Date.now()`. El roster generado es idéntico en cada
+// evaluación, así que su serialización SSR no produce mismatch de hidratación.
+//
+// `server-only`: este módulo importa el dataset de direcciones (data/addresses-cm.json,
+// ~1,6 MB) y lo consume mock-data, que a su vez arrastra el seed de partidos. Nada
+// de esto debe entrar en el bundle cliente (lo que el cliente necesita vive en
+// mock-data-client.ts). El import convierte esa fuga en error de compilación.
+import 'server-only'
 
 import {
   REFEREE_LEVELS,
@@ -22,6 +27,10 @@ import {
   LEGACY_CATEGORY_BY_LEVEL,
   type RefereeLevel,
 } from './referee-eligibility'
+// Direcciones reales geocodificadas (OSM/Overpass), una entrada por municipio:
+// centroide (red de seguridad) + puntos de dirección real dentro del término
+// municipal. Ver scripts/geo/README.md para cómo se generó/regenera.
+import addressesByMuni from './data/addresses-cm.json'
 
 export type MockPerson = {
   id: string
@@ -41,6 +50,12 @@ export type MockPerson = {
   createdAt: Date
   nick?: string
   refereeLevel?: RefereeLevel
+  // Coordenadas reales (OSM) del punto de dirección. Opcionales en el tipo
+  // (fixtures/tests antiguos no las llevan) pero SIEMPRE pobladas en los
+  // datos generados: `municipalityId` es un derivado cacheado de la
+  // dirección real, no la fuente de la verdad (ver lib/data/addresses-cm.json).
+  latitude?: number
+  longitude?: number
 }
 
 // PRNG determinista (mulberry32).
@@ -1732,6 +1747,47 @@ export function buildNickPool(rand: () => number): string[] {
   return pool
 }
 
+type AddressPoint = { street: string; number: string; postalCode: string; lat: number; lon: number }
+type MuniAddressData = { centroid: { lat: number; lon: number } | null; points: AddressPoint[] }
+const ADDRESSES_BY_MUNI = addressesByMuni as Record<string, MuniAddressData>
+
+/**
+ * Elige una dirección real DENTRO del municipio dado (calle + número + CP
+ * reales de OSM, con lat/lon). El municipio nunca se reshufflea: es un
+ * parámetro de entrada, no algo que esta función decida.
+ *
+ * Red de seguridad: si un municipio no tuviera ninguna dirección real en el
+ * dataset (no debería pasar, ver scripts/geo/build-address-dataset.mjs), cae
+ * a una calle fabricada (como antes) pero SIN dejar lat/lon vacíos: usa el
+ * centroide del municipio.
+ */
+function pickRealAddress(
+  muni: { id: string; name: string },
+  rand: () => number,
+): { address: string; postalCode: string; latitude?: number; longitude?: number } {
+  const data = ADDRESSES_BY_MUNI[muni.id]
+  const points = data?.points ?? []
+  if (points.length > 0) {
+    const p = points[Math.floor(rand() * points.length)]
+    const postalCode = p.postalCode || '28000'
+    return {
+      address: `${p.street} ${p.number}, ${postalCode} ${muni.name}`,
+      postalCode,
+      latitude: p.lat,
+      longitude: p.lon,
+    }
+  }
+  const calle = CALLES[Math.floor(rand() * CALLES.length)]
+  const num = 1 + Math.floor(rand() * 120)
+  const cp = `28${String(1 + Math.floor(rand() * 999)).padStart(3, '0')}`
+  return {
+    address: `${calle} ${num}, ${cp} ${muni.name}`,
+    postalCode: cp,
+    latitude: data?.centroid?.lat,
+    longitude: data?.centroid?.lon,
+  }
+}
+
 /**
  * Genera el roster de 770 árbitros. `municipalities` debe traer id y nombre
  * (se pasa por parámetro para evitar un ciclo de imports con mock-data).
@@ -1757,9 +1813,7 @@ export function generateReferees(municipalities: { id: string; name: string }[])
       // Sesgo a Madrid capital (~45%); resto reparte por los demás municipios.
       const muni = rand() < 0.45 ? madrid : others[Math.floor(rand() * others.length)]
 
-      const calle = CALLES[Math.floor(rand() * CALLES.length)]
-      const num = 1 + Math.floor(rand() * 120)
-      const cp = `28${String(1 + Math.floor(rand() * 999)).padStart(3, '0')}`
+      const { address, postalCode, latitude, longitude } = pickRealAddress(muni, rand)
       const phone = `6${String(10_000_000 + Math.floor(rand() * 89_999_999))}`
       const ibanBody = Array.from({ length: 22 }, () => Math.floor(rand() * 10)).join('')
 
@@ -1770,8 +1824,8 @@ export function generateReferees(municipalities: { id: string; name: string }[])
         phone,
         role: 'arbitro',
         category: LEGACY_CATEGORY_BY_LEVEL[level],
-        address: `${calle} ${num}, ${cp} ${muni.name}`,
-        postalCode: cp,
+        address,
+        postalCode,
         municipalityId: muni.id,
         bankIban: `ES${ibanBody}`,
         active: true,
@@ -1780,6 +1834,8 @@ export function generateReferees(municipalities: { id: string; name: string }[])
         createdAt: new Date('2025-09-01'),
         nick: nickPool[n],
         refereeLevel: level,
+        latitude,
+        longitude,
       })
       n++
     }
@@ -1831,9 +1887,7 @@ export function generateScorers(municipalities: { id: string; name: string }[]):
       const name = `${nombre} ${ap1} ${ap2}`
 
       const muni = rand() < 0.45 ? madrid : others[Math.floor(rand() * others.length)]
-      const calle = CALLES[Math.floor(rand() * CALLES.length)]
-      const num = 1 + Math.floor(rand() * 120)
-      const cp = `28${String(1 + Math.floor(rand() * 999)).padStart(3, '0')}`
+      const { address, postalCode, latitude, longitude } = pickRealAddress(muni, rand)
       const phone = `6${String(10_000_000 + Math.floor(rand() * 89_999_999))}`
       const ibanBody = Array.from({ length: 22 }, () => Math.floor(rand() * 10)).join('')
 
@@ -1844,8 +1898,8 @@ export function generateScorers(municipalities: { id: string; name: string }[]):
         phone,
         role: 'anotador',
         category,
-        address: `${calle} ${num}, ${cp} ${muni.name}`,
-        postalCode: cp,
+        address,
+        postalCode,
         municipalityId: muni.id,
         bankIban: `ES${ibanBody}`,
         active: true,
@@ -1853,6 +1907,8 @@ export function generateScorers(municipalities: { id: string; name: string }[]):
         authUserId: null,
         createdAt: new Date('2025-09-01'),
         nick: nickPool[REFEREE_TOTAL + n],
+        latitude,
+        longitude,
       })
       n++
     }

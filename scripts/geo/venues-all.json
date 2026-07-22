@@ -1,0 +1,2760 @@
+[
+  {
+    "id": "venue-001",
+    "name": "BARAJAS, PDVO.",
+    "address": "AVDA. LOGROÑO, 70",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-002",
+    "name": "CDM VILLA DE MADRID",
+    "address": "C/ BREZOS, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-003",
+    "name": "CIUDAD DE ZARAGOZA, COL.",
+    "address": "MANUEL AGUILAR MUÑOZ, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-004",
+    "name": "FCO. FERNÁNDEZ OCHOA, PDVO.",
+    "address": "CATORCE OLIVAS S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-005",
+    "name": "CDM BARCELÓ",
+    "address": "C/ BARCELÓ 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-006",
+    "name": "CENTRO INTEGRADO ARGANZUELA",
+    "address": "CANARIAS, 17",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-007",
+    "name": "MARQUES DE SAMARANCH, PDVO.",
+    "address": "PASEO IMPERIAL, 18",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-008",
+    "name": "BRISTOL, COLEGIO",
+    "address": "C/ ENRIQUE PRADA, 9",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-009",
+    "name": "CHAMARTIN, PDVO.",
+    "address": "PLAZA DEL PERÚ S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-010",
+    "name": "NTRA, SRA. SANTA MARÍA, COLEGIO",
+    "address": "AVDA. DE LOS MADROÑOS,",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-011",
+    "name": "PARAISO SSCC, COL.",
+    "address": "PADRE DAMIÁN, 34",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-012",
+    "name": "PINTOR ROSALES, COL.",
+    "address": "PRINCIPE DE VERGARA 141",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-013",
+    "name": "PRADILLO, PDVO.",
+    "address": "PRADILLO, 33",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-014",
+    "name": "C. CULTURAL GALILEO (HASTA 21 H)",
+    "address": "C/ FERNANDO EL CATOLICO, 35",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-015",
+    "name": "VALLEHERMOSO,PDVO",
+    "address": "AVDA FILIPINAS, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-016",
+    "name": "ARTURO SORIA, COL.",
+    "address": "MANUEL MARÍA IGLESIAS, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-017",
+    "name": "CASA DE LA VIRGEN, COL.",
+    "address": "VIRGEN DEL VAL, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-018",
+    "name": "CONCEPCIÓN, PDVO.",
+    "address": "JOSE DEL HIERRO, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-019",
+    "name": "GUSTAVO ADOLFO BECQUER",
+    "address": "SANTA GENOVEVA, 32",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-020",
+    "name": "JOYFE, COL.",
+    "address": "VITAL AZA, 65",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-021",
+    "name": "MONTPELLIER",
+    "address": "VIRGEN DEL VAL, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-022",
+    "name": "NTRA SRA DE LAS VICTORIAS",
+    "address": "APOSTOL SANTIAGO, 72",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-023",
+    "name": "SAN BLAS, PDVO.",
+    "address": "AVDA. HELLÍN, 79",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-024",
+    "name": "SAN JOSE, COL.",
+    "address": "EMILIO FERRARI, 87",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-025",
+    "name": "SAN JUAN BOSCO, COL.",
+    "address": "SANTA IRENE, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-026",
+    "name": "SANTA MARIA DEL CARMEN, COLEGIO",
+    "address": "MISTERIOS, 38",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-027",
+    "name": "SANTO DOMINGO SAVIO, COL. (DOSA)",
+    "address": "SANTO DOMINGO SAVIO, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-028",
+    "name": "EL VALLE LAS TABLAS, COL.",
+    "address": "CEBREIRO, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-029",
+    "name": "ESTUDIANTES LAS TABLAS, COL.",
+    "address": "CALLE FROMISTA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-030",
+    "name": "LA MASÓ, PDVO.",
+    "address": "LA MASÓ ESQ. VENTISQUERO DE LA CONDESA",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-031",
+    "name": "SANTA MARIA LA BLANCA",
+    "address": "MONASTERIO DE OSEIRA, 17",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-032",
+    "name": "VICENTE DEL BOSQUE, PDVO.",
+    "address": "AVDA. MONFORTE DE LEMOS, 13-15",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-033",
+    "name": "ARQUITECTO GAUDÍ, COL.",
+    "address": "ROSA JARDÓN, 10",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-034",
+    "name": "ASUNCION CUESTA BLANCA, COLEGIO",
+    "address": "ASUNCION CUESTA BLANCA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-035",
+    "name": "CARDENAL MARCELO SPINOLA, COLEGIO",
+    "address": "CARDENAL MARCELO SPINOLA, 34",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-036",
+    "name": "CEIP PINAR DEL REY",
+    "address": "AV. DE SAN LUIS 23",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-037",
+    "name": "CEU SANCHINARRO, COL.",
+    "address": "NICETO ALCALA ZAMORA, 43",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-038",
+    "name": "COLEGIO MADRID",
+    "address": "C/ MESENA 101",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-039",
+    "name": "CORAZON INMACULADO (COIN), COLEGIO",
+    "address": "LOPEZ DE HOYOS, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-040",
+    "name": "EL VALLE SANCHINARRO, COL.",
+    "address": "ANA DE AUSTRIA, 60",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-041",
+    "name": "GAUDEM, COLEGIO",
+    "address": "PLAYA DE BARLOVENTO, 14",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-042",
+    "name": "HIGHLANDS",
+    "address": "C/ SAN ENRIQUE DE OSSO, 46",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-043",
+    "name": "HORTALEZA, PDVO. (Antes del dom. 18h)",
+    "address": "CTRA. ESTACION DE HORTALEZA,11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-044",
+    "name": "ICS (International College Spain)",
+    "address": "C/ VEREDA NORTE, 3 (LA MORALEJA)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-045",
+    "name": "INSTALACION BASICA VILLA DE PONS",
+    "address": "AV. DE SAN LUIS 25 D",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-046",
+    "name": "IRLANDESAS, COLEGIO",
+    "address": "C/ BEGONIA 275 (LA MORALEJA)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-047",
+    "name": "LA INMACULADA, COL.",
+    "address": "AVDA VIRGEN DEL CARMEN, 13",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-048",
+    "name": "LUIS ARAGONÉS, PDVO",
+    "address": "EL PROVENCIO, 20",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-049",
+    "name": "MARIA VIRGEN, COLEGIO",
+    "address": "C/ PADRE DAMIAN 20",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-050",
+    "name": "PABLO PICASSO",
+    "address": "C/ANGEL LUIS DE LA HERRAN S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-051",
+    "name": "PADRE MANYANET, COLEGIO",
+    "address": "CARRETERA EL GOLOSO KM. 3,780",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-052",
+    "name": "PADRE POVEDA",
+    "address": "AVENIDA ALFONSO XIII, 23",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-053",
+    "name": "RAMÓN Y CAJAL, COL.",
+    "address": "ARTURO SORIA, 206",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-054",
+    "name": "SAN PEDRO APOSTOL, COLEGIO",
+    "address": "BABILONIA, 19",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-055",
+    "name": "SANTA CATALINA DE SENA",
+    "address": "ALFONSO XIII, 160",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-056",
+    "name": "ABACO, COL.",
+    "address": "AVDA DE LA PESETA, 8",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-057",
+    "name": "ALUCHE, PDVO.",
+    "address": "AVDA. GRAL. FANJUL, 14",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-058",
+    "name": "AMOROS, COLEGIO",
+    "address": "JOAQUIN TURINA, 37",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-059",
+    "name": "ARTICA, COL.",
+    "address": "C/ DE LOS MORALES, 25",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-060",
+    "name": "COLEGIO ESCOLAPIAS",
+    "address": "EUGENIA DE MONTIJO, 83",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-061",
+    "name": "COLEGIO SANTA GEMA",
+    "address": "ESCALONA, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-062",
+    "name": "GALLUR, PDVO.",
+    "address": "GALLUR, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-063",
+    "name": "LA DEHESA, CDM",
+    "address": "AVDA ARQUEROS S/N(CUATRO VIENTOS)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-064",
+    "name": "LA MINA, PDVO.",
+    "address": "MONSEÑOR OSCAR ROMERO, 41",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-065",
+    "name": "LA SALLE CARABANCHEL, INSTITUCION",
+    "address": "GENERAL ROMERO BASART, 50",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-066",
+    "name": "LAS CRUCES, PDVO.",
+    "address": "AVDA. DE LOS POBLADOS (en frente C/Erica)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-067",
+    "name": "CIUDAD DE LOS POETAS, PDVO.",
+    "address": "ANTONIO MACHADO, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-068",
+    "name": "FERNANDO MARTÍN, PDVO.",
+    "address": "SANTO ANGEL DE LA GUARDA, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-069",
+    "name": "JOSE MARÍA CAGIGAL, PDVO.",
+    "address": "SANTA POLA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-070",
+    "name": "CEIP MARTINEZ MONTAÑES",
+    "address": "C/ HACIENDA DE PAVONES 223",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-071",
+    "name": "ESCUELAS AGUIRRE",
+    "address": "C/ PIO BAROJA, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-072",
+    "name": "GREDOS S.D. MORATALAZ",
+    "address": "LUIS DE HOYOS SAINZ, 170",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-073",
+    "name": "LA MERCED, COL.",
+    "address": "JOSE LUIS DE ARRESE, 5",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-074",
+    "name": "MONSERRAT, COL.",
+    "address": "JUAN ESPLANDIU, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-075",
+    "name": "MORATALAZ, PDVO.",
+    "address": "VALDEBERNARDO, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-076",
+    "name": "PARQUE ADELFAS",
+    "address": "C/ MARTINEZ CORROCHANO, 26",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-077",
+    "name": "PEPU HERNANDEZ, PAB.",
+    "address": "AVDA NIZA ESQUINA C/MANCHESTER",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-078",
+    "name": "POLIDEPORTIVO LA ELIPA",
+    "address": "C/ ALCALDE GARRIDO JUARISTI 17",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-079",
+    "name": "SAINZ DE VICUÑA, COL.",
+    "address": "CAMINO DE VINATEROS, 104",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-080",
+    "name": "POLIDEPORTIVO LOS ROSALES",
+    "address": "C/ LAS LILAS S/N",
+    "municipalityId": "muni-005",
+    "municipalityName": "Móstoles"
+  },
+  {
+    "id": "venue-081",
+    "name": "POLIDEPORTIVO PAU 4",
+    "address": "C/ PERSEO 95",
+    "municipalityId": "muni-005",
+    "municipalityName": "Móstoles"
+  },
+  {
+    "id": "venue-082",
+    "name": "DAOIZ Y VELARDE, PDVO.",
+    "address": "AVDA.CIUDAD DE BARCELONA, 162",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-083",
+    "name": "SANTA MARIA DEL PILAR, COLEGIO",
+    "address": "C/ DE LOS REYES MAGOS, 3",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-084",
+    "name": "BOSTON, PDVO.",
+    "address": "PLAZA BOSTON, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-085",
+    "name": "ENTREVIAS, PDVO",
+    "address": "RONDA DEL SUR, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-086",
+    "name": "INSTALACION BASICA TORRESPAÑA",
+    "address": "C/NUDO M-30 C/V A. SAINZ DE BARANDA, 94",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-087",
+    "name": "MOSCARDÓ, PDVO.",
+    "address": "PILAR DE ZARAGOZA, 93",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-088",
+    "name": "NUESTRA SEÑORA DE LORETO, COLEGIO",
+    "address": "PRINCIPE DE VERGARA, 42",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-089",
+    "name": "J.H. NEWMAN, COLEGIO",
+    "address": "AVDA. GUADALAJARA, 28-32",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-090",
+    "name": "LAS ROSAS, COLEGIO",
+    "address": "C/ DE CALABRIA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-091",
+    "name": "SAN BLAS-ANTONIO MATA, PAB.",
+    "address": "AVDA. HELLÍN, 79",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-092",
+    "name": "ANTONIO DÍAZ MIGUEL, PDVO.",
+    "address": "PADRE RUBIO, 65",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-093",
+    "name": "TRIANGULO DE ORO, PDVO.",
+    "address": "BRAVO MURILLO, 374",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-094",
+    "name": "M4",
+    "address": "C/ LA PLATA S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-095",
+    "name": "PABELLON JAVIER LIMONES",
+    "address": "C/ JOAQUIN BLUME S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-096",
+    "name": "JESÚS ROLLÁN",
+    "address": "AVENA S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-097",
+    "name": "CEIP SANTO DOMINGO",
+    "address": "SAN FELIU DE GUIXOLS, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-098",
+    "name": "GREDOS S.D. MORATALAZ",
+    "address": "LUIS DE HOYOS SAINZ, 170",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-099",
+    "name": "MIGUEL GUILLEM PRIM",
+    "address": "C/ FUENTIDUEÑA, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-100",
+    "name": "NUEVA CASTILLA, COLEGIO",
+    "address": "C/ MONTES DE BARBANZA, 19",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-101",
+    "name": "PALOMERAS VALLECAS, PDVO.",
+    "address": "AVDA. ALBUFERA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-102",
+    "name": "WILFRED AGBONAVARE (ANT. ALBERTO GARCIA)",
+    "address": "REGUERA DE TOMATEROS, 39 B",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-103",
+    "name": "ANGEL NIETO, PDVO.",
+    "address": "PAYASO FOFÓ, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-104",
+    "name": "EL VALLE VALDEBERNARDO",
+    "address": "C/ DE LOS FAISANES S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-105",
+    "name": "VALDEBERNARDO (FAUSTINA VALLADOLID)",
+    "address": "LADERA DE LOS ALMENDROS, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-106",
+    "name": "CEIP JUAN DE LA CIERVA",
+    "address": "VILLARROSA, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-107",
+    "name": "PLATA Y CASTAÑAR",
+    "address": "PASEO PLATA Y CASTAÑAR, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "venue-108",
+    "name": "RAÚL GONZALEZ, PDVO",
+    "address": "BENIMAMET, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CABRINI-COLEGIO-SEMICUBIERTO-MADRID",
+    "name": "CABRINI, COLEGIO (Semicubierto)",
+    "address": "STA. FRANCISCA JAVIER CABRINI esquina C/ Sicélidas",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CORAZONISTAS-PABELLON-COLEGIO-MADRID",
+    "name": "CORAZONISTAS, PABELLON COLEGIO",
+    "address": "calle GUATEMALA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EL-VALLE-LAS-TABLAS-PABELLON-MADRID",
+    "name": "EL VALLE LAS TABLAS, PABELLON",
+    "address": "COLEGIO CEBREIRO, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VICENTE-DEL-BOSQUE-CDM-MADRID",
+    "name": "VICENTE DEL BOSQUE, CDM",
+    "address": "(PABELLON) AVDA. MONFORTE DE LEMOS, 13",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ANGEL-DURANGO-PDVO-MPAL-ARROYOMOLINOS",
+    "name": "ANGEL DURANGO, PDVO. MPAL.",
+    "address": "CALLE DE AVILA, 1",
+    "municipalityId": "muni-033",
+    "municipalityName": "Arroyomolinos"
+  },
+  {
+    "id": "fbm-venue-LAS-OLIVAS-CIUDAD-DEPORTIVA-ARANJUEZ",
+    "name": "LAS OLIVAS, CIUDAD DEPORTIVA",
+    "address": "C/ JUAN DE HERRERA, 1",
+    "municipalityId": "muni-023",
+    "municipalityName": "Aranjuez"
+  },
+  {
+    "id": "fbm-venue-PARQUE-HENARES-PABELLON-SAN-FERNANDO-HENARES",
+    "name": "PARQUE HENARES, PABELLON",
+    "address": "calle VITORIA, S/N",
+    "municipalityId": "muni-025",
+    "municipalityName": "San Fernando de Henares"
+  },
+  {
+    "id": "fbm-venue-CERRO-ALMODOVAR-PABELLON-MADRID",
+    "name": "CERRO ALMODOVAR, PABELLON",
+    "address": "CERRO ALMODOVAR, 9",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EL-TEJAR-PABELLON-MAJADAHONDA",
+    "name": "EL TEJAR, PABELLON",
+    "address": "ROMERO, 1",
+    "municipalityId": "muni-012",
+    "municipalityName": "Majadahonda"
+  },
+  {
+    "id": "fbm-venue-FERNANDO-MARTIN-PDVO-MPAL-RIVAS-VACIAMADRID",
+    "name": "FERNANDO MARTIN, PDVO. MPAL.",
+    "address": "SANTO ANGEL DE LA GUARDA, 6",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-BUEN-CONSEJO-PABELLON-COLEGIO-MADRID",
+    "name": "BUEN CONSEJO, PABELLON COLEGIO",
+    "address": "BEATRIZ DE BOBADILLA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ALFREDO-ESPINIELLA-PABELLON-PISTA-ROZAS-DE-MADRID",
+    "name": "ALFREDO ESPINIELLA, PABELLON (PISTA",
+    "address": "CENTRAL) COMUNIDAD DE LA RIOJA, 4",
+    "municipalityId": "muni-011",
+    "municipalityName": "Las Rozas"
+  },
+  {
+    "id": "fbm-venue-JESUS-MARIA-PABELLON-COLEGIO-MADRID",
+    "name": "JESUS MARIA, PABELLON COLEGIO",
+    "address": "CALLE NUÑEZ DE BALBOA, 90",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SOTO-DEL-REAL-PABELLON-SOTO-DEL-REAL",
+    "name": "SOTO DEL REAL, PABELLON",
+    "address": "EL EGIDILLO, S/N",
+    "municipalityId": "muni-052",
+    "municipalityName": "Soto del Real"
+  },
+  {
+    "id": "fbm-venue-SANTA-MARIA-DEL-PILAR-CENTRO-MADRID",
+    "name": "SANTA MARIA DEL PILAR, CENTRO",
+    "address": "DEPORTIVO PABELLON calle DOCTOR ESQUERDO, 64-66",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VILLA-DE-MADRID-PABELLON-MADRID",
+    "name": "VILLA DE MADRID, PABELLON",
+    "address": "CALLE BREZOS, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-SALLE-INSTITUCION-PABELLON-MADRID",
+    "name": "LA SALLE, INSTITUCION (Pabellón)",
+    "address": "BLAS CABRERA, 50",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-DAGANZO-PABELLON-MUNICIPAL-DAGANZO-DE-ARRIBA",
+    "name": "DAGANZO, PABELLON MUNICIPAL",
+    "address": "CALLE DON QUIJOTE DE LA MANCHA, 1",
+    "municipalityId": "muni-037",
+    "municipalityName": "Daganzo de Arriba"
+  },
+  {
+    "id": "fbm-venue-ESCUELAS-PIAS-CARABANCHEL-MADRID",
+    "name": "ESCUELAS PIAS CARABANCHEL,",
+    "address": "PABELLON COLEGIO AVDA. EUGENIA DE MONTIJO, 83",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LOS-ALMENDROS-PABELLON-RIVAS-VACIAMADRID",
+    "name": "LOS ALMENDROS, PABELLON",
+    "address": "AIGUES TORTES, S/N",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-DEHESA-BOYAL-PABELLON-SAN-SEBASTIAN-REYES",
+    "name": "DEHESA BOYAL, PABELLON",
+    "address": "AVDA. NAVARRONDAN, S/N",
+    "municipalityId": "muni-015",
+    "municipalityName": "San Sebastián de los Reyes"
+  },
+  {
+    "id": "fbm-venue-MIRAMADRID-PABELLON-COLEGIO-PARACUELLOS-DE-JARAMA",
+    "name": "MIRAMADRID, PABELLON COLEGIO",
+    "address": "MAR CASPIO, 21",
+    "municipalityId": "muni-047",
+    "municipalityName": "Paracuellos de Jarama"
+  },
+  {
+    "id": "fbm-venue-IE-TOWER-MADRID",
+    "name": "IE TOWER",
+    "address": "AVDA. MONFORTE DE LEMOS, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-AGUSTINIANO-PISTA-EXTERIOR-MADRID",
+    "name": "AGUSTINIANO, PISTA EXTERIOR",
+    "address": "PEZ AUSTRAL, 13 BIS",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CAMPOHERMOSO-PABELLON-HUMANES-DE-MADRID",
+    "name": "CAMPOHERMOSO, PABELLON",
+    "address": "VALDEHONDILLO, 3",
+    "municipalityId": "muni-029",
+    "municipalityName": "Humanes de Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-FERNANDO-CP-ARANJUEZ",
+    "name": "SAN FERNANDO, C.P.",
+    "address": "SANTIAGO RUSIÑOL, 7",
+    "municipalityId": "muni-023",
+    "municipalityName": "Aranjuez"
+  },
+  {
+    "id": "fbm-venue-PEPE-DOMAICA-PABELLON-MADRID",
+    "name": "PEPE DOMAICA, PABELLON",
+    "address": "PLAZA ELIPTICA, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SANTIAGO-APOSTOL-PDVO-MPAL-VILLANUEVA-DE-LA-CANADA",
+    "name": "SANTIAGO APOSTOL, PDVO. MPAL.",
+    "address": "CALLE DEL POLIDEPORTIVO, S/N",
+    "municipalityId": "muni-027",
+    "municipalityName": "Villanueva de la Cañada"
+  },
+  {
+    "id": "fbm-venue-ARGANZUELA-CENTRO-INTEGRADO-MADRID",
+    "name": "ARGANZUELA, CENTRO INTEGRADO",
+    "address": "C/ PALOS DE LA FRONTERA, 40",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-WILFRED-AGBONAVBARE-PABELLON-MADRID",
+    "name": "WILFRED AGBONAVBARE, PABELLON",
+    "address": "C/ REGUERA DE TOMATEROS, 39",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EL-TRIGAL-PABELLON-FUENLABRADA",
+    "name": "EL TRIGAL, PABELLON",
+    "address": "LOGROÑO, 4",
+    "municipalityId": "muni-006",
+    "municipalityName": "Fuenlabrada"
+  },
+  {
+    "id": "fbm-venue-ESTUDIANTES-LAS-TABLAS-COLEGIO-MADRID",
+    "name": "ESTUDIANTES LAS TABLAS, COLEGIO",
+    "address": "FROMISTA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-AGUSTIN-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "SAN AGUSTIN, COLEGIO (Descubierto)",
+    "address": "CALLE PADRE DAMIAN, 18",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CORAZONISTAS-COLEGIO-MADRID",
+    "name": "CORAZONISTAS, COLEGIO",
+    "address": "calle GUATEMALA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-DEHESA-CDM-PABELLON-MADRID",
+    "name": "LA DEHESA C.D.M., PABELLON",
+    "address": "Avenida DE LOS ARQUEROS, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-NTRA-SRA-DE-LORETO-COLEGIO-MADRID",
+    "name": "NTRA. SRA. DE LORETO, COLEGIO",
+    "address": "GENERAL PARDIÑAS, 37",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ALUCHE-PDVO-MPAL-MADRID",
+    "name": "ALUCHE, PDVO. MPAL.",
+    "address": "AVDA. DE LAS AGUILAS, 14",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PALOMERAS-PDVO-MPAL-MADRID",
+    "name": "PALOMERAS, PDVO. MPAL.",
+    "address": "TRANVIA DE ARGANDA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-JESUS-ESPANA-PABELLON-PISTA-VALDEMORO",
+    "name": "JESUS ESPAÑA, PABELLON (PISTA",
+    "address": "CENTRAL) NEPTUNO, 4",
+    "municipalityId": "muni-022",
+    "municipalityName": "Valdemoro"
+  },
+  {
+    "id": "fbm-venue-CALDEIRO-COLEGIO-MADRID",
+    "name": "CALDEIRO, COLEGIO",
+    "address": "AVDA. DE LOS TOREROS, 45",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CEIP-SERRACINES-PABELLON-SERRACINES",
+    "name": "C.E.I.P. SERRACINES, PABELLON",
+    "address": "ROMERAL, 15",
+    "municipalityId": "muni-039",
+    "municipalityName": "Fresno de Torote"
+  },
+  {
+    "id": "fbm-venue-PIO-BAROJA-CP-MOSTOLES",
+    "name": "PIO BAROJA, C.P.",
+    "address": "CAMINO CARRASQUILLAS, S/N",
+    "municipalityId": "muni-005",
+    "municipalityName": "Móstoles"
+  },
+  {
+    "id": "fbm-venue-LAS-CRUCES-CDM-MADRID",
+    "name": "LAS CRUCES, C.D.M.",
+    "address": "AVDA. DE LOS POBLADOS, 72",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-DUQUE-DE-ALGETE-PABELLON-ALGETE",
+    "name": "DUQUE DE ALGETE, PABELLON",
+    "address": "CAMINO VEREDA DE LA LOBERA, S/N",
+    "municipalityId": "muni-032",
+    "municipalityName": "Algete"
+  },
+  {
+    "id": "fbm-venue-EL-PLANTIO-PABELLON-COSLADA",
+    "name": "EL PLANTIO, PABELLON",
+    "address": "CALLE ALAMEDA, 7",
+    "municipalityId": "muni-018",
+    "municipalityName": "Coslada"
+  },
+  {
+    "id": "fbm-venue-OLIMPIA-PABELLON-LEGANES",
+    "name": "OLIMPIA, PABELLON",
+    "address": "AVDA. DEL COBRE, 12",
+    "municipalityId": "muni-004",
+    "municipalityName": "Leganés"
+  },
+  {
+    "id": "fbm-venue-CORAZON-INMACULADO-PABELLON-MADRID",
+    "name": "CORAZON INMACULADO, PABELLON",
+    "address": "COLEGIO LOPEZ DE HOYOS, 59 c.v. C/ JOSEP PLA",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-JOYFE-PABELLON-COLEGIO-MADRID",
+    "name": "JOYFE, PABELLON COLEGIO",
+    "address": "VITAL AZA, 65",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PACO-HERNANDEZ-PABELLON-MADRID",
+    "name": "PACO HERNANDEZ, PABELLON",
+    "address": "VALDELINARES, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MIGUEL-HERNANDEZ-PABELLON-ALCALA-DE-HENARES",
+    "name": "MIGUEL HERNANDEZ, PABELLON",
+    "address": "COLEGIO LUIS MADRONA, 15",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-LAS-ERAS-PABELLON-HOYO-DE-MANZANARES",
+    "name": "LAS ERAS, PABELLON",
+    "address": "LAS ERAS, S/N",
+    "municipalityId": "muni-043",
+    "municipalityName": "Hoyo de Manzanares"
+  },
+  {
+    "id": "fbm-venue-LOS-SAUCES-MORALEJA-COLEGIO-ALCOBENDAS",
+    "name": "LOS SAUCES MORALEJA, COLEGIO",
+    "address": "CAMINO ANCHO, 83",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-JUAN-ANTONIO-SAMARANCH-CDAD-COLMENAR-VIEJO",
+    "name": "JUAN ANTONIO SAMARANCH, CDAD.",
+    "address": "DPTVA. AVDA. JUAN PABLO II, 13",
+    "municipalityId": "muni-016",
+    "municipalityName": "Colmenar Viejo"
+  },
+  {
+    "id": "fbm-venue-AMOROS-POLIDEPORTIVO-MADRID",
+    "name": "AMOROS, POLIDEPORTIVO",
+    "address": "JOAQUIN TURINA, 39",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-HORTALEZA-PDVO-MPAL-MADRID",
+    "name": "HORTALEZA, PDVO. MPAL.",
+    "address": "CRTA. ESTACION DE HORTALEZA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PERALES-DEL-RIO-PABELLON-PERALES-DEL-RIO",
+    "name": "PERALES DEL RIO, PABELLON",
+    "address": "DEPORTIVO GROENLANDIA, 8",
+    "municipalityId": "muni-003",
+    "municipalityName": "Getafe"
+  },
+  {
+    "id": "fbm-venue-IES-ARTURO-SORIA-MADRID",
+    "name": "I.E.S. ARTURO SORIA",
+    "address": "CALLE SOMONTIN, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-NAVAARMADO-PATRICIA-GARCIA-PDVO-ESCORIAL-EL",
+    "name": "NAVAARMADO PATRICIA GARCIA, PDVO.",
+    "address": "NAVAARMADO, 5",
+    "municipalityId": "muni-038",
+    "municipalityName": "El Escorial"
+  },
+  {
+    "id": "fbm-venue-RECUERDO-PABELLON-COLEGIO-MADRID",
+    "name": "RECUERDO, PABELLON COLEGIO",
+    "address": "PLAZA DUQUE DE PASTRANA, 5",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ARCANGEL-RAFAEL-PABELLON-MADRID",
+    "name": "ARCANGEL RAFAEL, PABELLON",
+    "address": "COLEGIO CALLE ESCALONA, 109",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LOS-NEGRALES-POLIDEPORTIVO-COLLADO-VILLALBA",
+    "name": "LOS NEGRALES, POLIDEPORTIVO",
+    "address": "SANTA EMILIA, 70 (LOS NEGRALES)",
+    "municipalityId": "muni-024",
+    "municipalityName": "Collado Villalba"
+  },
+  {
+    "id": "fbm-venue-IRLANDESAS-COLEGIO-SEMICUBIERTO-ALCOBENDAS",
+    "name": "IRLANDESAS, COLEGIO (Semicubierto)",
+    "address": "BEGONIA, 257",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-PILARISTAS-PABELLON-COLEGIO-MADRID",
+    "name": "PILARISTAS, PABELLON COLEGIO",
+    "address": "AYALA, 47",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-COLEGIO-BERNADETTE-PABELLON-ARAVACA",
+    "name": "COLEGIO BERNADETTE, PABELLON",
+    "address": "CALLE SANTA BERNARDITA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PARQUE-DEL-SURESTE-PABELLON-RIVAS-VACIAMADRID",
+    "name": "PARQUE DEL SURESTE, PABELLON",
+    "address": "(PISTA CENTRAL) MIRADOR Frente al nº 25",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-OBISPO-PERELLO-COLEGIO-MADRID",
+    "name": "OBISPO PERELLO, COLEGIO",
+    "address": "VIRGEN DEL SAGRARIO, 22",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ENTREVIAS-PDVO-MPAL-MADRID",
+    "name": "ENTREVIAS, PDVO. MPAL.",
+    "address": "RONDA DEL SUR esquina STA. RAFAELA MARIA DEL",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LICEO-FRANCES-PABELLON-COLEGIO-MADRID",
+    "name": "LICEO FRANCES, PABELLON COLEGIO",
+    "address": "AVDA. DE LOS MADROÑOS frente nº 42",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ESCOLAPIOS-DE-ALCALA-COLEGIO-ALCALA-DE-HENARES",
+    "name": "ESCOLAPIOS DE ALCALA, COLEGIO",
+    "address": "AVDA. LOPE DE FIGUEROA, 27",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-MIGUEL-DELIBES-CP-PARLA",
+    "name": "MIGUEL DELIBES, C.P.",
+    "address": "FELIPE II, 15 (entrada por Jaime I El Conquistador)",
+    "municipalityId": "muni-020",
+    "municipalityName": "Parla"
+  },
+  {
+    "id": "fbm-venue-AGUSTIN-MARANON-PABELLON-ARANJUEZ",
+    "name": "AGUSTIN MARAÑON, PABELLON",
+    "address": "1º DE MAYO, 4",
+    "municipalityId": "muni-023",
+    "municipalityName": "Aranjuez"
+  },
+  {
+    "id": "fbm-venue-AMAYA-VALDEMORO-PABELLON-ALCOBENDAS",
+    "name": "AMAYA VALDEMORO, PABELLON",
+    "address": "CRTA. ALCOBENDAS-BARAJAS, Km. 1,200",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-STELLA-MARIS-LA-GAVIA-PABELLON-MADRID",
+    "name": "STELLA MARIS LA GAVIA, PABELLON",
+    "address": "COLEGIO CALLE PEÑARANDA DE BRACAMONTE, 9",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-MARTIN-VALDEIGLESIAS-PABELLON-SAN-MARTIN-DE-VALDEIGLESIAS",
+    "name": "SAN MARTIN VALDEIGLESIAS, PABELLON",
+    "address": "SALAMANCA, 17",
+    "municipalityId": "muni-051",
+    "municipalityName": "San Martín de Valdeiglesias"
+  },
+  {
+    "id": "fbm-venue-JOSE-LUIS-FERNANDEZ-CANO-MADRID",
+    "name": "JOSE LUIS FERNANDEZ CANO,",
+    "address": "PABELLON HACIENDA DE PAVONES, 223",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FAUSTINA-VALLADOLID-PABELLON-MADRID",
+    "name": "FAUSTINA VALLADOLID, PABELLON",
+    "address": "LADERA DE LOS ALMENDROS, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CALASANCIO-PABELLON-COLEGIO-MADRID",
+    "name": "CALASANCIO, PABELLON COLEGIO",
+    "address": "GENERAL DIAZ PORLIER, 56-58",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-GREENFIELD-PABELLON-COLEGIO-MADRID",
+    "name": "GREENFIELD, PABELLON COLEGIO",
+    "address": "CARR. DE CARABANCHEL A VILLAVERDE, 82",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-LUZ-PABELLON-PISTA-3-TRES-CANTOS",
+    "name": "LA LUZ, PABELLON PISTA 3",
+    "address": "AVENIDA DE LA LUZ, 6",
+    "municipalityId": "muni-014",
+    "municipalityName": "Tres Cantos"
+  },
+  {
+    "id": "fbm-venue-IES-JOSE-GARCIA-NIETO-PABELLON-ROZAS-DE-MADRID",
+    "name": "I.E.S. JOSE GARCIA NIETO, PABELLON",
+    "address": "CAMILO JOSE CELA, 24",
+    "municipalityId": "muni-011",
+    "municipalityName": "Las Rozas"
+  },
+  {
+    "id": "fbm-venue-MEJORADA-PABELLON-MPAL-MEJORADA-DEL-CAMPO",
+    "name": "MEJORADA, PABELLON MPAL.",
+    "address": "JOAN MIRO, S/N",
+    "municipalityId": "muni-045",
+    "municipalityName": "Mejorada del Campo"
+  },
+  {
+    "id": "fbm-venue-MORATALAZ-PDVO-MPAL-MADRID",
+    "name": "MORATALAZ, PDVO. MPAL.",
+    "address": "VALDEBERNARDO, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-MASO-PABELLON-MADRID",
+    "name": "LA MASO, PABELLON",
+    "address": "Calle de La Masó, 80",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-PEDRO-APOSTOL-COLEGIO-MADRID",
+    "name": "SAN PEDRO APOSTOL, COLEGIO",
+    "address": "BABILONIA, 19",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CAMPO-POR-DETERMINAR-ALCALA-DE-HENARES",
+    "name": "CAMPO POR DETERMINAR",
+    "address": "...",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-PARQUE-DE-CATALUNA-CLUB-TORREJON-DE-ARDOZ",
+    "name": "PARQUE DE CATALUÑA, CLUB",
+    "address": "DEPORTIVO CALLE HILADOS, 2",
+    "municipalityId": "muni-008",
+    "municipalityName": "Torrejón de Ardoz"
+  },
+  {
+    "id": "fbm-venue-NUEVA-CASTILLA-PABELLON-COLEGIO-MADRID",
+    "name": "NUEVA CASTILLA, PABELLON COLEGIO",
+    "address": "MAZATERON, 12",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-COLEGIO-SAN-AGUSTIN-LOS-NEGRALES-GUADARRAMA",
+    "name": "COLEGIO SAN AGUSTIN LOS NEGRALES,",
+    "address": "PABELLON SANTA EMILIA, 72 (LOS NEGRALES)",
+    "municipalityId": "muni-042",
+    "municipalityName": "Guadarrama"
+  },
+  {
+    "id": "fbm-venue-MENESIANO-PABELLON-COLEGIO-MADRID",
+    "name": "MENESIANO, PABELLON COLEGIO",
+    "address": "AVENIDA DE BRASILIA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CIEMPOZUELOS-CIUDAD-DEPORTIVA-CIEMPOZUELOS",
+    "name": "CIEMPOZUELOS, CIUDAD DEPORTIVA",
+    "address": "CRUZ VERDE, S/N",
+    "municipalityId": "muni-030",
+    "municipalityName": "Ciempozuelos"
+  },
+  {
+    "id": "fbm-venue-GREDOS-SAN-DIEGO-ALCALA-PABELLON-ALCALA-DE-HENARES",
+    "name": "GREDOS SAN DIEGO ALCALA, PABELLON",
+    "address": "COLEGIO OCTAVIO PAZ, 29",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-JAVI-LIMONES-PABELLON-PISTA-TORREJON-DE-ARDOZ",
+    "name": "JAVI LIMONES, PABELLON (PISTA",
+    "address": "CENTRAL) JOAQUIN BLUME, S/N",
+    "municipalityId": "muni-008",
+    "municipalityName": "Torrejón de Ardoz"
+  },
+  {
+    "id": "fbm-venue-REY-FELIPE-VI-PABELLON-BOADILLA-DEL-MONTE",
+    "name": "REY FELIPE VI, PABELLON",
+    "address": "MIGUEL ANGEL CANTERO OLIVA, 4",
+    "municipalityId": "muni-013",
+    "municipalityName": "Boadilla del Monte"
+  },
+  {
+    "id": "fbm-venue-SANTO-ANGEL-DE-LA-GUARDA-MADRID",
+    "name": "SANTO ANGEL DE LA GUARDA,",
+    "address": "PABELLON COLEGIO EDUARDO TERAN, 8",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SANTO-DOMINGO-SAVIO-PABELLON-MADRID",
+    "name": "SANTO DOMINGO SAVIO, PABELLON",
+    "address": "BRAULIO GUTIERREZ, 15",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EDUARDO-GUILLEN-PABELLON-COLLADO-MEDIANO",
+    "name": "EDUARDO GUILLEN, PABELLON",
+    "address": "PASEO DE LOS ROSALES, 61",
+    "municipalityId": "muni-036",
+    "municipalityName": "Collado Mediano"
+  },
+  {
+    "id": "fbm-venue-LA-SALLE-SGDOCORAZON-PABELLON-MADRID",
+    "name": "LA SALLE SGDO.CORAZON, PABELLON",
+    "address": "COLEGIO AVDA.CARDENAL HERRERA ORIA, 242 Edificio",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ANTONIO-DIAZ-MIGUEL-PDVO-MPAL-MADRID",
+    "name": "ANTONIO DIAZ MIGUEL, PDVO. MPAL.",
+    "address": "JOAQUIN DICENTA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-KIKE-BLAS-PABELLON-PISTA-CENTRAL-COLLADO-VILLALBA",
+    "name": "KIKE BLAS, PABELLON PISTA CENTRAL",
+    "address": "COMANDANTE JUAN ANTONIO TERRON, S/N",
+    "municipalityId": "muni-024",
+    "municipalityName": "Collado Villalba"
+  },
+  {
+    "id": "fbm-venue-SAN-AGUSTIN-PABELLON-PRINCIPAL-MADRID",
+    "name": "SAN AGUSTIN, PABELLON PRINCIPAL",
+    "address": "CALLE PADRE DAMIAN, 18",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SALESIANOS-CARABANCHEL-PABELLON-MADRID",
+    "name": "SALESIANOS CARABANCHEL, PABELLON",
+    "address": "COLEGIO RONDA DON BOSCO, 3",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-SALLE-INSTITUCION-DESCUBIERTO-MADRID",
+    "name": "LA SALLE, INSTITUCION (Descubierto)",
+    "address": "BLAS CABRERA, 50",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VICENTE-DEL-BOSQUE-CDM-RIVAS-VACIAMADRID",
+    "name": "VICENTE DEL BOSQUE, CDM",
+    "address": "(PABELLON) AVDA. MONFORTE DE LEMOS, 13",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-AGUSTINIANO-PISTA-SEMICUBIERTA-MADRID",
+    "name": "AGUSTINIANO, PISTA SEMICUBIERTA",
+    "address": "PEZ AUSTRAL, 13 BIS",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FRANCISCO-FERNANDEZ-OCHOA-MADRID",
+    "name": "FRANCISCO FERNANDEZ OCHOA,",
+    "address": "PABELLON DE LAS 14 OLIVAS, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FERNANDO-MARTIN-PDVO-MPAL-MADRID",
+    "name": "FERNANDO MARTIN, PDVO. MPAL.",
+    "address": "SANTO ANGEL DE LA GUARDA, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EL-ZABURDON-PABELLON-SAN-LORENZO-DE-ESCORIAL",
+    "name": "EL ZABURDON, PABELLON",
+    "address": "LAS POZAS, 183",
+    "municipalityId": "muni-049",
+    "municipalityName": "San Lorenzo de El Escorial"
+  },
+  {
+    "id": "fbm-venue-MONTE-TABOR-COLEGIO-ARAVACA",
+    "name": "MONTE TABOR, COLEGIO",
+    "address": "PASEO CASA DE CAMPO, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VIRGEN-DE-LA-RIVERA-SALA-ESCOLAR-PARACUELLOS-DE-JARAMA",
+    "name": "VIRGEN DE LA RIVERA, SALA ESCOLAR",
+    "address": "CAMINO RADAR, 1",
+    "municipalityId": "muni-047",
+    "municipalityName": "Paracuellos de Jarama"
+  },
+  {
+    "id": "fbm-venue-NILE-PABELLON-COLEGIO-FUENLABRADA",
+    "name": "NILE, PABELLON COLEGIO",
+    "address": "CASTILLA LA VIEJA, 18",
+    "municipalityId": "muni-006",
+    "municipalityName": "Fuenlabrada"
+  },
+  {
+    "id": "fbm-venue-GRINON-PABELLON-MPAL-GRINON",
+    "name": "GRIÑON, PABELLON MPAL.",
+    "address": "MIGUEL HERNANDEZ, 2",
+    "municipalityId": "muni-041",
+    "municipalityName": "Griñón"
+  },
+  {
+    "id": "fbm-venue-HUMANITAS-PABELLON-COLEGIO-TORREJON-DE-ARDOZ",
+    "name": "HUMANITAS, PABELLON COLEGIO",
+    "address": "AVDA. SALVADOR DALI, 3",
+    "municipalityId": "muni-008",
+    "municipalityName": "Torrejón de Ardoz"
+  },
+  {
+    "id": "fbm-venue-ESCUELA-IDEO-SAN-SEBASTIAN-REYES",
+    "name": "ESCUELA IDEO",
+    "address": "M-616 Km. 0,500",
+    "municipalityId": "muni-015",
+    "municipalityName": "San Sebastián de los Reyes"
+  },
+  {
+    "id": "fbm-venue-SAN-PATRICIO-DEL-SOTO-PABELLON-ALCOBENDAS",
+    "name": "SAN PATRICIO DEL SOTO, PABELLON",
+    "address": "COLEGIO JAZMIN, 148-190",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-CIUDAD-DEPORTIVA-NAVAFRIA-MORALZARZAL",
+    "name": "CIUDAD DEPORTIVA NAVAFRIA",
+    "address": "CAÑADA, 50",
+    "municipalityId": "muni-046",
+    "municipalityName": "Moralzarzal"
+  },
+  {
+    "id": "fbm-venue-EL-TORREON-PABELLON-POZUELO-DE-ALARCON",
+    "name": "EL TORREON, PABELLON",
+    "address": "CAMINO DE LAS HUERTAS, 38",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-INFANTA-CRISTINA-PABELLON-VILLANUEVA-DEL-PARDILLO",
+    "name": "INFANTA CRISTINA, PABELLON",
+    "address": "CAMINO DEL RETAMAR, 2",
+    "municipalityId": "muni-057",
+    "municipalityName": "Villanueva del Pardillo"
+  },
+  {
+    "id": "fbm-venue-JUAN-DE-LA-CIERVA-PABELLON-PISTA-GETAFE",
+    "name": "JUAN DE LA CIERVA, PABELLON PISTA",
+    "address": "CENTRAL AV. ESPAÑA, 90",
+    "municipalityId": "muni-003",
+    "municipalityName": "Getafe"
+  },
+  {
+    "id": "fbm-venue-ANTELA-PARADA-PABELLON-PISTA-ALCOBENDAS",
+    "name": "ANTELA PARADA, PABELLON (PISTA",
+    "address": "CENTRAL) FRANCISCO CHICO MENDES, 8",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-JUAN-DE-AUSTRIA-PABELLON-PISTA-ALCALA-DE-HENARES",
+    "name": "JUAN DE AUSTRIA, PABELLON (PISTA",
+    "address": "CENTRAL) JOSE CABALLERO, S/N",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-LOS-ROSALES-PABELLON-MOSTOLES",
+    "name": "LOS ROSALES, PABELLON",
+    "address": "LILAS, S/N (Frente nº 7)",
+    "municipalityId": "muni-005",
+    "municipalityName": "Móstoles"
+  },
+  {
+    "id": "fbm-venue-CARLOS-SASTRE-PABELLON-LEGANES",
+    "name": "CARLOS SASTRE, PABELLON",
+    "address": "FRANCISCO LARGO CABALLERO, 1",
+    "municipalityId": "muni-004",
+    "municipalityName": "Leganés"
+  },
+  {
+    "id": "fbm-venue-VIRGEN-DEL-CARMEN-PABELLON-PISTA-ARGANDA-DEL-REY",
+    "name": "VIRGEN DEL CARMEN, PABELLON (PISTA",
+    "address": "CENTRAL) MALLORCA, S/N",
+    "municipalityId": "muni-019",
+    "municipalityName": "Arganda del Rey"
+  },
+  {
+    "id": "fbm-venue-MENESIANO-COLEGIO-MADRID",
+    "name": "MENESIANO, COLEGIO",
+    "address": "AVENIDA DE BRASILIA, 11",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-BRAINS-ARTURO-SORIA-COLEGIO-MADRID",
+    "name": "BRAINS ARTURO SORIA, COLEGIO",
+    "address": "MARIA LOMBILLO, 5",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-JULIAN-MARIAS-PABELLON-CEIP-MADRID",
+    "name": "JULIAN MARIAS, PABELLON CEIP",
+    "address": "BUDAPEST, 11 (entrada c/ OSLO)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LOS-CANTOS-PABELLON-PISTA-5-ALCORCON",
+    "name": "LOS CANTOS, PABELLON PISTA 5",
+    "address": "LOS CANTOS, 28",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-DIEGO-VELAZQUEZ-IES-TORRELODONES",
+    "name": "DIEGO VELAZQUEZ, I.E.S.",
+    "address": "CALLE DEL INSTITUTO, 1",
+    "municipalityId": "muni-026",
+    "municipalityName": "Torrelodones"
+  },
+  {
+    "id": "fbm-venue-RECUERDO-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "RECUERDO, COLEGIO (Descubierto)",
+    "address": "PLAZA DUQUE DE PASTRANA, 5",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ALAMEDA-DE-OSUNA-COLEGIO-MADRID",
+    "name": "ALAMEDA DE OSUNA, COLEGIO",
+    "address": "(Descubierto) CALLE LA RIOJA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-IRLANDESAS-COLEGIO-DESCUBIERTO-ALCOBENDAS",
+    "name": "IRLANDESAS, COLEGIO (Descubierto)",
+    "address": "BEGONIA, 257",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-CHAMBERI-MARISTAS-PABELLON-MINI-MADRID",
+    "name": "CHAMBERI MARISTAS, PABELLON MINI",
+    "address": "RAFAEL CALVO, 10",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LICEO-FRANCES-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "LICEO FRANCES, COLEGIO (Descubierto)",
+    "address": "AVDA. DE LOS MADROÑOS frente nº 42",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-BRAINS-LA-MORALEJA-COLEGIO-MADRID",
+    "name": "BRAINS LA MORALEJA, COLEGIO",
+    "address": "LA SALVIA, 48",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SANTO-DOMINGO-PABELLON-CEIP-ALCORCON",
+    "name": "SANTO DOMINGO, PABELLON C.E.I.P.",
+    "address": "AVDA. ALCALDE JOSE ARANDA, S/N",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-PILARISTAS-COLEGIO-MADRID",
+    "name": "PILARISTAS, COLEGIO",
+    "address": "CASTELLO, 56",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-LUZ-PABELLON-PISTA-1-TRES-CANTOS",
+    "name": "LA LUZ, PABELLON PISTA 1",
+    "address": "AVENIDA DE LA LUZ, 6",
+    "municipalityId": "muni-014",
+    "municipalityName": "Tres Cantos"
+  },
+  {
+    "id": "fbm-venue-VALDELUZ-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "VALDELUZ, COLEGIO (Descubierto)",
+    "address": "PINTOR FRANCISCO LLORENS, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PARQUE-PINTO-PABELLON-PINTO",
+    "name": "PARQUE PINTO, PABELLON",
+    "address": "SANTA TERESA, S/N",
+    "municipalityId": "muni-021",
+    "municipalityName": "Pinto"
+  },
+  {
+    "id": "fbm-venue-COLEGIO-MADRID-FUNDACION-SANTA-MADRID",
+    "name": "COLEGIO MADRID FUNDACION SANTA",
+    "address": "MARIA AVDA. DE LOS MADROÑOS esquina C/ JOSELITO",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VALDEFUENTES-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "VALDEFUENTES, COLEGIO (Descubierto)",
+    "address": "ANA DE AUSTRIA, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-HIGHLANDS-EL-ENCINAR-COLEGIO-MADRID",
+    "name": "HIGHLANDS EL ENCINAR, COLEGIO",
+    "address": "SAN ENRIQUE DE OSSO, 46",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-CANTUENA-PABELLON-PARLA",
+    "name": "LA CANTUEÑA, PABELLON",
+    "address": "CALLE PROLONGACION CUENCA, 6A",
+    "municipalityId": "muni-020",
+    "municipalityName": "Parla"
+  },
+  {
+    "id": "fbm-venue-EL-VALLE-SANCHINARRO-PABELLON-MADRID",
+    "name": "EL VALLE SANCHINARRO, PABELLON",
+    "address": "COLEGIO ANA DE AUSTRIA, 60 (Entrada Vicente Blasco Ibañez)",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LAS-TABLAS-VALVERDE-PABELLON-MADRID",
+    "name": "LAS TABLAS VALVERDE, PABELLON",
+    "address": "COLEGIO PASEO DE LA TIERRA DE MELIDE, 24",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VIRGEN-DE-ATOCHA-COLEGIO-MADRID",
+    "name": "VIRGEN DE ATOCHA, COLEGIO",
+    "address": "PASEO REINA CRISTINA, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ANGEL-NIETO-COMPLEJO-DPTIVO-BOADILLA-DEL-MONTE",
+    "name": "ANGEL NIETO, COMPLEJO DPTIVO.",
+    "address": "MPAL. CRTA. POZUELO-BOADILLA Km. 4",
+    "municipalityId": "muni-013",
+    "municipalityName": "Boadilla del Monte"
+  },
+  {
+    "id": "fbm-venue-MOVISTAR-ACADEMY-MAGARINOS-MADRID",
+    "name": "MOVISTAR ACADEMY MAGARIÑOS,",
+    "address": "PABELLON SERRANO, 129",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PATROCINIO-SAN-JOSE-COLEGIO-MADRID",
+    "name": "PATROCINIO SAN JOSE, COLEGIO",
+    "address": "CALLE BASÍLICA, frente nº 17",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-JOSE-DEL-PARQUE-COLEGIO-MADRID",
+    "name": "SAN JOSE DEL PARQUE, COLEGIO",
+    "address": "(Semicubierto) RONDA ABUBILLA, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FUENTELARREYNA-COLEGIO-MADRID",
+    "name": "FUENTELARREYNA, COLEGIO",
+    "address": "RAMON GOMEZ DE LA SERNA, 62",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ABACO-PABELLON-COLEGIO-MADRID",
+    "name": "ABACO, PABELLON COLEGIO",
+    "address": "AVDA. DE LA PESETA, 8",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-REAL-CANOE-NC-MADRID",
+    "name": "REAL CANOE N.C.",
+    "address": "CALLE PEZ VOLADOR, 30",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-BRAINS-ARTURO-SORIA-COLEGIO-ALCOBENDAS",
+    "name": "BRAINS ARTURO SORIA, COLEGIO",
+    "address": "MARIA LOMBILLO, 5",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-CIUDAD-DE-ZARAGOZA-COLEGIO-MADRID",
+    "name": "CIUDAD DE ZARAGOZA, COLEGIO",
+    "address": "MANUEL AGUILAR MUÑOZ, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-JOYFE-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "JOYFE, COLEGIO (Descubierto)",
+    "address": "VITAL AZA, 65",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FRANCISCO-DE-ORELLANA-PABELLON-ARROYOMOLINOS",
+    "name": "FRANCISCO DE ORELLANA, PABELLON",
+    "address": "CEIP BARCELONA, 19",
+    "municipalityId": "muni-033",
+    "municipalityName": "Arroyomolinos"
+  },
+  {
+    "id": "fbm-venue-SPINOLA-CHAMARTIN-COLEGIO-MADRID",
+    "name": "SPINOLA CHAMARTIN, COLEGIO",
+    "address": "CARDENAL MARCELO SPINOLA, 34",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-VERITAS-PABELLON-INSTITUTO-POZUELO-DE-ALARCON",
+    "name": "VERITAS, PABELLON INSTITUTO",
+    "address": "AVDA. RADIO TELEVISION, 2",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-SANTA-MARIA-DEL-PILAR-MADRID",
+    "name": "SANTA MARIA DEL PILAR,",
+    "address": "MINIBASKET/PISTA EXTERIOR calle REYES MAGOS, 3",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-DISTRITO-CENTRO-PABELLON-ALCOBENDAS",
+    "name": "DISTRITO CENTRO, PABELLON",
+    "address": "AVDA. OLIMPICA, 22 (pasaje)",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-ARTURO-RUIZ-IDMB-MADRID",
+    "name": "ARTURO RUIZ, I.D.M.B.",
+    "address": "SANTIAGO DE COMPOSTELA, 104",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-IES-ISABEL-LA-CATOLICA-PABELLON-BOADILLA-DEL-MONTE",
+    "name": "IES ISABEL LA CATOLICA, PABELLON",
+    "address": "CRISTOBAL COLON, 12",
+    "municipalityId": "muni-013",
+    "municipalityName": "Boadilla del Monte"
+  },
+  {
+    "id": "fbm-venue-LA-ESTACION-PABELLON-MUNICIPAL-NAVALCARNERO",
+    "name": "LA ESTACION, PABELLON MUNICIPAL",
+    "address": "RIO EBRO, S/N",
+    "municipalityId": "muni-028",
+    "municipalityName": "Navalcarnero"
+  },
+  {
+    "id": "fbm-venue-SAN-AGUSTIN-GUADALIX-PABELLON-SAN-AGUSTIN-DE-GUADALIX",
+    "name": "SAN AGUSTIN GUADALIX, PABELLON",
+    "address": "JULIAN BERRENDERO, S/N",
+    "municipalityId": "muni-048",
+    "municipalityName": "San Agustín de Guadalix"
+  },
+  {
+    "id": "fbm-venue-EL-ARROYO-PABELLON-FUENLABRADA",
+    "name": "EL ARROYO, PABELLON",
+    "address": "FUENTESAUCO, 1",
+    "municipalityId": "muni-006",
+    "municipalityName": "Fuenlabrada"
+  },
+  {
+    "id": "fbm-venue-ANDRES-CASADO-PABELLON-GETAFE",
+    "name": "ANDRES CASADO, PABELLON",
+    "address": "AVDA. JUAN CARLOS I, 12",
+    "municipalityId": "muni-003",
+    "municipalityName": "Getafe"
+  },
+  {
+    "id": "fbm-venue-LOS-CANTOS-PABELLON-PISTA-4-ALCORCON",
+    "name": "LOS CANTOS, PABELLON PISTA 4",
+    "address": "LOS CANTOS, 28",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-IES-FEDERICO-GARCIA-LORCA-ROZAS-DE-MADRID",
+    "name": "I.E.S. FEDERICO GARCIA LORCA",
+    "address": "CALLE GIMNASIO, 1",
+    "municipalityId": "muni-011",
+    "municipalityName": "Las Rozas"
+  },
+  {
+    "id": "fbm-venue-LA-LUZ-PABELLON-PISTA-2-TRES-CANTOS",
+    "name": "LA LUZ, PABELLON PISTA 2",
+    "address": "AVENIDA DE LA LUZ, 6",
+    "municipalityId": "muni-014",
+    "municipalityName": "Tres Cantos"
+  },
+  {
+    "id": "fbm-venue-PRINCIPES-DE-ASTURIAS-PABELLON-POZUELO-DE-ALARCON",
+    "name": "PRINCIPES DE ASTURIAS, PABELLON",
+    "address": "COLEGIO CALLE MANZANO, frente nº 3",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-LA-SALLE-MARAVILLAS-COLEGIO-MADRID",
+    "name": "LA SALLE MARAVILLAS, COLEGIO",
+    "address": "(Descubierto) GUADALQUIVIR, 9",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-JUAN-ANTONIO-SAMARANCH-PABELLON-VALDEMORO",
+    "name": "JUAN ANTONIO SAMARANCH, PABELLON",
+    "address": "PASEO DEL PRADO, 26",
+    "municipalityId": "muni-022",
+    "municipalityName": "Valdemoro"
+  },
+  {
+    "id": "fbm-venue-LOS-MOSQUITOS-PABELLON-ARROYOMOLINOS",
+    "name": "LOS MOSQUITOS, PABELLON",
+    "address": "SANTANDER, 110",
+    "municipalityId": "muni-033",
+    "municipalityName": "Arroyomolinos"
+  },
+  {
+    "id": "fbm-venue-FUENTE-DEL-PALOMAR-CEIP-ALCORCON",
+    "name": "FUENTE DEL PALOMAR, CEIP",
+    "address": "CAMILO JOSE CELA, 2",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-AQUILA-PABELLON-COLEGIO-PARLA",
+    "name": "AQUILA, PABELLON COLEGIO",
+    "address": "PLANETA JUPITER, 2 (entrada por Urano)",
+    "municipalityId": "muni-020",
+    "municipalityName": "Parla"
+  },
+  {
+    "id": "fbm-venue-MIRASUR-PABELLON-COLEGIO-PINTO",
+    "name": "MIRASUR, PABELLON COLEGIO",
+    "address": "PABLO GARGALLO, 1",
+    "municipalityId": "muni-021",
+    "municipalityName": "Pinto"
+  },
+  {
+    "id": "fbm-venue-SEVERO-OCHOA-CEIP-TORREJON-DE-ARDOZ",
+    "name": "SEVERO OCHOA, C.E.I.P.",
+    "address": "LONDRES, 7-9",
+    "municipalityId": "muni-008",
+    "municipalityName": "Torrejón de Ardoz"
+  },
+  {
+    "id": "fbm-venue-JUAN-DE-DIOS-ROMAN-POLIDEPORTIVO-MADRID",
+    "name": "JUAN DE DIOS ROMÁN, POLIDEPORTIVO",
+    "address": "C/ JOSÉ GUTIÉRREZ MAROTO, 34",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-BRAINS-LA-MORALEJA-COLEGIO-ALCOBENDAS",
+    "name": "BRAINS LA MORALEJA, COLEGIO",
+    "address": "LA SALVIA, 48",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-FIDEL-ALONSO-POLIDEPORTIVO-VILLANUEVA-DEL",
+    "name": "FIDEL ALONSO, POLIDEPORTIVO",
+    "address": "calle MALLORCA, 2",
+    "municipalityId": "muni-057",
+    "municipalityName": "Villanueva del Pardillo"
+  },
+  {
+    "id": "fbm-venue-EL-PRADO-PABELLON-COLEGIO-MADRID",
+    "name": "EL PRADO, PABELLON COLEGIO",
+    "address": "COSTA BRAVA, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-NUESTRA-SENORA-DE-LAS-NIEVES-MADRID",
+    "name": "NUESTRA SEÑORA DE LAS NIEVES,",
+    "address": "PABELLON COLEGIO C/ ALCALA, 589",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MARIA-DE-VILLOTA-PABELLON-TORRELODONES",
+    "name": "MARIA DE VILLOTA, PABELLON",
+    "address": "ARROYO DE LOS VIALES, 4",
+    "municipalityId": "muni-026",
+    "municipalityName": "Torrelodones"
+  },
+  {
+    "id": "fbm-venue-ALBORADA-PABELLON-COLEGIO-ALCALA-DE-HENARES",
+    "name": "ALBORADA, PABELLON COLEGIO",
+    "address": "CALLE ALEJO CARPENTIER, 27",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-VIRGEN-DEL-CARMEN-PABELLON-PISTA-POVEDA-LA",
+    "name": "VIRGEN DEL CARMEN, PABELLON (PISTA",
+    "address": "CENTRAL) MALLORCA, S/N",
+    "municipalityId": "muni-019",
+    "municipalityName": "Arganda del Rey"
+  },
+  {
+    "id": "fbm-venue-CHEMA-MARTINEZ-PABELLON-VILLAVICIOSA-DE",
+    "name": "CHEMA MARTINEZ, PABELLON",
+    "address": "CAMINO DE SACEDON, 15",
+    "municipalityId": "muni-031",
+    "municipalityName": "Villaviciosa de Odón"
+  },
+  {
+    "id": "fbm-venue-PEDRO-FERRANDIZ-PABELLON-ALCOBENDAS",
+    "name": "PEDRO FERRANDIZ, PABELLON",
+    "address": "AVDA. OLIMPICA, 20",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-VIRGEN-DE-MIRASIERRA-COLEGIO-MADRID",
+    "name": "VIRGEN DE MIRASIERRA, COLEGIO",
+    "address": "CALLE PEÑA DORADA, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-AGUSTINIANO-PABELLON-MANUEL-MADRID",
+    "name": "AGUSTINIANO, PABELLON MANUEL",
+    "address": "BEAUMONT PEZ AUSTRAL, 13 BIS",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ZOLA-LAS-ROZAS-COLEGIO-ROZAS-DE-MADRID",
+    "name": "ZOLA LAS ROZAS, COLEGIO",
+    "address": "AVDA. DE ESPARTA, 6",
+    "municipalityId": "muni-011",
+    "municipalityName": "Las Rozas"
+  },
+  {
+    "id": "fbm-venue-CEIP-PADRE-JERONIMO-PABELLON-ALGETE",
+    "name": "CEIP PADRE JERONIMO, PABELLON",
+    "address": "ALCALA, 80",
+    "municipalityId": "muni-032",
+    "municipalityName": "Algete"
+  },
+  {
+    "id": "fbm-venue-PEPU-HERNANDEZ-PABELLON-MADRID",
+    "name": "PEPU HERNANDEZ, PABELLON",
+    "address": "AVDA. DE NIZA, 8",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CAMPO-POR-DETERMINAR-ALCOBENDAS",
+    "name": "CAMPO POR DETERMINAR",
+    "address": "...",
+    "municipalityId": "muni-017",
+    "municipalityName": "Alcobendas"
+  },
+  {
+    "id": "fbm-venue-LA-CANALEJA-PABELLON-PISTA-2-ALCORCON",
+    "name": "LA CANALEJA, PABELLON PISTA 2",
+    "address": "AVENIDA CIRCUNVALACION NORTE, 1",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-TORRELODONES-PABELLON-PEQUENO-TORRELODONES",
+    "name": "TORRELODONES, PABELLON pequeño",
+    "address": "PLAZA JOSE MARIA UNCETA, 4",
+    "municipalityId": "muni-026",
+    "municipalityName": "Torrelodones"
+  },
+  {
+    "id": "fbm-venue-SAN-JOSE-DEL-PARQUE-PABELLON-MADRID",
+    "name": "SAN JOSE DEL PARQUE, PABELLON",
+    "address": "COLEGIO RONDA ABUBILLA, 7",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAGE-2000-PABELLON-MADRID",
+    "name": "SAGE 2000, PABELLON",
+    "address": "ESCALONA, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-GERARDO-DIEGO-IES-POZUELO-DE-ALARCON",
+    "name": "GERARDO DIEGO, I.E.S.",
+    "address": "IRLANDA, S/N",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-ESPARTALES-CIUDAD-DEPORTIVA-ALCALA-DE-HENARES",
+    "name": "ESPARTALES, CIUDAD DEPORTIVA",
+    "address": "VILLAMALEA, S/N esquina AVDA. JESUITAS",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-CALASANCIO-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "CALASANCIO, COLEGIO (DESCUBIERTO)",
+    "address": "GENERAL DIAZ PORLIER, 56-58",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CERRO-DEL-TELEGRAFO-PABELLON-RIVAS-VACIAMADRID",
+    "name": "CERRO DEL TELEGRAFO, PABELLON",
+    "address": "AVDA. DE LOS ALMENDROS, S/N",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-TORREJON-DE-LA-CALZADA-PABELLON-TORREJON-DE-LA-CALZADA",
+    "name": "TORREJON DE LA CALZADA, PABELLON",
+    "address": "CAMINO DE CUBAS, S/N",
+    "municipalityId": "muni-053",
+    "municipalityName": "Torrejón de la Calzada"
+  },
+  {
+    "id": "fbm-venue-MARIA-RODRIGO-IES-MADRID",
+    "name": "MARIA RODRIGO, I.E.S.",
+    "address": "CALLE LA GRANJA DE SAN ILDEFONSO, 19",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CHAMBERI-MARISTAS-COLEGIO-MADRID",
+    "name": "CHAMBERI MARISTAS, COLEGIO",
+    "address": "(Descubierto) RAFAEL CALVO, 10",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MIGUEL-DELIBES-CP-LEGANES",
+    "name": "MIGUEL DELIBES, C.P.",
+    "address": "FELIPE II, 15 (entrada por Jaime I El Conquistador)",
+    "municipalityId": "muni-004",
+    "municipalityName": "Leganés"
+  },
+  {
+    "id": "fbm-venue-PUREZA-DE-MARIA-COLEGIO-MADRID",
+    "name": "PUREZA DE MARIA, COLEGIO",
+    "address": "LIRA, 10",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ISAAC-NEWTON-IES-MADRID",
+    "name": "ISAAC NEWTON, I.E.S.",
+    "address": "ISLA MALAITA, 9",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MATER-SALVATORIS-POLIDEPORTIVO-MADRID",
+    "name": "MATER SALVATORIS, POLIDEPORTIVO",
+    "address": "VALDESQUI, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ALAMEDA-DE-OSUNA-IES-DESCUBIERTO-MADRID",
+    "name": "ALAMEDA DE OSUNA, I.E.S. (Descubierto)",
+    "address": "ANTONIO SANCHA, 11 entrada por BREZOS, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SANTA-MARIA-DEL-PILAR-PISTA-AZUL-MADRID",
+    "name": "SANTA MARIA DEL PILAR, PISTA AZUL",
+    "address": "SEMICUBIERTA calle DOCTOR ESQUERDO, 64-66",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CEIP-FRAY-JUNIPERO-SERRA-MADRID",
+    "name": "CEIP FRAY JUNIPERO SERRA",
+    "address": "CALLE ALMONACID, 16",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-MARTIN-DE-LA-VEGA-PABELLON-SAN-MARTIN-DE-VEGA",
+    "name": "SAN MARTIN DE LA VEGA, PABELLON",
+    "address": "AVDA. ABOGADOS DE ATOCHA, 17",
+    "municipalityId": "muni-050",
+    "municipalityName": "San Martín de la Vega"
+  },
+  {
+    "id": "fbm-venue-GAUDEM-PABELLON-COLEGIO-MADRID",
+    "name": "GAUDEM, PABELLON COLEGIO",
+    "address": "PLAYA DE BARLOVENTO, 14",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-GALLUR-PDVO-MPAL-MADRID",
+    "name": "GALLUR, PDVO. MPAL.",
+    "address": "GALLUR, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-CAJA-MAGICA-INDOOR-NORTE-PISTA-5-MADRID",
+    "name": "LA CAJA MAGICA INDOOR NORTE Pista 5",
+    "address": "CAMINO DE PERALES, 23",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-TORRELODONES-PABELLON-TORRELODONES",
+    "name": "TORRELODONES, PABELLON",
+    "address": "GENERACION DE ORO PLAZA JOSE Mª UNCETA, 4",
+    "municipalityId": "muni-026",
+    "municipalityName": "Torrelodones"
+  },
+  {
+    "id": "fbm-venue-FELIPE-REYES-PABELLON-PISTA-GETAFE",
+    "name": "FELIPE REYES, PABELLON PISTA",
+    "address": "CENTRAL AV. ESPAÑA, 90",
+    "municipalityId": "muni-003",
+    "municipalityName": "Getafe"
+  },
+  {
+    "id": "fbm-venue-MATER-IMMACULATA-PABELLON-MADRID",
+    "name": "MATER IMMACULATA, PABELLON",
+    "address": "COLEGIO CONDESA DE VENADITO, 27",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ALAMEDA-DE-OSUNA-PABELLON-MADRID",
+    "name": "ALAMEDA DE OSUNA, PABELLON",
+    "address": "COLEGIO CALLE LA RIOJA, 1",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-CANALEJA-PABELLON-PISTA-3-ALCORCON",
+    "name": "LA CANALEJA, PABELLON PISTA 3",
+    "address": "AVENIDA CIRCUNVALACION NORTE, 1",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-SAN-BLAS-PABELLON-CIRCULAR-MADRID",
+    "name": "SAN BLAS, PABELLON CIRCULAR",
+    "address": "CALLE ARCOS DE JALON, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FRANCISCO-DE-VITORIA-UNIVERSIDAD-POZUELO-DE-ALARCON",
+    "name": "FRANCISCO DE VITORIA, UNIVERSIDAD",
+    "address": "CTRA. POZUELO A MAJADAHONDA Km. 1,8",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-CAMPO-POR-DETERMINAR-MADRID",
+    "name": "CAMPO POR DETERMINAR",
+    "address": "...",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PRINCIPES-DE-ASTURIAS-PABELLON-PINTO",
+    "name": "PRINCIPES DE ASTURIAS, PABELLON",
+    "address": "SUR, S/N",
+    "municipalityId": "muni-021",
+    "municipalityName": "Pinto"
+  },
+  {
+    "id": "fbm-venue-UCJC-SPORTS-CLUB-MADRID",
+    "name": "UCJC SPORTS CLUB",
+    "address": "CASTILLO DE ALARCON, 47 URB. VILLAFRANCA DEL CASTILLO",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EUROCOLEGIO-CASVI-VILLAVIC-ODON-VILLAVICIOSA-DE",
+    "name": "EUROCOLEGIO CASVI-VILLAVIC. ODON",
+    "address": "AVDA. CASTILLA, 27",
+    "municipalityId": "muni-031",
+    "municipalityName": "Villaviciosa de Odón"
+  },
+  {
+    "id": "fbm-venue-CUBAS-DE-LA-SAGRA-PDVO-MPAL-FUENLABRADA",
+    "name": "CUBAS DE LA SAGRA, PDVO. MPAL.",
+    "address": "SAN ISIDRO, 3",
+    "municipalityId": "muni-006",
+    "municipalityName": "Fuenlabrada"
+  },
+  {
+    "id": "fbm-venue-TRIANGULO-DE-ORO-PABELLON-MADRID",
+    "name": "TRIANGULO DE ORO, PABELLON",
+    "address": "BRAVO MURILLO, 376",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SALESIANOS-CARABANCHEL-MADRID",
+    "name": "SALESIANOS CARABANCHEL,",
+    "address": "SEMICUBIERTA RONDA DON BOSCO, 3",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SOLOSPRADOS-PDVO-MPAL-BECERRIL-DE-LA-SIERRA",
+    "name": "SOLOSPRADOS, PDVO. MPAL.",
+    "address": "SOLOSPRADOS, S/N",
+    "municipalityId": "muni-034",
+    "municipalityName": "Becerril de la Sierra"
+  },
+  {
+    "id": "fbm-venue-TAJAMAR-PABELLON-COLEGIO-MADRID",
+    "name": "TAJAMAR, PABELLON COLEGIO",
+    "address": "PIO FELIPE, 12",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-INFANTA-CRISTINA-PABELLON-VILLANUEVA-DEL",
+    "name": "INFANTA CRISTINA, PABELLON",
+    "address": "CAMINO DEL RETAMAR, 2",
+    "municipalityId": "muni-057",
+    "municipalityName": "Villanueva del Pardillo"
+  },
+  {
+    "id": "fbm-venue-CLARET-PABELLON-COLEGIO-MADRID",
+    "name": "CLARET, PABELLON COLEGIO",
+    "address": "CLARA DEL REY, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-AQUINAS-AMERICAN-SCHOOL-TORRELODONES",
+    "name": "AQUINAS AMERICAN SCHOOL",
+    "address": "CALLE TRANSVERSAL, 4 (Urbanización MONTEALINA)",
+    "municipalityId": "muni-026",
+    "municipalityName": "Torrelodones"
+  },
+  {
+    "id": "fbm-venue-IDB-VICTORIA-HERNANDEZ-MADRID",
+    "name": "IDB VICTORIA HERNANDEZ",
+    "address": "CONSENSO, 5",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PRINCIPE-FELIPE-IES-RIVAS-VACIAMADRID",
+    "name": "PRINCIPE FELIPE, I.E.S.",
+    "address": "FINISTERRE, 60",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-PEDRO-BRIMONIS-CEIP-HUMANES-DE-MADRID",
+    "name": "PEDRO BRIMONIS, CEIP",
+    "address": "ISLA CONEJERA, S/N",
+    "municipalityId": "muni-029",
+    "municipalityName": "Humanes de Madrid"
+  },
+  {
+    "id": "fbm-venue-ZAZUAR-COLEGIO-MADRID",
+    "name": "ZAZUAR, COLEGIO",
+    "address": "ZAZUAR, 17",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-DEHESA-PDVO-MPAL-FUENTE-EL-SAZ-JARAMA",
+    "name": "LA DEHESA, PDVO. MPAL.",
+    "address": "CTRA. M-103 Km. 6,5 (Carretera de Cobeña a Algete)",
+    "municipalityId": "muni-040",
+    "municipalityName": "Fuente el Saz de Jarama"
+  },
+  {
+    "id": "fbm-venue-LAGOMAR-PABELLON-COLEGIO-VALDEMORO",
+    "name": "LAGOMAR, PABELLON COLEGIO",
+    "address": "AV. DEL MAR ADRIATICO, 5",
+    "municipalityId": "muni-022",
+    "municipalityName": "Valdemoro"
+  },
+  {
+    "id": "fbm-venue-ARULA-COLEGIO-ALALPARDO",
+    "name": "ARULA, COLEGIO",
+    "address": "CALLE ALCALA, 23",
+    "municipalityId": "muni-055",
+    "municipalityName": "Valdeolmos-Alalpardo"
+  },
+  {
+    "id": "fbm-venue-LA-SALLE-MARAVILLAS-PABELLON-MADRID",
+    "name": "LA SALLE MARAVILLAS, PABELLON",
+    "address": "COLEGIO JOAQUIN COSTA, 21",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FIDEL-ALONSO-POLIDEPORTIVO-VILLANUEVA-DEL-PARDILLO",
+    "name": "FIDEL ALONSO, POLIDEPORTIVO",
+    "address": "calle MALLORCA, 2",
+    "municipalityId": "muni-057",
+    "municipalityName": "Villanueva del Pardillo"
+  },
+  {
+    "id": "fbm-venue-CIUDAD-REAL-MADRID-VALDEBEBAS-MADRID",
+    "name": "CIUDAD REAL MADRID VALDEBEBAS",
+    "address": "AVENIDA ALEJANDRO DE LA SOTA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SBA-ARENA-VILLAVICIOSA-DE",
+    "name": "SBA ARENA",
+    "address": "FRAGUAS, 26",
+    "municipalityId": "muni-031",
+    "municipalityName": "Villaviciosa de Odón"
+  },
+  {
+    "id": "fbm-venue-CHAMBERI-MARISTAS-CUBIERTA-MADRID",
+    "name": "CHAMBERI MARISTAS, CUBIERTA",
+    "address": "RAFAEL CALVO, 10",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MIGUEL-GUILLEN-PRIM-PABELLON-MADRID",
+    "name": "MIGUEL GUILLEN PRIM, PABELLON",
+    "address": "C/ FUENTIDUEÑA, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SALESIANOS-SAN-MIGUEL-PABELLON-MADRID",
+    "name": "SALESIANOS SAN MIGUEL, PABELLON",
+    "address": "COLEGIO CABELLO LA PIEDRA, 4",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ANGEL-LLORENTE-PABELLON-POZUELO-DE-ALARCON",
+    "name": "ANGEL LLORENTE, PABELLON",
+    "address": "AVDA. DE BULARAS, 4",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-GREDOS-SAN-DIEGO-LAS-SUERTES-MADRID",
+    "name": "GREDOS SAN DIEGO LAS SUERTES,",
+    "address": "PABELLON COLEGIO RAFAEL DE LEON, 10 entrada por JOSE GTREZ. MAROTO",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAGRADA-FAMILIA-JORGE-JUAN-MADRID",
+    "name": "SAGRADA FAMILIA JORGE JUAN,",
+    "address": "COLEGIO CALLE JORGE JUAN, 165",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ABACO-COLEGIO-DESCUBIERTO-MADRID",
+    "name": "ABACO, COLEGIO (Descubierto)",
+    "address": "AVDA. DE LA PESETA, 8",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-AMANECER-CLUB-DEPORTIVO-MADRID",
+    "name": "AMANECER, CLUB DEPORTIVO",
+    "address": "AVDA. PABLO IGLESIAS, 6",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-GREDOS-SAN-DIEGO-ESCORIAL-ESCORIAL-EL",
+    "name": "GREDOS SAN DIEGO ESCORIAL,",
+    "address": "COLEGIO PRINCIPAL, 1 (URB. LOS ARROYOS)",
+    "municipalityId": "muni-038",
+    "municipalityName": "El Escorial"
+  },
+  {
+    "id": "fbm-venue-RAMIRO-DE-MAEZTU-1-INSTITUTO-MADRID",
+    "name": "RAMIRO DE MAEZTU 1, INSTITUTO",
+    "address": "SERRANO, 129",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-SAN-AGUSTIN-PABELLON-MADRID",
+    "name": "SAN AGUSTIN, PABELLON",
+    "address": "SEMICUBIERTO CALLE PADRE DAMIAN, 18",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EL-JUNCAL-PABELLON-ALCALA-DE-HENARES",
+    "name": "EL JUNCAL, PABELLON",
+    "address": "AVDA. DE MADRID, 9",
+    "municipalityId": "muni-007",
+    "municipalityName": "Alcalá de Henares"
+  },
+  {
+    "id": "fbm-venue-GREDOS-SAN-DIEGO-LAS-ROZAS-ROZAS-DE-MADRID",
+    "name": "GREDOS SAN DIEGO LAS ROZAS,",
+    "address": "PABELLON COLEGIO CLARA CAMPOAMOR, 1",
+    "municipalityId": "muni-011",
+    "municipalityName": "Las Rozas"
+  },
+  {
+    "id": "fbm-venue-CAMPO-POR-DETERMINAR-TORREJON-DE-ARDOZ",
+    "name": "CAMPO POR DETERMINAR",
+    "address": "...",
+    "municipalityId": "muni-008",
+    "municipalityName": "Torrejón de Ardoz"
+  },
+  {
+    "id": "fbm-venue-ANTONIO-MATA-PABELLON-MADRID",
+    "name": "ANTONIO MATA, PABELLON",
+    "address": "CALLE ARCOS DE JALON, 59",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-FELIX-RUBIO-PABELLON-MADRID",
+    "name": "FELIX RUBIO, PABELLON",
+    "address": "ALIANZA, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-CAJA-MAGICA-PABELLON-MADRID",
+    "name": "LA CAJA MAGICA, PABELLON",
+    "address": "CAMINO DE PERALES, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-ESCUELA-IDEO-MADRID",
+    "name": "ESCUELA IDEO",
+    "address": "M-616 Km. 0,500",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-COMPLEJO-DPTVO-SAN-JUAN-MADRID",
+    "name": "COMPLEJO DPTVO. SAN JUAN,",
+    "address": "PABELLON CALLE DE MADRID, 30",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-EVEREST-COLEGIO-POZUELO-DE-ALARCON",
+    "name": "EVEREST, COLEGIO",
+    "address": "AVENIDA DE MONTECLARO, S/N (URB. MONTECLARO)",
+    "municipalityId": "muni-009",
+    "municipalityName": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "fbm-venue-TORREJON-DE-LA-CALZADA-PABELLON-MADRID",
+    "name": "TORREJON DE LA CALZADA, PABELLON",
+    "address": "CAMINO DE CUBAS, S/N",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-CAJA-MAGICA-INDOOR-NORTE-PISTA-1-MADRID",
+    "name": "LA CAJA MAGICA INDOOR NORTE Pista 1",
+    "address": "CAMINO DE PERALES, 23",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-MANZANARES-EL-REAL-PABELLON-MANZANARES-EL",
+    "name": "MANZANARES EL REAL, PABELLON",
+    "address": "AVDA. DE LA PEDRIZA, 1",
+    "municipalityId": "muni-044",
+    "municipalityName": "Manzanares el Real"
+  },
+  {
+    "id": "fbm-venue-TORRES-DE-LA-ALAMEDA-PABELLON-TORRES-DE-LA-ALAMEDA",
+    "name": "TORRES DE LA ALAMEDA, PABELLON",
+    "address": "PALMERAS, 6",
+    "municipalityId": "muni-054",
+    "municipalityName": "Torres de la Alameda"
+  },
+  {
+    "id": "fbm-venue-SBA-ARENA-ALCORCON",
+    "name": "SBA ARENA",
+    "address": "FRAGUAS, 26",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-FRANCISCO-JAVIER-CASTILLEJO-PARLA",
+    "name": "FRANCISCO JAVIER CASTILLEJO,",
+    "address": "PABELLON AVDA. ESCUELA PUBLICA, S/N",
+    "municipalityId": "muni-020",
+    "municipalityName": "Parla"
+  },
+  {
+    "id": "fbm-venue-LOS-CANTOS-PABELLON-CENTRAL-ALCORCON",
+    "name": "LOS CANTOS, PABELLON CENTRAL",
+    "address": "LOS CANTOS, 28",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-DULCE-CHACON-PABELLON-RIVAS-VACIAMADRID",
+    "name": "DULCE CHACON, PABELLON",
+    "address": "FEDERICA MONTSENY, 3",
+    "municipalityId": "muni-010",
+    "municipalityName": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "fbm-venue-CIUDAD-DE-LOS-POETAS-PDVO-MADRID",
+    "name": "CIUDAD DE LOS POETAS, PDVO.",
+    "address": "ANTONIO MACHADO, 12",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-LA-FUNDI-PDVO-MPAL-MADRID",
+    "name": "LA FUNDI, PDVO. MPAL.",
+    "address": "calle ALICANTE, 14",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-PRINCIPE-FELIPE-POLIDEPORTIVO-MAJADAHONDA",
+    "name": "PRINCIPE FELIPE, POLIDEPORTIVO",
+    "address": "AVDA. GUADARRAMA, 7",
+    "municipalityId": "muni-012",
+    "municipalityName": "Majadahonda"
+  },
+  {
+    "id": "fbm-venue-LA-CANALEJA-PABELLON-PISTA-ALCORCON",
+    "name": "LA CANALEJA, PABELLON PISTA",
+    "address": "CENTRAL AVENIDA CIRCUNVALACION NORTE, 1",
+    "municipalityId": "muni-002",
+    "municipalityName": "Alcorcón"
+  },
+  {
+    "id": "fbm-venue-ENRIQUE-BLAS-PABELLON-MPAL-COLLADO-VILLALBA",
+    "name": "ENRIQUE BLAS, PABELLON MPAL.",
+    "address": "COMANDANTE JUAN ANTONIO TERRON, S/N",
+    "municipalityId": "muni-024",
+    "municipalityName": "Collado Villalba"
+  },
+  {
+    "id": "fbm-venue-VALDELUZ-PABELLON-COLEGIO-MADRID",
+    "name": "VALDELUZ, PABELLON COLEGIO",
+    "address": "PINTOR FRANCISCO LLORENS, 2",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  },
+  {
+    "id": "fbm-venue-CAMARMA-PDVO-MPAL-CAMARMA-DE-ESTERUELAS",
+    "name": "CAMARMA, PDVO. MPAL.",
+    "address": "C/ CAMINO DEL MOLINO, S/N",
+    "municipalityId": "muni-035",
+    "municipalityName": "Camarma de Esteruelas"
+  },
+  {
+    "id": "fbm-venue-MARIANO-DIAZ-PABELLON-VILLAREJO-DE-SALVANES",
+    "name": "MARIANO DIAZ, PABELLON",
+    "address": "BELMONTE, 16",
+    "municipalityId": "muni-058",
+    "municipalityName": "Villarejo de Salvanés"
+  },
+  {
+    "id": "fbm-venue-ADOLFO-SUAREZ-PABELLON-FUENLABRADA",
+    "name": "ADOLFO SUAREZ, PABELLON",
+    "address": "VILLANUEVA, 14",
+    "municipalityId": "muni-006",
+    "municipalityName": "Fuenlabrada"
+  },
+  {
+    "id": "fbm-venue-OLIMPIA-PABELLON-PISTA-1-LEGANES",
+    "name": "OLIMPIA, PABELLON Pista 1",
+    "address": "AVDA. DEL COBRE, 12",
+    "municipalityId": "muni-004",
+    "municipalityName": "Leganés"
+  },
+  {
+    "id": "fbm-venue-PABELLON-PTVO-VEGA-RETUENGA-VILLALBILLA",
+    "name": "PABELLÓN PTVO. VEGA RETUENGA",
+    "address": "CAMINO DE LAS ERAS, 20",
+    "municipalityId": "muni-056",
+    "municipalityName": "Villalbilla"
+  },
+  {
+    "id": "fbm-venue-LOS-CARMENES-IDMB-MADRID",
+    "name": "LOS CARMENES, IDMB",
+    "address": "CALLE ALHAMBRA, 35",
+    "municipalityId": "muni-001",
+    "municipalityName": "Madrid"
+  }
+]

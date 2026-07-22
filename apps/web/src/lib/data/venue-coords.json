@@ -1,0 +1,790 @@
+{
+  "venue-001": { "lat": 40.4627429, "lon": -3.5870823 },
+  "venue-002": { "lat": 40.4612903, "lon": -3.5886724 },
+  "venue-003": { "lat": 40.4605125, "lon": -3.5911118 },
+  "venue-004": { "lat": 40.3592277, "lon": -3.7449841 },
+  "venue-005": { "lat": 40.4265449, "lon": -3.6987863 },
+  "venue-006": { "lat": 40.4027076, "lon": -3.6954002 },
+  "venue-007": { "lat": 40.4039983, "lon": -3.7158496 },
+  "venue-008": { "lat": 40.4546707, "lon": -3.6131958 },
+  "venue-009": { "lat": 40.460171, "lon": -3.676465 },
+  "venue-010": { "lat": 40.4567953, "lon": -3.6404207 },
+  "venue-011": { "lat": 40.4572966, "lon": -3.6848378 },
+  "venue-012": { "lat": 40.4485372, "lon": -3.6778822 },
+  "venue-013": { "lat": 40.4493893, "lon": -3.6710769 },
+  "venue-014": { "lat": 40.3612104, "lon": -3.9122619 },
+  "venue-015": { "lat": 40.4414375, "lon": -3.7109779 },
+  "venue-016": { "lat": 40.4512821, "lon": -3.6541629 },
+  "venue-017": { "lat": 40.4361649, "lon": -3.6553536 },
+  "venue-018": { "lat": 40.4368178, "lon": -3.6490573 },
+  "venue-019": { "lat": 40.4238997, "lon": -3.6494187 },
+  "venue-020": { "lat": 40.4337092, "lon": -3.6393358 },
+  "venue-021": { "lat": 40.4380975, "lon": -3.6546204 },
+  "venue-022": { "lat": 40.4764884, "lon": -3.6594029 },
+  "venue-023": { "lat": 40.428763, "lon": -3.6153518 },
+  "venue-024": { "lat": 40.4292191, "lon": -3.6390253 },
+  "venue-025": { "lat": 40.4194912, "lon": -3.6527829 },
+  "venue-026": { "lat": 40.4413485, "lon": -3.6422204 },
+  "venue-027": { "lat": 40.4301409, "lon": -3.6336475 },
+  "venue-028": { "lat": 40.5043193, "lon": -3.6615747 },
+  "venue-029": { "lat": 40.5092118, "lon": -3.6790829 },
+  "venue-030": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-031": { "lat": 40.5105817, "lon": -3.6972895 },
+  "venue-032": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-033": { "lat": 40.4652948, "lon": -3.6693708 },
+  "venue-034": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-035": { "lat": 40.4676147, "lon": -3.6712072 },
+  "venue-036": { "lat": 40.4711502, "lon": -3.6542199 },
+  "venue-037": { "lat": 40.4955184, "lon": -3.6514826 },
+  "venue-038": { "lat": 40.4732478, "lon": -3.6653194 },
+  "venue-039": { "lat": 40.4426019, "lon": -3.6771215 },
+  "venue-040": { "lat": 40.5012825, "lon": -3.6526745 },
+  "venue-041": { "lat": 40.4733241, "lon": -3.5939348 },
+  "venue-042": { "lat": 40.5033184, "lon": -3.63944 },
+  "venue-043": { "lat": 40.4793299, "lon": -3.6533961 },
+  "venue-044": { "lat": 40.5178059, "lon": -3.6423767 },
+  "venue-045": { "lat": 40.4710682, "lon": -3.6567869 },
+  "venue-046": { "lat": 40.5210349, "lon": -3.6455301 },
+  "venue-047": { "lat": 40.4744602, "lon": -3.65402 },
+  "venue-048": { "lat": 40.46465, "lon": -3.6275889 },
+  "venue-049": { "lat": 40.4552317, "lon": -3.684774 },
+  "venue-050": { "lat": 40.4702507, "lon": -3.6480817 },
+  "venue-051": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-052": { "lat": 40.4511785, "lon": -3.6681073 },
+  "venue-053": { "lat": 40.4605248, "lon": -3.6609956 },
+  "venue-054": { "lat": 40.467909, "lon": -3.5878973 },
+  "venue-055": { "lat": 40.4606573, "lon": -3.6727243 },
+  "venue-056": { "lat": 40.367587, "lon": -3.7657414 },
+  "venue-057": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-058": { "lat": 40.3711612, "lon": -3.7573999 },
+  "venue-059": { "lat": 40.3605286, "lon": -3.755932 },
+  "venue-060": { "lat": 40.3754381, "lon": -3.7501059 },
+  "venue-061": { "lat": 40.3958149, "lon": -3.7612302 },
+  "venue-062": { "lat": 40.3981746, "lon": -3.7395946 },
+  "venue-063": { "lat": 40.3827502, "lon": -3.7897756 },
+  "venue-064": { "lat": 40.3814639, "lon": -3.746696 },
+  "venue-065": { "lat": 40.3779787, "lon": -3.7746636 },
+  "venue-066": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-067": { "lat": 40.2914241, "lon": -3.7476331 },
+  "venue-068": { "lat": 40.460784, "lon": -3.7117361 },
+  "venue-069": { "lat": 40.4323086, "lon": -3.7362074 },
+  "venue-070": { "lat": 40.4022052, "lon": -3.6340959 },
+  "venue-071": { "lat": 40.2071262, "lon": -3.5752178 },
+  "venue-072": { "lat": 40.4047123, "lon": -3.6379974 },
+  "venue-073": { "lat": 40.4221652, "lon": -3.6550889 },
+  "venue-074": { "lat": 40.4153959, "lon": -3.665216 },
+  "venue-075": { "lat": 40.396318, "lon": -3.6157712 },
+  "venue-076": { "lat": 40.4022811, "lon": -3.6690457 },
+  "venue-077": { "lat": 40.4339878, "lon": -3.6079667 },
+  "venue-078": { "lat": 40.4139927, "lon": -3.6555984 },
+  "venue-079": { "lat": 40.407825, "lon": -3.645713 },
+  "venue-080": { "lat": 40.3400459, "lon": -3.8643156 },
+  "venue-081": { "lat": 40.3064106, "lon": -3.8666782 },
+  "venue-082": { "lat": 40.4023696, "lon": -3.6774328 },
+  "venue-083": { "lat": 40.3845169, "lon": -4.2552068 },
+  "venue-084": { "lat": 40.4375194, "lon": -3.6655431 },
+  "venue-085": { "lat": 40.2962227, "lon": -3.4496187 },
+  "venue-086": { "lat": 40.4205887, "lon": -3.6603068 },
+  "venue-087": { "lat": 40.4375009, "lon": -3.6737557 },
+  "venue-088": { "lat": 40.4281598, "lon": -3.679105 },
+  "venue-089": { "lat": 40.5674565, "lon": -3.5017378 },
+  "venue-090": { "lat": 40.4309669, "lon": -3.6063551 },
+  "venue-091": { "lat": 40.428763, "lon": -3.6153518 },
+  "venue-092": { "lat": 40.4722171, "lon": -3.696386 },
+  "venue-093": { "lat": 40.4520039, "lon": -3.703217 },
+  "venue-094": { "lat": 40.3967402, "lon": -3.673888 },
+  "venue-095": { "lat": 40.3282276, "lon": -3.8858933 },
+  "venue-096": { "lat": 40.3767184, "lon": -3.7157889 },
+  "venue-097": { "lat": 40.3919154, "lon": -3.6464242 },
+  "venue-098": { "lat": 40.4047123, "lon": -3.6379974 },
+  "venue-099": { "lat": 40.3746228, "lon": -3.6234809 },
+  "venue-100": { "lat": 40.47322109772723, "lon": -3.6849180708624716, "approx": true },
+  "venue-101": { "lat": 40.4044135, "lon": -3.6563144 },
+  "venue-102": { "lat": 40.3704969, "lon": -3.6576492 },
+  "venue-103": { "lat": 40.3913977, "lon": -3.6596962 },
+  "venue-104": { "lat": 40.4030926, "lon": -3.619152 },
+  "venue-105": { "lat": 40.4047802, "lon": -3.6219452 },
+  "venue-106": { "lat": 40.353979, "lon": -3.6900298 },
+  "venue-107": { "lat": 40.3504757, "lon": -3.7214268 },
+  "venue-108": { "lat": 40.3437429, "lon": -3.6840617 },
+  "fbm-venue-CABRINI-COLEGIO-SEMICUBIERTO-MADRID": { "lat": 40.4639577, "lon": -3.6377134 },
+  "fbm-venue-CORAZONISTAS-PABELLON-COLEGIO-MADRID": { "lat": 40.6574889, "lon": -3.7735537 },
+  "fbm-venue-EL-VALLE-LAS-TABLAS-PABELLON-MADRID": { "lat": 40.5043193, "lon": -3.6615747 },
+  "fbm-venue-VICENTE-DEL-BOSQUE-CDM-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ANGEL-DURANGO-PDVO-MPAL-ARROYOMOLINOS": { "lat": 40.2672557, "lon": -3.9207941 },
+  "fbm-venue-LAS-OLIVAS-CIUDAD-DEPORTIVA-ARANJUEZ": { "lat": 40.0260897, "lon": -3.6194089 },
+  "fbm-venue-PARQUE-HENARES-PABELLON-SAN-FERNANDO-HENARES": { "lat": 40.420674, "lon": -3.5253793 },
+  "fbm-venue-CERRO-ALMODOVAR-PABELLON-MADRID": { "lat": 40.3827933, "lon": -3.6020339 },
+  "fbm-venue-EL-TEJAR-PABELLON-MAJADAHONDA": { "lat": 40.4768483, "lon": -3.8571499 },
+  "fbm-venue-FERNANDO-MARTIN-PDVO-MPAL-RIVAS-VACIAMADRID": {
+    "lat": 40.35597720563188,
+    "lon": -3.5171825118131887,
+    "approx": true
+  },
+  "fbm-venue-BUEN-CONSEJO-PABELLON-COLEGIO-MADRID": { "lat": 40.447976, "lon": -3.7146427 },
+  "fbm-venue-ALFREDO-ESPINIELLA-PABELLON-PISTA-ROZAS-DE-MADRID": {
+    "lat": 40.520009803322296,
+    "lon": -3.8947781305647826,
+    "approx": true
+  },
+  "fbm-venue-JESUS-MARIA-PABELLON-COLEGIO-MADRID": { "lat": 40.5709903, "lon": -4.271827 },
+  "fbm-venue-SOTO-DEL-REAL-PABELLON-SOTO-DEL-REAL": {
+    "lat": 40.75202318466666,
+    "lon": -3.7886827233333316,
+    "approx": true
+  },
+  "fbm-venue-SANTA-MARIA-DEL-PILAR-CENTRO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-VILLA-DE-MADRID-PABELLON-MADRID": { "lat": 40.4612903, "lon": -3.5886724 },
+  "fbm-venue-LA-SALLE-INSTITUCION-PABELLON-MADRID": { "lat": 40.3779787, "lon": -3.7746636 },
+  "fbm-venue-DAGANZO-PABELLON-MUNICIPAL-DAGANZO-DE-ARRIBA": {
+    "lat": 40.5522168,
+    "lon": -3.4549904
+  },
+  "fbm-venue-ESCUELAS-PIAS-CARABANCHEL-MADRID": { "lat": 40.3754381, "lon": -3.7501059 },
+  "fbm-venue-LOS-ALMENDROS-PABELLON-RIVAS-VACIAMADRID": { "lat": 40.3709521, "lon": -3.5300195 },
+  "fbm-venue-DEHESA-BOYAL-PABELLON-SAN-SEBASTIAN-REYES": { "lat": 40.5667835, "lon": -3.6314951 },
+  "fbm-venue-MIRAMADRID-PABELLON-COLEGIO-PARACUELLOS-DE-JARAMA": {
+    "lat": 40.5041352,
+    "lon": -3.5201028
+  },
+  "fbm-venue-IE-TOWER-MADRID": { "lat": 40.4793784, "lon": -3.6948108 },
+  "fbm-venue-AGUSTINIANO-PISTA-EXTERIOR-MADRID": { "lat": 40.4121791, "lon": -3.6648563 },
+  "fbm-venue-CAMPOHERMOSO-PABELLON-HUMANES-DE-MADRID": { "lat": 40.2556777, "lon": -3.8198069 },
+  "fbm-venue-SAN-FERNANDO-CP-ARANJUEZ": { "lat": 40.0303904, "lon": -3.6114429 },
+  "fbm-venue-PEPE-DOMAICA-PABELLON-MADRID": { "lat": 40.3845076, "lon": -3.7170306 },
+  "fbm-venue-SANTIAGO-APOSTOL-PDVO-MPAL-VILLANUEVA-DE-LA-CANADA": {
+    "lat": 40.454363,
+    "lon": -3.9946083
+  },
+  "fbm-venue-ARGANZUELA-CENTRO-INTEGRADO-MADRID": { "lat": 40.4032089, "lon": -3.6965347 },
+  "fbm-venue-WILFRED-AGBONAVBARE-PABELLON-MADRID": { "lat": 40.371642, "lon": -3.6562269 },
+  "fbm-venue-EL-TRIGAL-PABELLON-FUENLABRADA": { "lat": 40.2941371, "lon": -3.801308 },
+  "fbm-venue-ESTUDIANTES-LAS-TABLAS-COLEGIO-MADRID": { "lat": 40.5092118, "lon": -3.6790829 },
+  "fbm-venue-SAN-AGUSTIN-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.4547104, "lon": -3.6857901 },
+  "fbm-venue-CORAZONISTAS-COLEGIO-MADRID": { "lat": 40.6574889, "lon": -3.7735537 },
+  "fbm-venue-LA-DEHESA-CDM-PABELLON-MADRID": { "lat": 40.3828469, "lon": -3.7898009 },
+  "fbm-venue-NTRA-SRA-DE-LORETO-COLEGIO-MADRID": { "lat": 40.4268857, "lon": -3.6784898 },
+  "fbm-venue-ALUCHE-PDVO-MPAL-MADRID": { "lat": 40.3844696, "lon": -3.7675896 },
+  "fbm-venue-PALOMERAS-PDVO-MPAL-MADRID": { "lat": 40.3806755, "lon": -3.633267 },
+  "fbm-venue-JESUS-ESPANA-PABELLON-PISTA-VALDEMORO": {
+    "lat": 40.176584664583324,
+    "lon": -3.646816068750001,
+    "approx": true
+  },
+  "fbm-venue-CALDEIRO-COLEGIO-MADRID": { "lat": 40.4329621, "lon": -3.6668389 },
+  "fbm-venue-CEIP-SERRACINES-PABELLON-SERRACINES": { "lat": 40.6211874, "lon": -3.3977221 },
+  "fbm-venue-PIO-BAROJA-CP-MOSTOLES": {
+    "lat": 40.31033531210426,
+    "lon": -3.893776683240228,
+    "approx": true
+  },
+  "fbm-venue-LAS-CRUCES-CDM-MADRID": { "lat": 40.3727262, "lon": -3.7096321 },
+  "fbm-venue-DUQUE-DE-ALGETE-PABELLON-ALGETE": {
+    "lat": 40.614488337012965,
+    "lon": -3.5359954487012972,
+    "approx": true
+  },
+  "fbm-venue-EL-PLANTIO-PABELLON-COSLADA": { "lat": 40.4294569, "lon": -3.561589 },
+  "fbm-venue-OLIMPIA-PABELLON-LEGANES": { "lat": 40.3286573, "lon": -3.7728022 },
+  "fbm-venue-CORAZON-INMACULADO-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-JOYFE-PABELLON-COLEGIO-MADRID": { "lat": 40.4337092, "lon": -3.6393358 },
+  "fbm-venue-PACO-HERNANDEZ-PABELLON-MADRID": { "lat": 40.469509, "lon": -3.7685677 },
+  "fbm-venue-MIGUEL-HERNANDEZ-PABELLON-ALCALA-DE-HENARES": {
+    "lat": 40.48991625126763,
+    "lon": -3.357361539014084,
+    "approx": true
+  },
+  "fbm-venue-LAS-ERAS-PABELLON-HOYO-DE-MANZANARES": { "lat": 40.625846, "lon": -3.9068121 },
+  "fbm-venue-LOS-SAUCES-MORALEJA-COLEGIO-ALCOBENDAS": { "lat": 40.5280148, "lon": -3.629123 },
+  "fbm-venue-JUAN-ANTONIO-SAMARANCH-CDAD-COLMENAR-VIEJO": {
+    "lat": 40.64341194234947,
+    "lon": -3.7319078727541988,
+    "approx": true
+  },
+  "fbm-venue-AMOROS-POLIDEPORTIVO-MADRID": { "lat": 40.371555, "lon": -3.7555466 },
+  "fbm-venue-HORTALEZA-PDVO-MPAL-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-PERALES-DEL-RIO-PABELLON-PERALES-DEL-RIO": {
+    "lat": 40.29101804168127,
+    "lon": -3.667104287740809,
+    "approx": true
+  },
+  "fbm-venue-IES-ARTURO-SORIA-MADRID": { "lat": 40.4778831, "lon": -3.6601429 },
+  "fbm-venue-NAVAARMADO-PATRICIA-GARCIA-PDVO-ESCORIAL-EL": { "lat": 40.5816847, "lon": -4.122516 },
+  "fbm-venue-RECUERDO-PABELLON-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ARCANGEL-RAFAEL-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-LOS-NEGRALES-POLIDEPORTIVO-COLLADO-VILLALBA": { "lat": 40.6309827, "lon": -4.0287011 },
+  "fbm-venue-IRLANDESAS-COLEGIO-SEMICUBIERTO-ALCOBENDAS": { "lat": 40.5183641, "lon": -3.6499116 },
+  "fbm-venue-PILARISTAS-PABELLON-COLEGIO-MADRID": { "lat": 40.3995257, "lon": -3.653202 },
+  "fbm-venue-COLEGIO-BERNADETTE-PABELLON-ARAVACA": { "lat": 40.4532586, "lon": -3.7709258 },
+  "fbm-venue-PARQUE-DEL-SURESTE-PABELLON-RIVAS-VACIAMADRID": {
+    "lat": 40.35597720563188,
+    "lon": -3.5171825118131887,
+    "approx": true
+  },
+  "fbm-venue-OBISPO-PERELLO-COLEGIO-MADRID": { "lat": 40.4361284, "lon": -3.6484192 },
+  "fbm-venue-ENTREVIAS-PDVO-MPAL-MADRID": { "lat": 40.296276, "lon": -3.4502316 },
+  "fbm-venue-LICEO-FRANCES-PABELLON-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ESCOLAPIOS-DE-ALCALA-COLEGIO-ALCALA-DE-HENARES": {
+    "lat": 40.485207,
+    "lon": -3.3528639
+  },
+  "fbm-venue-MIGUEL-DELIBES-CP-PARLA": {
+    "lat": 40.23110004946809,
+    "lon": -3.7670765430851096,
+    "approx": true
+  },
+  "fbm-venue-AGUSTIN-MARANON-PABELLON-ARANJUEZ": {
+    "lat": 39.99797328134332,
+    "lon": -3.697799955140957,
+    "approx": true
+  },
+  "fbm-venue-AMAYA-VALDEMORO-PABELLON-ALCOBENDAS": {
+    "lat": 40.53274095437103,
+    "lon": -3.6242991705756924,
+    "approx": true
+  },
+  "fbm-venue-STELLA-MARIS-LA-GAVIA-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SAN-MARTIN-VALDEIGLESIAS-PABELLON-SAN-MARTIN-DE-VALDEIGLESIAS": {
+    "lat": 40.3665161,
+    "lon": -4.3990401
+  },
+  "fbm-venue-JOSE-LUIS-FERNANDEZ-CANO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-FAUSTINA-VALLADOLID-PABELLON-MADRID": { "lat": 40.4047802, "lon": -3.6219452 },
+  "fbm-venue-CALASANCIO-PABELLON-COLEGIO-MADRID": { "lat": 40.4328794, "lon": -3.6765762 },
+  "fbm-venue-GREENFIELD-PABELLON-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-LA-LUZ-PABELLON-PISTA-3-TRES-CANTOS": { "lat": 40.6038981, "lon": -3.7071074 },
+  "fbm-venue-IES-JOSE-GARCIA-NIETO-PABELLON-ROZAS-DE-MADRID": {
+    "lat": 40.5179352,
+    "lon": -3.8982928
+  },
+  "fbm-venue-MEJORADA-PABELLON-MPAL-MEJORADA-DEL-CAMPO": { "lat": 40.3914612, "lon": -3.4805458 },
+  "fbm-venue-MORATALAZ-PDVO-MPAL-MADRID": { "lat": 40.396318, "lon": -3.6157712 },
+  "fbm-venue-LA-MASO-PABELLON-MADRID": { "lat": 40.4962546, "lon": -3.7057336 },
+  "fbm-venue-SAN-PEDRO-APOSTOL-COLEGIO-MADRID": { "lat": 40.467909, "lon": -3.5878973 },
+  "fbm-venue-CAMPO-POR-DETERMINAR-ALCALA-DE-HENARES": { "lat": 40.481954, "lon": -3.363981 },
+  "fbm-venue-PARQUE-DE-CATALUNA-CLUB-TORREJON-DE-ARDOZ": {
+    "lat": 40.45955130499996,
+    "lon": -3.4673794659090924,
+    "approx": true
+  },
+  "fbm-venue-NUEVA-CASTILLA-PABELLON-COLEGIO-MADRID": { "lat": 40.3760011, "lon": -3.6076341 },
+  "fbm-venue-COLEGIO-SAN-AGUSTIN-LOS-NEGRALES-GUADARRAMA": {
+    "lat": 40.67333284607051,
+    "lon": -4.085182301626012,
+    "approx": true
+  },
+  "fbm-venue-MENESIANO-PABELLON-COLEGIO-MADRID": { "lat": 40.4406672, "lon": -3.6609364 },
+  "fbm-venue-CIEMPOZUELOS-CIUDAD-DEPORTIVA-CIEMPOZUELOS": { "lat": 40.1537885, "lon": -3.6202747 },
+  "fbm-venue-GREDOS-SAN-DIEGO-ALCALA-PABELLON-ALCALA-DE-HENARES": {
+    "lat": 40.5039702,
+    "lon": -3.3635378
+  },
+  "fbm-venue-JAVI-LIMONES-PABELLON-PISTA-TORREJON-DE-ARDOZ": {
+    "lat": 40.45955130499996,
+    "lon": -3.4673794659090924,
+    "approx": true
+  },
+  "fbm-venue-REY-FELIPE-VI-PABELLON-BOADILLA-DEL-MONTE": { "lat": 40.4194024, "lon": -3.8957937 },
+  "fbm-venue-SANTO-ANGEL-DE-LA-GUARDA-MADRID": { "lat": 40.3719554, "lon": -3.7539161 },
+  "fbm-venue-SANTO-DOMINGO-SAVIO-PABELLON-MADRID": { "lat": 40.429059, "lon": -3.6347939 },
+  "fbm-venue-EDUARDO-GUILLEN-PABELLON-COLLADO-MEDIANO": { "lat": 40.692758, "lon": -4.0381429 },
+  "fbm-venue-LA-SALLE-SGDOCORAZON-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ANTONIO-DIAZ-MIGUEL-PDVO-MPAL-MADRID": { "lat": 40.4712964, "lon": -3.6955659 },
+  "fbm-venue-KIKE-BLAS-PABELLON-PISTA-CENTRAL-COLLADO-VILLALBA": {
+    "lat": 40.63472650532786,
+    "lon": -3.9993946520491828,
+    "approx": true
+  },
+  "fbm-venue-SAN-AGUSTIN-PABELLON-PRINCIPAL-MADRID": { "lat": 40.4547104, "lon": -3.6857901 },
+  "fbm-venue-SALESIANOS-CARABANCHEL-PABELLON-MADRID": { "lat": 40.3745662, "lon": -3.7528567 },
+  "fbm-venue-LA-SALLE-INSTITUCION-DESCUBIERTO-MADRID": { "lat": 40.3779787, "lon": -3.7746636 },
+  "fbm-venue-VICENTE-DEL-BOSQUE-CDM-RIVAS-VACIAMADRID": {
+    "lat": 40.35597720563188,
+    "lon": -3.5171825118131887,
+    "approx": true
+  },
+  "fbm-venue-AGUSTINIANO-PISTA-SEMICUBIERTA-MADRID": { "lat": 40.4121791, "lon": -3.6648563 },
+  "fbm-venue-FRANCISCO-FERNANDEZ-OCHOA-MADRID": { "lat": 40.3653879, "lon": -3.7402774 },
+  "fbm-venue-FERNANDO-MARTIN-PDVO-MPAL-MADRID": { "lat": 40.460784, "lon": -3.7117361 },
+  "fbm-venue-EL-ZABURDON-PABELLON-SAN-LORENZO-DE-ESCORIAL": {
+    "lat": 40.6027904,
+    "lon": -4.1267362
+  },
+  "fbm-venue-MONTE-TABOR-COLEGIO-ARAVACA": { "lat": 40.4221458, "lon": -3.7204964 },
+  "fbm-venue-VIRGEN-DE-LA-RIVERA-SALA-ESCOLAR-PARACUELLOS-DE-JARAMA": {
+    "lat": 40.5090524,
+    "lon": -3.532592
+  },
+  "fbm-venue-NILE-PABELLON-COLEGIO-FUENLABRADA": { "lat": 40.2944038, "lon": -3.8032732 },
+  "fbm-venue-GRINON-PABELLON-MPAL-GRINON": { "lat": 40.2160138, "lon": -3.8530756 },
+  "fbm-venue-HUMANITAS-PABELLON-COLEGIO-TORREJON-DE-ARDOZ": {
+    "lat": 40.4545907,
+    "lon": -3.4427241
+  },
+  "fbm-venue-ESCUELA-IDEO-SAN-SEBASTIAN-REYES": { "lat": 40.5473698, "lon": -3.6260586 },
+  "fbm-venue-SAN-PATRICIO-DEL-SOTO-PABELLON-ALCOBENDAS": {
+    "lat": 40.53274095437103,
+    "lon": -3.6242991705756924,
+    "approx": true
+  },
+  "fbm-venue-CIUDAD-DEPORTIVA-NAVAFRIA-MORALZARZAL": { "lat": 40.6796739, "lon": -3.9584202 },
+  "fbm-venue-EL-TORREON-PABELLON-POZUELO-DE-ALARCON": { "lat": 40.4461087, "lon": -3.8104057 },
+  "fbm-venue-INFANTA-CRISTINA-PABELLON-VILLANUEVA-DEL-PARDILLO": {
+    "lat": 40.4939647,
+    "lon": -3.9620404
+  },
+  "fbm-venue-JUAN-DE-LA-CIERVA-PABELLON-PISTA-GETAFE": {
+    "lat": 40.29101804168127,
+    "lon": -3.667104287740809,
+    "approx": true
+  },
+  "fbm-venue-ANTELA-PARADA-PABELLON-PISTA-ALCOBENDAS": {
+    "lat": 40.53274095437103,
+    "lon": -3.6242991705756924,
+    "approx": true
+  },
+  "fbm-venue-JUAN-DE-AUSTRIA-PABELLON-PISTA-ALCALA-DE-HENARES": {
+    "lat": 40.48991625126763,
+    "lon": -3.357361539014084,
+    "approx": true
+  },
+  "fbm-venue-LOS-ROSALES-PABELLON-MOSTOLES": {
+    "lat": 40.31033531210426,
+    "lon": -3.893776683240228,
+    "approx": true
+  },
+  "fbm-venue-CARLOS-SASTRE-PABELLON-LEGANES": { "lat": 40.3221731, "lon": -3.7789459 },
+  "fbm-venue-VIRGEN-DEL-CARMEN-PABELLON-PISTA-ARGANDA-DEL-REY": {
+    "lat": 40.2986695629845,
+    "lon": -3.4460769676356593,
+    "approx": true
+  },
+  "fbm-venue-MENESIANO-COLEGIO-MADRID": { "lat": 40.4406672, "lon": -3.6609364 },
+  "fbm-venue-BRAINS-ARTURO-SORIA-COLEGIO-MADRID": { "lat": 40.443705, "lon": -3.6381186 },
+  "fbm-venue-JULIAN-MARIAS-PABELLON-CEIP-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-LOS-CANTOS-PABELLON-PISTA-5-ALCORCON": { "lat": 40.3423365, "lon": -3.8256764 },
+  "fbm-venue-DIEGO-VELAZQUEZ-IES-TORRELODONES": { "lat": 40.5801245, "lon": -3.9355237 },
+  "fbm-venue-RECUERDO-COLEGIO-DESCUBIERTO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ALAMEDA-DE-OSUNA-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-IRLANDESAS-COLEGIO-DESCUBIERTO-ALCOBENDAS": { "lat": 40.5183641, "lon": -3.6499116 },
+  "fbm-venue-CHAMBERI-MARISTAS-PABELLON-MINI-MADRID": { "lat": 40.4339778, "lon": -3.6935527 },
+  "fbm-venue-LICEO-FRANCES-COLEGIO-DESCUBIERTO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-BRAINS-LA-MORALEJA-COLEGIO-MADRID": { "lat": 40.5300289, "lon": -3.6313288 },
+  "fbm-venue-SANTO-DOMINGO-PABELLON-CEIP-ALCORCON": { "lat": 40.3466561, "lon": -3.8189488 },
+  "fbm-venue-PILARISTAS-COLEGIO-MADRID": { "lat": 40.4282581, "lon": -3.6806231 },
+  "fbm-venue-LA-LUZ-PABELLON-PISTA-1-TRES-CANTOS": { "lat": 40.6038981, "lon": -3.7071074 },
+  "fbm-venue-VALDELUZ-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.4820982, "lon": -3.7086181 },
+  "fbm-venue-PARQUE-PINTO-PABELLON-PINTO": { "lat": 40.2397565, "lon": -3.6970117 },
+  "fbm-venue-COLEGIO-MADRID-FUNDACION-SANTA-MADRID": { "lat": 40.4732478, "lon": -3.6653194 },
+  "fbm-venue-VALDEFUENTES-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.4905826, "lon": -3.6653154 },
+  "fbm-venue-HIGHLANDS-EL-ENCINAR-COLEGIO-MADRID": { "lat": 40.5033184, "lon": -3.63944 },
+  "fbm-venue-LA-CANTUENA-PABELLON-PARLA": {
+    "lat": 40.23110004946809,
+    "lon": -3.7670765430851096,
+    "approx": true
+  },
+  "fbm-venue-EL-VALLE-SANCHINARRO-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-LAS-TABLAS-VALVERDE-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-VIRGEN-DE-ATOCHA-COLEGIO-MADRID": { "lat": 40.4069699, "lon": -3.6820474 },
+  "fbm-venue-ANGEL-NIETO-COMPLEJO-DPTIVO-BOADILLA-DEL-MONTE": {
+    "lat": 40.42606554851853,
+    "lon": -3.89980866777778,
+    "approx": true
+  },
+  "fbm-venue-MOVISTAR-ACADEMY-MAGARINOS-MADRID": { "lat": 40.6269798, "lon": -4.0108859 },
+  "fbm-venue-PATROCINIO-SAN-JOSE-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SAN-JOSE-DEL-PARQUE-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-FUENTELARREYNA-COLEGIO-MADRID": { "lat": 40.4803628, "lon": -3.7239198 },
+  "fbm-venue-ABACO-PABELLON-COLEGIO-MADRID": { "lat": 40.367587, "lon": -3.7657414 },
+  "fbm-venue-REAL-CANOE-NC-MADRID": { "lat": 40.4132036, "lon": -3.6645926 },
+  "fbm-venue-BRAINS-ARTURO-SORIA-COLEGIO-ALCOBENDAS": {
+    "lat": 40.53274095437103,
+    "lon": -3.6242991705756924,
+    "approx": true
+  },
+  "fbm-venue-CIUDAD-DE-ZARAGOZA-COLEGIO-MADRID": { "lat": 40.4605125, "lon": -3.5911118 },
+  "fbm-venue-JOYFE-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.4337092, "lon": -3.6393358 },
+  "fbm-venue-FRANCISCO-DE-ORELLANA-PABELLON-ARROYOMOLINOS": {
+    "lat": 40.2696029,
+    "lon": -3.9087573
+  },
+  "fbm-venue-SPINOLA-CHAMARTIN-COLEGIO-MADRID": { "lat": 40.4676147, "lon": -3.6712072 },
+  "fbm-venue-VERITAS-PABELLON-INSTITUTO-POZUELO-DE-ALARCON": {
+    "lat": 40.4131197,
+    "lon": -3.7889348
+  },
+  "fbm-venue-SANTA-MARIA-DEL-PILAR-MADRID": { "lat": 40.4134406, "lon": -3.6733384 },
+  "fbm-venue-DISTRITO-CENTRO-PABELLON-ALCOBENDAS": {
+    "lat": 40.53274095437103,
+    "lon": -3.6242991705756924,
+    "approx": true
+  },
+  "fbm-venue-ARTURO-RUIZ-IDMB-MADRID": { "lat": 40.0587547, "lon": -3.5981823 },
+  "fbm-venue-IES-ISABEL-LA-CATOLICA-PABELLON-BOADILLA-DEL-MONTE": {
+    "lat": 40.4130554,
+    "lon": -3.9062955
+  },
+  "fbm-venue-LA-ESTACION-PABELLON-MUNICIPAL-NAVALCARNERO": { "lat": 40.2933248, "lon": -4.006915 },
+  "fbm-venue-SAN-AGUSTIN-GUADALIX-PABELLON-SAN-AGUSTIN-DE-GUADALIX": {
+    "lat": 40.6798213,
+    "lon": -3.6179831
+  },
+  "fbm-venue-EL-ARROYO-PABELLON-FUENLABRADA": { "lat": 40.2773286, "lon": -3.795283 },
+  "fbm-venue-ANDRES-CASADO-PABELLON-GETAFE": { "lat": 40.2966229, "lon": -3.7520407 },
+  "fbm-venue-LOS-CANTOS-PABELLON-PISTA-4-ALCORCON": { "lat": 40.3429727, "lon": -3.8302812 },
+  "fbm-venue-IES-FEDERICO-GARCIA-LORCA-ROZAS-DE-MADRID": { "lat": 40.5510227, "lon": -3.8988959 },
+  "fbm-venue-LA-LUZ-PABELLON-PISTA-2-TRES-CANTOS": { "lat": 40.6038981, "lon": -3.7071074 },
+  "fbm-venue-PRINCIPES-DE-ASTURIAS-PABELLON-POZUELO-DE-ALARCON": {
+    "lat": 40.42885477520657,
+    "lon": -3.8109359735537205,
+    "approx": true
+  },
+  "fbm-venue-LA-SALLE-MARAVILLAS-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-JUAN-ANTONIO-SAMARANCH-PABELLON-VALDEMORO": { "lat": 40.1918604, "lon": -3.6678702 },
+  "fbm-venue-LOS-MOSQUITOS-PABELLON-ARROYOMOLINOS": { "lat": 40.2896139, "lon": -3.9099691 },
+  "fbm-venue-FUENTE-DEL-PALOMAR-CEIP-ALCORCON": { "lat": 40.3354243, "lon": -3.829769 },
+  "fbm-venue-AQUILA-PABELLON-COLEGIO-PARLA": {
+    "lat": 40.23110004946809,
+    "lon": -3.7670765430851096,
+    "approx": true
+  },
+  "fbm-venue-MIRASUR-PABELLON-COLEGIO-PINTO": { "lat": 40.25535, "lon": -3.6985281 },
+  "fbm-venue-SEVERO-OCHOA-CEIP-TORREJON-DE-ARDOZ": { "lat": 40.460056, "lon": -3.4737342 },
+  "fbm-venue-JUAN-DE-DIOS-ROMAN-POLIDEPORTIVO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-BRAINS-LA-MORALEJA-COLEGIO-ALCOBENDAS": { "lat": 40.5300289, "lon": -3.6313288 },
+  "fbm-venue-FIDEL-ALONSO-POLIDEPORTIVO-VILLANUEVA-DEL": { "lat": 40.4865154, "lon": -3.9672559 },
+  "fbm-venue-EL-PRADO-PABELLON-COLEGIO-MADRID": { "lat": 40.4964242, "lon": -3.700372 },
+  "fbm-venue-NUESTRA-SENORA-DE-LAS-NIEVES-MADRID": { "lat": 40.4911211, "lon": -3.7051518 },
+  "fbm-venue-MARIA-DE-VILLOTA-PABELLON-TORRELODONES": { "lat": 40.5674572, "lon": -3.9242318 },
+  "fbm-venue-ALBORADA-PABELLON-COLEGIO-ALCALA-DE-HENARES": { "lat": 40.4959125, "lon": -3.3716453 },
+  "fbm-venue-VIRGEN-DEL-CARMEN-PABELLON-PISTA-POVEDA-LA": {
+    "lat": 40.2986695629845,
+    "lon": -3.4460769676356593,
+    "approx": true
+  },
+  "fbm-venue-CHEMA-MARTINEZ-PABELLON-VILLAVICIOSA-DE": { "lat": 40.3558553, "lon": -3.909993 },
+  "fbm-venue-PEDRO-FERRANDIZ-PABELLON-ALCOBENDAS": { "lat": 40.5359195, "lon": -3.6348702 },
+  "fbm-venue-VIRGEN-DE-MIRASIERRA-COLEGIO-MADRID": { "lat": 40.4853897, "lon": -3.7131395 },
+  "fbm-venue-AGUSTINIANO-PABELLON-MANUEL-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ZOLA-LAS-ROZAS-COLEGIO-ROZAS-DE-MADRID": { "lat": 40.5128155, "lon": -3.9137386 },
+  "fbm-venue-CEIP-PADRE-JERONIMO-PABELLON-ALGETE": { "lat": 40.5920963, "lon": -3.4976075 },
+  "fbm-venue-PEPU-HERNANDEZ-PABELLON-MADRID": { "lat": 40.4339878, "lon": -3.6079667 },
+  "fbm-venue-CAMPO-POR-DETERMINAR-ALCOBENDAS": { "lat": 40.5400082, "lon": -3.6358494 },
+  "fbm-venue-LA-CANALEJA-PABELLON-PISTA-2-ALCORCON": {
+    "lat": 40.355907782129286,
+    "lon": -3.8349831334600752,
+    "approx": true
+  },
+  "fbm-venue-TORRELODONES-PABELLON-PEQUENO-TORRELODONES": { "lat": 40.5791287, "lon": -3.9395007 },
+  "fbm-venue-SAN-JOSE-DEL-PARQUE-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SAGE-2000-PABELLON-MADRID": { "lat": 40.3958149, "lon": -3.7612302 },
+  "fbm-venue-GERARDO-DIEGO-IES-POZUELO-DE-ALARCON": { "lat": 40.442459, "lon": -3.7878017 },
+  "fbm-venue-ESPARTALES-CIUDAD-DEPORTIVA-ALCALA-DE-HENARES": {
+    "lat": 40.5073673,
+    "lon": -3.3530798
+  },
+  "fbm-venue-CALASANCIO-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.4279804, "lon": -3.6769789 },
+  "fbm-venue-CERRO-DEL-TELEGRAFO-PABELLON-RIVAS-VACIAMADRID": {
+    "lat": 40.3858222,
+    "lon": -3.5284314
+  },
+  "fbm-venue-TORREJON-DE-LA-CALZADA-PABELLON-TORREJON-DE-LA-CALZADA": {
+    "lat": 40.1967858,
+    "lon": -3.8181381
+  },
+  "fbm-venue-MARIA-RODRIGO-IES-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-CHAMBERI-MARISTAS-COLEGIO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-MIGUEL-DELIBES-CP-LEGANES": {
+    "lat": 40.31364324142258,
+    "lon": -3.7877366255230114,
+    "approx": true
+  },
+  "fbm-venue-PUREZA-DE-MARIA-COLEGIO-MADRID": { "lat": 40.2888521, "lon": -3.74511 },
+  "fbm-venue-ISAAC-NEWTON-IES-MADRID": { "lat": 40.4738335, "lon": -3.7218826 },
+  "fbm-venue-MATER-SALVATORIS-POLIDEPORTIVO-MADRID": { "lat": 40.4658883, "lon": -3.7709573 },
+  "fbm-venue-ALAMEDA-DE-OSUNA-IES-DESCUBIERTO-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SANTA-MARIA-DEL-PILAR-PISTA-AZUL-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-CEIP-FRAY-JUNIPERO-SERRA-MADRID": { "lat": 40.3956152, "lon": -3.6584242 },
+  "fbm-venue-SAN-MARTIN-DE-LA-VEGA-PABELLON-SAN-MARTIN-DE-VEGA": {
+    "lat": 40.2156514,
+    "lon": -3.5665747
+  },
+  "fbm-venue-GAUDEM-PABELLON-COLEGIO-MADRID": { "lat": 40.4733241, "lon": -3.5939348 },
+  "fbm-venue-GALLUR-PDVO-MPAL-MADRID": { "lat": 40.3981746, "lon": -3.7395946 },
+  "fbm-venue-LA-CAJA-MAGICA-INDOOR-NORTE-PISTA-5-MADRID": { "lat": 40.3686417, "lon": -3.6843345 },
+  "fbm-venue-TORRELODONES-PABELLON-TORRELODONES": {
+    "lat": 40.56650524923664,
+    "lon": -3.9301940427480924,
+    "approx": true
+  },
+  "fbm-venue-FELIPE-REYES-PABELLON-PISTA-GETAFE": {
+    "lat": 40.29101804168127,
+    "lon": -3.667104287740809,
+    "approx": true
+  },
+  "fbm-venue-MATER-IMMACULATA-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ALAMEDA-DE-OSUNA-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-LA-CANALEJA-PABELLON-PISTA-3-ALCORCON": {
+    "lat": 40.355907782129286,
+    "lon": -3.8349831334600752,
+    "approx": true
+  },
+  "fbm-venue-SAN-BLAS-PABELLON-CIRCULAR-MADRID": { "lat": 40.4272135, "lon": -3.6127374 },
+  "fbm-venue-FRANCISCO-DE-VITORIA-UNIVERSIDAD-POZUELO-DE-ALARCON": {
+    "lat": 40.42885477520657,
+    "lon": -3.8109359735537205,
+    "approx": true
+  },
+  "fbm-venue-CAMPO-POR-DETERMINAR-MADRID": { "lat": 40.416782, "lon": -3.703507 },
+  "fbm-venue-PRINCIPES-DE-ASTURIAS-PABELLON-PINTO": { "lat": 40.2366105, "lon": -3.7035213 },
+  "fbm-venue-UCJC-SPORTS-CLUB-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-EUROCOLEGIO-CASVI-VILLAVIC-ODON-VILLAVICIOSA-DE": {
+    "lat": 40.3533231,
+    "lon": -3.8866662
+  },
+  "fbm-venue-CUBAS-DE-LA-SAGRA-PDVO-MPAL-FUENLABRADA": {
+    "lat": 40.29348586404255,
+    "lon": -3.805863921702131,
+    "approx": true
+  },
+  "fbm-venue-TRIANGULO-DE-ORO-PABELLON-MADRID": { "lat": 40.4647895, "lon": -3.6925456 },
+  "fbm-venue-SALESIANOS-CARABANCHEL-MADRID": { "lat": 40.3745791, "lon": -3.7523692 },
+  "fbm-venue-SOLOSPRADOS-PDVO-MPAL-BECERRIL-DE-LA-SIERRA": { "lat": 40.7127607, "lon": -3.9820697 },
+  "fbm-venue-TAJAMAR-PABELLON-COLEGIO-MADRID": { "lat": 40.3974526, "lon": -3.6511614 },
+  "fbm-venue-INFANTA-CRISTINA-PABELLON-VILLANUEVA-DEL": { "lat": 40.4939647, "lon": -3.9620404 },
+  "fbm-venue-CLARET-PABELLON-COLEGIO-MADRID": { "lat": 40.4413314, "lon": -3.6716715 },
+  "fbm-venue-AQUINAS-AMERICAN-SCHOOL-TORRELODONES": {
+    "lat": 40.56650524923664,
+    "lon": -3.9301940427480924,
+    "approx": true
+  },
+  "fbm-venue-IDB-VICTORIA-HERNANDEZ-MADRID": { "lat": 40.3584383, "lon": -3.6861876 },
+  "fbm-venue-PRINCIPE-FELIPE-IES-RIVAS-VACIAMADRID": {
+    "lat": 40.35597720563188,
+    "lon": -3.5171825118131887,
+    "approx": true
+  },
+  "fbm-venue-PEDRO-BRIMONIS-CEIP-HUMANES-DE-MADRID": { "lat": 40.2525393, "lon": -3.8255127 },
+  "fbm-venue-ZAZUAR-COLEGIO-MADRID": { "lat": 40.3815795, "lon": -3.6079205 },
+  "fbm-venue-LA-DEHESA-PDVO-MPAL-FUENTE-EL-SAZ-JARAMA": {
+    "lat": 40.637303687654324,
+    "lon": -3.523723922222225,
+    "approx": true
+  },
+  "fbm-venue-LAGOMAR-PABELLON-COLEGIO-VALDEMORO": { "lat": 40.1780907, "lon": -3.6839857 },
+  "fbm-venue-ARULA-COLEGIO-ALALPARDO": { "lat": 40.626827, "lon": -3.4722523 },
+  "fbm-venue-LA-SALLE-MARAVILLAS-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-FIDEL-ALONSO-POLIDEPORTIVO-VILLANUEVA-DEL-PARDILLO": {
+    "lat": 40.4865154,
+    "lon": -3.9672559
+  },
+  "fbm-venue-CIUDAD-REAL-MADRID-VALDEBEBAS-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SBA-ARENA-VILLAVICIOSA-DE": {
+    "lat": 40.36006655612907,
+    "lon": -3.942835368387096,
+    "approx": true
+  },
+  "fbm-venue-CHAMBERI-MARISTAS-CUBIERTA-MADRID": { "lat": 40.4339778, "lon": -3.6935527 },
+  "fbm-venue-MIGUEL-GUILLEN-PRIM-PABELLON-MADRID": { "lat": 40.3722967, "lon": -3.6221436 },
+  "fbm-venue-SALESIANOS-SAN-MIGUEL-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-ANGEL-LLORENTE-PABELLON-POZUELO-DE-ALARCON": { "lat": 40.4477079, "lon": -3.8128974 },
+  "fbm-venue-GREDOS-SAN-DIEGO-LAS-SUERTES-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-SAGRADA-FAMILIA-JORGE-JUAN-MADRID": { "lat": 40.4229862, "lon": -3.6647052 },
+  "fbm-venue-ABACO-COLEGIO-DESCUBIERTO-MADRID": { "lat": 40.367587, "lon": -3.7657414 },
+  "fbm-venue-AMANECER-CLUB-DEPORTIVO-MADRID": { "lat": 40.4569077, "lon": -3.7119646 },
+  "fbm-venue-GREDOS-SAN-DIEGO-ESCORIAL-ESCORIAL-EL": {
+    "lat": 40.579256455294114,
+    "lon": -4.09458861835294,
+    "approx": true
+  },
+  "fbm-venue-RAMIRO-DE-MAEZTU-1-INSTITUTO-MADRID": { "lat": 40.4303759, "lon": -3.7138787 },
+  "fbm-venue-SAN-AGUSTIN-PABELLON-MADRID": {
+    "lat": 40.47322109772723,
+    "lon": -3.6849180708624716,
+    "approx": true
+  },
+  "fbm-venue-EL-JUNCAL-PABELLON-ALCALA-DE-HENARES": { "lat": 40.4717613, "lon": -3.4089943 },
+  "fbm-venue-GREDOS-SAN-DIEGO-LAS-ROZAS-ROZAS-DE-MADRID": {
+    "lat": 40.520009803322296,
+    "lon": -3.8947781305647826,
+    "approx": true
+  },
+  "fbm-venue-CAMPO-POR-DETERMINAR-TORREJON-DE-ARDOZ": { "lat": 40.4587767, "lon": -3.4793343 },
+  "fbm-venue-ANTONIO-MATA-PABELLON-MADRID": { "lat": 40.4272135, "lon": -3.6127374 },
+  "fbm-venue-FELIX-RUBIO-PABELLON-MADRID": { "lat": 40.3575289, "lon": -3.6911093 },
+  "fbm-venue-LA-CAJA-MAGICA-PABELLON-MADRID": { "lat": 40.3829032, "lon": -3.6949036 },
+  "fbm-venue-ESCUELA-IDEO-MADRID": { "lat": 40.416782, "lon": -3.703507 },
+  "fbm-venue-COMPLEJO-DPTVO-SAN-JUAN-MADRID": { "lat": 40.4254092, "lon": -3.5249105 },
+  "fbm-venue-EVEREST-COLEGIO-POZUELO-DE-ALARCON": { "lat": 40.4452555, "lon": -3.8419362 },
+  "fbm-venue-TORREJON-DE-LA-CALZADA-PABELLON-MADRID": { "lat": 40.188667, "lon": -3.7873777 },
+  "fbm-venue-LA-CAJA-MAGICA-INDOOR-NORTE-PISTA-1-MADRID": { "lat": 40.3686417, "lon": -3.6843345 },
+  "fbm-venue-MANZANARES-EL-REAL-PABELLON-MANZANARES-EL": { "lat": 40.7399984, "lon": -3.8778874 },
+  "fbm-venue-TORRES-DE-LA-ALAMEDA-PABELLON-TORRES-DE-LA-ALAMEDA": {
+    "lat": 40.3968344,
+    "lon": -3.3592225
+  },
+  "fbm-venue-SBA-ARENA-ALCORCON": { "lat": 40.3396182, "lon": -3.8118017 },
+  "fbm-venue-FRANCISCO-JAVIER-CASTILLEJO-PARLA": { "lat": 40.2283236, "lon": -3.7698322 },
+  "fbm-venue-LOS-CANTOS-PABELLON-CENTRAL-ALCORCON": { "lat": 40.3429727, "lon": -3.8302812 },
+  "fbm-venue-DULCE-CHACON-PABELLON-RIVAS-VACIAMADRID": { "lat": 40.3362005, "lon": -3.5147508 },
+  "fbm-venue-CIUDAD-DE-LOS-POETAS-PDVO-MADRID": { "lat": 40.4660183, "lon": -3.7187431 },
+  "fbm-venue-LA-FUNDI-PDVO-MPAL-MADRID": { "lat": 40.3116213, "lon": -3.7200542 },
+  "fbm-venue-PRINCIPE-FELIPE-POLIDEPORTIVO-MAJADAHONDA": { "lat": 40.4790764, "lon": -3.8778609 },
+  "fbm-venue-LA-CANALEJA-PABELLON-PISTA-ALCORCON": {
+    "lat": 40.355907782129286,
+    "lon": -3.8349831334600752,
+    "approx": true
+  },
+  "fbm-venue-ENRIQUE-BLAS-PABELLON-MPAL-COLLADO-VILLALBA": {
+    "lat": 40.63472650532786,
+    "lon": -3.9993946520491828,
+    "approx": true
+  },
+  "fbm-venue-VALDELUZ-PABELLON-COLEGIO-MADRID": { "lat": 40.4820982, "lon": -3.7086181 },
+  "fbm-venue-CAMARMA-PDVO-MPAL-CAMARMA-DE-ESTERUELAS": { "lat": 40.5465914, "lon": -3.3774664 },
+  "fbm-venue-MARIANO-DIAZ-PABELLON-VILLAREJO-DE-SALVANES": { "lat": 40.1674905, "lon": -3.2815577 },
+  "fbm-venue-ADOLFO-SUAREZ-PABELLON-FUENLABRADA": {
+    "lat": 40.29348586404255,
+    "lon": -3.805863921702131,
+    "approx": true
+  },
+  "fbm-venue-OLIMPIA-PABELLON-PISTA-1-LEGANES": { "lat": 40.3286573, "lon": -3.7728022 },
+  "fbm-venue-PABELLON-PTVO-VEGA-RETUENGA-VILLALBILLA": { "lat": 40.4356428, "lon": -3.2998953 },
+  "fbm-venue-LOS-CARMENES-IDMB-MADRID": { "lat": 40.3975006, "lon": -3.7439339 }
+}

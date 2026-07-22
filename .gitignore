@@ -61,3 +61,10 @@ tsconfig.tsbuildinfo
 # cwd posibles del monorepo (raíz y apps/web)
 .fbm-data/
 apps/web/.fbm-data/
+
+# caché cruda del pipeline de geolocalización (dumps OSM/Overpass/Nominatim,
+# MB de intermedios reanudables). Se conservan los scripts, los inputs pequeños
+# (municipalities.json, venues-all.json) y las salidas consumibles por la app
+# (apps/web/src/lib/data/*.json), pero NO los blobs de caché.
+scripts/geo/cache/
+scripts/geo/*.log

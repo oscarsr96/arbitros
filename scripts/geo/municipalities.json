@@ -1,0 +1,234 @@
+[
+  {
+    "id": "muni-001",
+    "name": "Madrid"
+  },
+  {
+    "id": "muni-002",
+    "name": "Alcorcón"
+  },
+  {
+    "id": "muni-003",
+    "name": "Getafe"
+  },
+  {
+    "id": "muni-004",
+    "name": "Leganés"
+  },
+  {
+    "id": "muni-005",
+    "name": "Móstoles"
+  },
+  {
+    "id": "muni-006",
+    "name": "Fuenlabrada"
+  },
+  {
+    "id": "muni-007",
+    "name": "Alcalá de Henares"
+  },
+  {
+    "id": "muni-008",
+    "name": "Torrejón de Ardoz"
+  },
+  {
+    "id": "muni-009",
+    "name": "Pozuelo de Alarcón"
+  },
+  {
+    "id": "muni-010",
+    "name": "Rivas-Vaciamadrid"
+  },
+  {
+    "id": "muni-011",
+    "name": "Las Rozas"
+  },
+  {
+    "id": "muni-012",
+    "name": "Majadahonda"
+  },
+  {
+    "id": "muni-013",
+    "name": "Boadilla del Monte"
+  },
+  {
+    "id": "muni-014",
+    "name": "Tres Cantos"
+  },
+  {
+    "id": "muni-015",
+    "name": "San Sebastián de los Reyes"
+  },
+  {
+    "id": "muni-016",
+    "name": "Colmenar Viejo"
+  },
+  {
+    "id": "muni-017",
+    "name": "Alcobendas"
+  },
+  {
+    "id": "muni-018",
+    "name": "Coslada"
+  },
+  {
+    "id": "muni-019",
+    "name": "Arganda del Rey"
+  },
+  {
+    "id": "muni-020",
+    "name": "Parla"
+  },
+  {
+    "id": "muni-021",
+    "name": "Pinto"
+  },
+  {
+    "id": "muni-022",
+    "name": "Valdemoro"
+  },
+  {
+    "id": "muni-023",
+    "name": "Aranjuez"
+  },
+  {
+    "id": "muni-024",
+    "name": "Collado Villalba"
+  },
+  {
+    "id": "muni-025",
+    "name": "San Fernando de Henares"
+  },
+  {
+    "id": "muni-026",
+    "name": "Torrelodones"
+  },
+  {
+    "id": "muni-027",
+    "name": "Villanueva de la Cañada"
+  },
+  {
+    "id": "muni-028",
+    "name": "Navalcarnero"
+  },
+  {
+    "id": "muni-029",
+    "name": "Humanes de Madrid"
+  },
+  {
+    "id": "muni-030",
+    "name": "Ciempozuelos"
+  },
+  {
+    "id": "muni-031",
+    "name": "Villaviciosa de Odón"
+  },
+  {
+    "id": "muni-032",
+    "name": "Algete"
+  },
+  {
+    "id": "muni-033",
+    "name": "Arroyomolinos"
+  },
+  {
+    "id": "muni-034",
+    "name": "Becerril de la Sierra"
+  },
+  {
+    "id": "muni-035",
+    "name": "Camarma de Esteruelas"
+  },
+  {
+    "id": "muni-036",
+    "name": "Collado Mediano"
+  },
+  {
+    "id": "muni-037",
+    "name": "Daganzo de Arriba"
+  },
+  {
+    "id": "muni-038",
+    "name": "El Escorial"
+  },
+  {
+    "id": "muni-039",
+    "name": "Fresno de Torote"
+  },
+  {
+    "id": "muni-040",
+    "name": "Fuente el Saz de Jarama"
+  },
+  {
+    "id": "muni-041",
+    "name": "Griñón"
+  },
+  {
+    "id": "muni-042",
+    "name": "Guadarrama"
+  },
+  {
+    "id": "muni-043",
+    "name": "Hoyo de Manzanares"
+  },
+  {
+    "id": "muni-044",
+    "name": "Manzanares el Real"
+  },
+  {
+    "id": "muni-045",
+    "name": "Mejorada del Campo"
+  },
+  {
+    "id": "muni-046",
+    "name": "Moralzarzal"
+  },
+  {
+    "id": "muni-047",
+    "name": "Paracuellos de Jarama"
+  },
+  {
+    "id": "muni-048",
+    "name": "San Agustín de Guadalix"
+  },
+  {
+    "id": "muni-049",
+    "name": "San Lorenzo de El Escorial"
+  },
+  {
+    "id": "muni-050",
+    "name": "San Martín de la Vega"
+  },
+  {
+    "id": "muni-051",
+    "name": "San Martín de Valdeiglesias"
+  },
+  {
+    "id": "muni-052",
+    "name": "Soto del Real"
+  },
+  {
+    "id": "muni-053",
+    "name": "Torrejón de la Calzada"
+  },
+  {
+    "id": "muni-054",
+    "name": "Torres de la Alameda"
+  },
+  {
+    "id": "muni-055",
+    "name": "Valdeolmos-Alalpardo"
+  },
+  {
+    "id": "muni-056",
+    "name": "Villalbilla"
+  },
+  {
+    "id": "muni-057",
+    "name": "Villanueva del Pardillo"
+  },
+  {
+    "id": "muni-058",
+    "name": "Villarejo de Salvanés"
+  }
+]
