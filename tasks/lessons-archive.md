@@ -48,6 +48,7 @@
 - **Regla:** con varias tandas escribiendo el mismo árbol, antes de escalar un fallo de `typecheck`/`build`/test como "bug de X", re-verificar contra el estado ACTUAL del fichero. Un gate en rojo puede ser una escritura a medias de otro agente, no código roto.
   - **Why:** pasó dos veces en la misma sesión: (1) una tanda reportó `mock-data-client.ts` con un `</content>` que su dueño ya había borrado — el informe era de una foto anterior; (2) otra tanda tuvo un build en rojo por `materialize-import.ts` con medio commit aplicado de un vecino, que se resolvió solo al terminar de guardar. En ambos casos se gastó una ronda en un problema inexistente.
   - **How to apply:** ante un gate en rojo sobre un fichero que no es tuyo, `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. Y al recibir el reporte, verificar antes de reenviar. Corolario: no editar un fichero que otro agente está escribiendo (se pierden cambios); avisar a su dueño.
+  - **Corolario (2026-07-21): el que coordina también es un vecino del árbol.** Borré el arnés de un subagente dándolo por terminado, seguía vivo, lo reescribió apuntando a un módulo ya eliminado y dejó `typecheck` en rojo. Antes de limpiar/borrar lo de otro agente, confirmar que ha parado.
 
 ## Invariantes de dominio > heurísticas de cobertura al parsear
 

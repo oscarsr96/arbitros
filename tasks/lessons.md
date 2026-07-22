@@ -11,41 +11,17 @@
 ## Verificar el informe del subagente, no solo leerlo
 
 - **Regla:** re-medir el criterio de aceptación de forma independiente antes de cerrar una tanda.
-- **Why:** tres fallos reales sobrevivieron a informes en verde: 7 grupos con más partidos de los posibles (identidades de equipo fundidas), un cuadrático `partidos × designaciones` en una ruta, y un solver que tarda minutos con volumen real. Los tests pasaban con el seed pequeño.
+- **Why:** tres fallos reales sobrevivieron a informes en verde: 7 grupos con más partidos de los posibles (identidades de equipo fundidas), un cuadrático `partidos × designaciones` en una ruta, y un solver que tarda minutos con volumen real. Los tests pasaban con el seed pequeño. (2026-07-22: un pipeline de geo "en verde" generó direcciones de Madrid en Iowa; lo cazó un invariante propio de bbox, no el pipeline.)
 - **How to apply:** los verdes con datos de juguete no dicen nada del caso real. Medir con volumen de producción y con un invariante propio, no con el del autor.
-
-## Invariantes de dominio > heurísticas de cobertura
-
-- **Regla:** para validar un parser, usar un invariante EXACTO del dominio, no una heurística con tolerancias.
-- **Why:** la heurística "coverage con tolerancia T-1" daba falsos positivos con los `DESCANSA` y no veía el bug real. El invariante `n*(n-1)` de liga a doble vuelta lo cazó: 259/272 exactos, 6 déficit, 7 imposibles.
-- **How to apply:** detectar EXCESO además de déficit (el exceso delata identidades colapsadas). Emparejar contra vocabulario cerrado por coincidencia MÁS LARGA, nunca la primera que encaja.
 
 ## Datos externos geográficos (OSM/geocoders): restringir la query y validar con bbox
 
 - **Regla:** al generar datos desde una fuente externa por NOMBRE (Overpass, Nominatim), acotar la query a la región Y validar cada coordenada de salida contra un bbox de dominio como test permanente. El pipeline en verde NO garantiza datos correctos.
-- **Why:** `rel["name"="Madrid"]` sin bbox trajo Madrid, IOWA (y Pinto→Argentina, Arroyomolinos→Cáceres): centroide y direcciones de la capital (45% del roster) en EE.UU., con los tests de consistencia en verde. Lo cazó un invariante propio (todo punto dentro de la CM), no el pipeline. Aparte: el límite OSM viene partido en varios `way` que hay que COSER en anillos (tratar cada segmento como anillo daba ~0 puntos dentro del polígono en municipios multi-way). Ver [[import-temporada-completa]].
+- **Why:** `rel["name"="Madrid"]` sin bbox trajo Madrid, IOWA (y Pinto→Argentina, Arroyomolinos→Cáceres): centroide y direcciones de la capital (45% del roster) en EE.UU., con los tests de consistencia en verde. Aparte: el límite OSM viene partido en varios `way` que hay que COSER en anillos (tratar cada segmento como anillo daba ~0 puntos dentro del polígono en municipios multi-way). Ver [[geo-pipeline]], [[import-temporada-completa]].
 - **How to apply:** bbox de región en la query por nombre; test que exija el 100% de coords dentro del bbox de dominio (umbrales laxos ocultan homónimos); coser anillos multi-way; medir `inside≈raw` por municipio.
-
-## Árbol compartido: un gate en rojo puede ser un vecino a media escritura
-
-- **Regla:** con varias tandas en el mismo árbol, re-verificar contra el estado ACTUAL antes de escalar un fallo como "bug de X".
-- **Why:** pasó 3 veces en una sesión (un `</content>` ya borrado, un `materialize-import.ts` a medio commit, un `getMockDesignationsForMatch` en refactorización). Cada una costó una ronda.
-- **How to apply:** `stat`/`tail` el fichero y reejecutar el gate antes de mandar mensaje. No editar un fichero que otro está escribiendo: avisar a su dueño. **El que coordina también es un vecino del árbol**: 2026-07-21 borré el arnés de un subagente dándolo por terminado, seguía vivo, lo reescribió apuntando a un módulo ya eliminado y dejó `typecheck` en rojo. Antes de limpiar lo de otro, confirmar que ha parado.
 
 ## Medir el problema ANTES de planificar su solución
 
 - **Regla:** una cifra de rendimiento extrapolada no es una medición. Antes de planificar una optimización, medir el escenario real, con datos de producción, en proceso frío y mediana de 3.
-- **Why:** dos veces, en direcciones opuestas. Al importar 75× el volumen, medir destapó problemas invisibles en verde (seed de 9,5 MB al bundle cliente, ruta de 21 MB). Y al revés: se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió (era extrapolación de un punto que contradecía su propia curva); medido de verdad, 20,8 s de mediana, ya bajo el objetivo. Estuvo a punto de gastarse el modelo más caro en rediseñar un algoritmo que no tenía problema.
-- **How to apply:** `verify:bundle` en CI tras el build; filtrar por jornada en servidor; `performance.now()` sobre el seed real, nunca sobre el generador sintético (el de `solver.bench` da 3,7-6,7 s donde el real da 15-27 s: no reproduce la contención de disponibilidad, solapes y elegibilidad). Si la premisa de un plan es un número, el primer paso del plan es re-medirlo. Ver [[import-temporada-completa]].
-
-## `pnpm typecheck` obligatorio, no solo vitest
-
-- **Regla:** un `app/**/route.ts` de Next SOLO exporta handlers HTTP y config; los helpers van a `lib/*.ts`.
-- **Why:** cualquier export extra rompe el tipo generado en `.next/types` (TS2344); `tsc` lo detecta, `vitest` NO.
-- **How to apply:** incluir `pnpm typecheck` en el criterio de verificación de todo subagente que toque rutas.
-
-## Datos generados: deterministas siempre
-
-- **Regla:** PRNG con semilla fija o derivada del dato (p. ej. FNV-1a de `venueId|date`). Nunca `Math.random()`/`Date.now()`.
-- **Why:** `mock-data` se importa desde cliente; el no-determinismo rompe la hidratación server/cliente.
-- **How to apply:** criterio de aceptación = regenerar dos veces y comparar hash.
+- **Why:** dos veces, en direcciones opuestas. Al importar 75× el volumen, medir destapó problemas invisibles en verde (seed de 9,5 MB al bundle cliente, ruta de 21 MB). Y al revés: se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió; medido de verdad, 20,8 s de mediana, ya bajo el objetivo.
+- **How to apply:** `verify:bundle` en CI tras el build; `performance.now()` sobre el seed real, nunca sobre el generador sintético. Si la premisa de un plan es un número, el primer paso del plan es re-medirlo. Ver [[import-temporada-completa]].
