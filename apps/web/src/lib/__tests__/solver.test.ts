@@ -131,6 +131,9 @@ vi.mock('../mock-data', () => ({
 
 // Import solver AFTER mocking
 import { solve } from '../solver'
+// geo-distance NO se mockea: la distancia real persona→pabellón (roadKm) es
+// parte del contrato bajo test (feasibility coche + distanceKm reportado).
+import { roadKm } from '../geo-distance'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -425,6 +428,97 @@ describe('solve', () => {
     expect(result2.status).toBe('optimal')
     expect(result2.assignments).toHaveLength(1)
     expect(result2.assignments[0].personId).toBe('p1')
+  })
+
+  it('distancia real: persona y venue con coords → feasibility coche usa roadKm', () => {
+    // Venue con coords reales, ~37 km en línea recta de la persona → roadKm
+    // ~48 km (> 30). El fallback muni→muni daría 20 km (feasible): si este
+    // test pasa es porque la feasibility usó las coords, no la matriz.
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venue: {
+        id: 'v1',
+        name: 'Venue Coords',
+        address: '',
+        municipalityId: 'muni-X',
+        postalCode: '',
+        latitude: 40.75,
+        longitude: -3.7038,
+      },
+    })
+    const p1 = makePerson({
+      id: 'p1',
+      role: 'arbitro',
+      hasCar: false,
+      municipalityId: 'muni-A',
+      latitude: 40.4168,
+      longitude: -3.7038,
+    })
+    addAvailability('p1', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [p1], parameters: defaultParams() })
+    expect(result.assignments).toHaveLength(0)
+    expect(result.unassigned).toHaveLength(1)
+    expect(result.unassigned[0].reason).toContain('sin coche (>30km)')
+  })
+
+  it('distancia real: distanceKm reportado = roadKm persona→pabellón (no la matriz)', () => {
+    const venueCoords = { latitude: 40.5, longitude: -3.7038 }
+    const personCoords = { latitude: 40.4168, longitude: -3.7038 }
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venue: {
+        id: 'v1',
+        name: 'Venue Coords',
+        address: '',
+        municipalityId: 'muni-X',
+        postalCode: '',
+        ...venueCoords,
+      },
+    })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro', municipalityId: 'muni-A', ...personCoords })
+    addAvailability('p1', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [p1], parameters: defaultParams() })
+    expect(result.assignments).toHaveLength(1)
+    const expected =
+      Math.round(
+        roadKm(
+          { lat: personCoords.latitude, lon: personCoords.longitude },
+          { lat: venueCoords.latitude, lon: venueCoords.longitude },
+        ) * 10,
+      ) / 10
+    expect(result.assignments[0].distanceKm).toBe(expected)
+    expect(result.assignments[0].distanceKm).not.toBe(20) // 20 = fallback muni→muni
+  })
+
+  it('distancia real: persona SIN coords → fallback muni→muni sin romper', () => {
+    // Venue con coords pero persona sin ellas (p. ej. Griñón sin geocode):
+    // cae a getMockDistance (20 km por defecto en el mock) y asigna normal.
+    const match = makeMatch({
+      id: 'm1',
+      refereesNeeded: 1,
+      scorersNeeded: 0,
+      venue: {
+        id: 'v1',
+        name: 'Venue Coords',
+        address: '',
+        municipalityId: 'muni-X',
+        postalCode: '',
+        latitude: 40.75,
+        longitude: -3.7038,
+      },
+    })
+    const p1 = makePerson({ id: 'p1', role: 'arbitro', hasCar: false, municipalityId: 'muni-A' })
+    addAvailability('p1', match.date, match.time)
+
+    const result = solve({ matches: [match], persons: [p1], parameters: defaultParams() })
+    expect(result.assignments).toHaveLength(1)
+    expect(result.assignments[0].distanceKm).toBe(20)
   })
 
   it('seed variation: seed=0 vs seed=1 produce different assignments', () => {

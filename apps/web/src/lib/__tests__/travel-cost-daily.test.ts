@@ -4,6 +4,10 @@ import {
   calculatePersonTravelCost,
   calculateMockTravelCost,
   getMockDistance,
+  getPersonTravelCost,
+  mockPersons,
+  mockMatches,
+  getMockVenue,
 } from '../mock-data'
 
 // Regla FBM 2026-07-11: coste por persona y día.
@@ -78,6 +82,51 @@ describe('calculatePersonTravelCost (agrupa por día)', () => {
     expect(res.byDay[0]).toEqual({ date: '2025-09-27', cost: 3, km: 0 })
     expect(res.byDay[1].cost).toBe(round2(kmTorrejon * R))
     expect(res.totalCost).toBe(round2(3 + kmTorrejon * R))
+  })
+})
+
+describe('coste invariante ante coordenadas reales (distancias reales, tasks/todo.md 2026-07-23)', () => {
+  it('dos personas del mismo municipio con distinta coordenada exacta liquidan igual', () => {
+    // El coste FBM es SIEMPRE muni→muni (calculateDailyTravelCost solo recibe
+    // IDs de municipio); las coordenadas reales persona/pabellón (geo-distance.ts)
+    // solo alimentan la feasibility del coche en el solver, nunca la liquidación.
+    // Blindaje: busca en el dataset real dos personas del mismo municipio con
+    // coordenadas exactas distintas y comprueba que liquidan igual el mismo partido.
+    const byMuni = new Map<string, typeof mockPersons>()
+    for (const p of mockPersons) {
+      if (typeof p.latitude !== 'number' || typeof p.longitude !== 'number') continue
+      const list = byMuni.get(p.municipalityId) ?? []
+      list.push(p)
+      byMuni.set(p.municipalityId, list)
+    }
+    let personA: (typeof mockPersons)[number] | undefined
+    let personB: (typeof mockPersons)[number] | undefined
+    for (const list of byMuni.values()) {
+      const a = list[0]
+      const b = list.find((p) => p.latitude !== a.latitude || p.longitude !== a.longitude)
+      if (b) {
+        personA = a
+        personB = b
+        break
+      }
+    }
+    expect(
+      personA,
+      'el dataset necesita 2 personas del mismo municipio con coords distintas',
+    ).toBeDefined()
+    expect(personB).toBeDefined()
+    expect(personA!.latitude).not.toBe(personB!.latitude)
+    expect(personA!.municipalityId).toBe(personB!.municipalityId)
+
+    const match = mockMatches.find((m) => {
+      const venue = getMockVenue(m.venueId)
+      return venue && venue.municipalityId !== personA!.municipalityId
+    })
+    expect(match, 'el dataset necesita un partido fuera del municipio de la persona').toBeDefined()
+
+    const costA = getPersonTravelCost(personA!.id, [{ matchId: match!.id }])
+    const costB = getPersonTravelCost(personB!.id, [{ matchId: match!.id }])
+    expect(costB).toEqual(costA)
   })
 })
 

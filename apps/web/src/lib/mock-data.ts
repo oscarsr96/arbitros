@@ -22,6 +22,9 @@ import { generateSeasonAvailability, type GeneratedAvailabilitySlot } from './av
 // municipio como red de seguridad (ver scripts/geo/README.md). Se inyectan en
 // `mockVenues` por lookup, sin editar los literales de demoVenues ni el seed.
 import venueCoords from './data/venue-coords.json'
+// Centroides reales de municipio + haversine × factor carretera (ver
+// tasks/todo.md, plan "Distancias reales en el solver", 2026-07-23).
+import { getMuniCentroid, roadKm } from './geo-distance'
 // Posiciones nombradas de designación (Principal/Auxiliar, Anotador/Crono/24").
 // Módulo hoja: sin ciclo con mock-data.
 import type { DesignationPosition } from './designation-positions'
@@ -153,85 +156,24 @@ export const mockMunicipalities = [
 ]
 
 // ── Distancias entre municipios ─────────────────────────────────────────────
-
-// Coordenadas aproximadas (km desde centro de Madrid) para calcular distancias realistas
-const MUNI_COORDS: Record<string, { x: number; y: number }> = {
-  'muni-001': { x: 0, y: 0 }, // Madrid (centro)
-  'muni-002': { x: -10, y: -5 }, // Alcorcón (suroeste)
-  'muni-003': { x: -3, y: -13 }, // Getafe (sur)
-  'muni-004': { x: -6, y: -10 }, // Leganés (sur)
-  'muni-005': { x: -18, y: -8 }, // Móstoles (suroeste)
-  'muni-006': { x: -10, y: -15 }, // Fuenlabrada (sur)
-  'muni-007': { x: 25, y: 5 }, // Alcalá de Henares (este)
-  'muni-008': { x: 20, y: 5 }, // Torrejón de Ardoz (este)
-  'muni-009': { x: -10, y: 2 }, // Pozuelo de Alarcón (oeste)
-  'muni-010': { x: 10, y: -12 }, // Rivas-Vaciamadrid (sureste)
-  'muni-011': { x: -15, y: 5 }, // Las Rozas (noroeste)
-  'muni-012': { x: -14, y: 3 }, // Majadahonda (noroeste)
-  'muni-013': { x: -16, y: 0 }, // Boadilla del Monte (oeste)
-  'muni-014': { x: -3, y: 18 }, // Tres Cantos (norte)
-  'muni-015': { x: 2, y: 16 }, // San Sebastián de los Reyes (norte)
-  'muni-016': { x: -2, y: 22 }, // Colmenar Viejo (norte)
-  'muni-017': { x: 0, y: 14 }, // Alcobendas (norte)
-  'muni-018': { x: 12, y: 0 }, // Coslada (este)
-  'muni-019': { x: 20, y: -12 }, // Arganda del Rey (sureste)
-  'muni-020': { x: -5, y: -20 }, // Parla (sur)
-  'muni-021': { x: -2, y: -22 }, // Pinto (sur)
-  'muni-022': { x: 0, y: -27 }, // Valdemoro (sur)
-  'muni-023': { x: 5, y: -42 }, // Aranjuez (sur lejano)
-  'muni-024': { x: -25, y: 15 }, // Collado Villalba (noroeste lejano)
-  'muni-025': { x: 15, y: 2 }, // San Fernando de Henares (este)
-  'muni-026': { x: -18, y: 10 }, // Torrelodones (noroeste)
-  'muni-027': { x: -22, y: 3 }, // Villanueva de la Cañada (oeste)
-  'muni-028': { x: -25, y: -8 }, // Navalcarnero (suroeste lejano)
-  'muni-029': { x: -12, y: -18 }, // Humanes de Madrid (sur)
-  'muni-030': { x: 2, y: -32 }, // Ciempozuelos (sur lejano)
-  'muni-031': { x: -20, y: -5 }, // Villaviciosa de Odón (suroeste)
-  // ── Ampliación: mismo sistema x/y (km desde Madrid), calculado por
-  // regresión lineal x=f(lon), y=f(lat) sobre las 31 coordenadas de arriba
-  // (lat/lon reales conocidas) frente a su x/y hardcodeado, R²=0,98/0,97.
-  // La misma transformación se aplica a la lat/lon real de cada municipio
-  // nuevo. Ver informe de la tarea para el detalle de la regresión.
-  'muni-032': { x: 15, y: 17 }, // Algete (norte)
-  'muni-033': { x: -19, y: -16 }, // Arroyomolinos (suroeste)
-  'muni-034': { x: -25, y: 28 }, // Becerril de la Sierra (norte lejano, sierra)
-  'muni-035': { x: 24, y: 12 }, // Camarma de Esteruelas (este)
-  'muni-036': { x: -27, y: 27 }, // Collado Mediano (noroeste lejano, sierra)
-  'muni-037': { x: 18, y: 12 }, // Daganzo de Arriba (este)
-  'muni-038': { x: -35, y: 16 }, // El Escorial (noroeste lejano, sierra)
-  'muni-039': { x: 22, y: 17 }, // Fresno de Torote (norte, pedanía Serracines)
-  'muni-040': { x: 14, y: 21 }, // Fuente el Saz de Jarama (norte)
-  'muni-041': { x: -14, y: -22 }, // Griñón (sur)
-  'muni-042': { x: -32, y: 25 }, // Guadarrama (noroeste lejano, sierra)
-  'muni-043': { x: -18, y: 20 }, // Hoyo de Manzanares (norte)
-  'muni-044': { x: -14, y: 30 }, // Manzanares el Real (norte lejano, sierra)
-  'muni-045': { x: 16, y: -3 }, // Mejorada del Campo (este)
-  'muni-046': { x: -23, y: 25 }, // Moralzarzal (noroeste lejano, sierra)
-  'muni-047': { x: 12, y: 8 }, // Paracuellos de Jarama (norte)
-  'muni-048': { x: 5, y: 25 }, // San Agustín de Guadalix (norte)
-  'muni-049': { x: -36, y: 17 }, // San Lorenzo de El Escorial (noroeste lejano, sierra)
-  'muni-050': { x: 9, y: -22 }, // San Martín de la Vega (sur)
-  'muni-051': { x: -58, y: -7 }, // San Martín de Valdeiglesias (oeste lejano)
-  'muni-052': { x: -8, y: 33 }, // Soto del Real (norte lejano, sierra)
-  'muni-053': { x: -9, y: -23 }, // Torrejón de la Calzada (sur)
-  'muni-054': { x: 26, y: -2 }, // Torres de la Alameda (este)
-  'muni-055': { x: 18, y: 21 }, // Valdeolmos-Alalpardo (norte, localidad Alalpardo)
-  'muni-056': { x: 30, y: 0 }, // Villalbilla (este)
-  'muni-057': { x: -22, y: 6 }, // Villanueva del Pardillo (oeste)
-  'muni-058': { x: 32, y: -26 }, // Villarejo de Salvanés (sureste lejano)
-}
+//
+// Matriz precalculada a partir de centroides reales (dataset OSM de
+// direcciones, lib/geo-distance.ts): distancia = haversine × 1.3 (factor
+// carretera). Sustituye a las coordenadas x/y sintéticas colocadas a mano que
+// usaba esta matriz hasta 2026-07-23 (ver tasks/todo.md, plan "Distancias
+// reales en el solver"). Par sin centroide en alguno de los dos municipios →
+// se omite de la matriz; `getMockDistance` cae limpio a su fallback fijo
+// (35 km).
 
 function generateDistances(): { originId: string; destId: string; distanceKm: number }[] {
   const distances: { originId: string; destId: string; distanceKm: number }[] = []
   const ids = mockMunicipalities.map((m) => m.id)
   for (let i = 0; i < ids.length; i++) {
     for (let j = i + 1; j < ids.length; j++) {
-      const a = MUNI_COORDS[ids[i]]
-      const b = MUNI_COORDS[ids[j]]
+      const a = getMuniCentroid(ids[i])
+      const b = getMuniCentroid(ids[j])
       if (!a || !b) continue
-      // Distancia euclidiana × 1.3 (factor carretera) redondeada a entero
-      const straight = Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
-      const road = Math.round(straight * 1.3)
+      const road = Math.round(roadKm(a, b))
       distances.push({ originId: ids[i], destId: ids[j], distanceKm: road || 1 })
     }
   }

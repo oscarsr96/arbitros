@@ -1,3 +1,207 @@
+# Plan: Distancias reales en el solver (coords OSM en coste y feasibility) (2026-07-23)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (Fase A módulo `geo-distance.ts` + Fase B integración en el
+solver + Fase C review adversarial, 3 reservas cerradas) · SIN COMMITEAR (pendiente push)
+
+## Resultado (2026-07-23)
+
+Decisiones A-D resueltas según la recomendación marcada (★): A3 híbrido (coste/liquidación
+sigue muni→muni, sin tocar; feasibility del coche + `distanceKm` persistido pasan a
+persona→pabellón), B2 haversine × 1.3, C2 Griñón con centroide manual + fallback genérico,
+D1 matriz muni→muni cacheada + persona→pabellón on-the-fly.
+
+**Fase A** — `apps/web/src/lib/geo-distance.ts`: `haversineKm`, `roadKm` (× `ROAD_FACTOR`
+1.3), `getMuniCentroid` (lee `addresses-cm.json`, incluye Griñón manual), `roadKmBetween`
+(persona↔pabellón, opcional, cae a `undefined` si falta o no es finita alguna coord).
+
+**Fase B** — El solver (`apps/web/src/lib/solver.ts`) usa `roadKmBetween(persona, venue)`
+para la feasibility del coche (hard-cut >30 km, penalización 15-30 km) y el `distanceKm`
+reportado, con fallback a la matriz muni→muni si falta alguna coordenada. `api/optimize/
+route.ts` propaga `latitude/longitude` reales de persona y venue al enriquecer. El COSTE
+(`calculateDailyTravelCost`/`getPersonTravelCost`) NO se tocó: sigue siendo estrictamente
+muni→muni (regla FBM de liquidación por municipio destino).
+
+**Fase C** — Review adversarial: **LISTO CON RESERVAS, 0 bugs de producción**, 3 reservas
+de test cerradas por esta sesión:
+
+1. Guard NaN en `roadKmBetween`: `typeof === 'number'` dejaba pasar `NaN`; ahora usa
+   `Number.isFinite` (helper `isFiniteCoord`) → coordenada `NaN`/`Infinity` cae a
+   `undefined` (fallback muni→muni), con test en `geo-distance.test.ts`.
+2. Test de coste invariante (`travel-cost-daily.test.ts`): dos personas reales del mismo
+   municipio con coordenadas exactas distintas liquidan EXACTAMENTE igual el mismo
+   partido vía `getPersonTravelCost` — blinda que la distancia real no se ha colado en
+   la liquidación.
+3. Arnés del bench (`solver.bench.jornada-real.test.ts`) realineado con
+   `api/optimize/route.ts`: ya no pisa el venue con `latitude:0, longitude:0` ni omite
+   las coords de la persona; ambos llevan sus coordenadas reales, igual que producción.
+
+**Números del bench** (`solver.bench.jornada-real.test.ts`, jornada punta 2025-10-25,
+1309 partidos / 1279 personas activas / 3686 slots), baseline regenerada tras el
+realineamiento:
+
+| Métrica              | Antes (arnés con venue 0,0) | Después (coords reales) | Delta             |
+| -------------------- | --------------------------- | ----------------------- | ----------------- |
+| totalCost            | 6047,76 €                   | 6076,70 €               | +28,94 € (+0,48%) |
+| coverage             | 64,1%                       | 64,1%                   | =                 |
+| coveredSlots         | 2361/3686                   | 2364/3686               | +3                |
+| tiempo de resolución | ~3 s                        | 3,01 s                  | =                 |
+
+Impacto real de las distancias reales sobre una jornada completa de temporada: marginal
+(cobertura igual, coste +0,48%, +3 slots cubiertos) — el arnés anterior nunca ejercitó de
+verdad la distancia real (persona sin coords → `roadKmBetween` siempre `undefined` →
+fallback muni→muni), así que el delta medido ahora es la primera cifra honesta del efecto
+de esta tanda.
+
+Verificación: `geo-distance.test.ts` (11/11), `travel-cost-daily.test.ts` (11/11),
+`solver.test.ts` (33/33) y `optimize-range.test.ts` (16/16, ruta que consume el enriquecido
+real) verdes. `npx tsc --noEmit` en `apps/web`: limpio. Sin huérfanos.
+
+## Plan original (contexto, decisiones y task breakdown T1-T6)
+
+T6 (qué hacer con los `distanceKm` YA persistidos en designaciones nacidos del mock)
+queda fuera de esta tanda, sin decidir — anotado para el usuario.
+
+## Contexto verificado (2026-07-23)
+
+Cómo se calcula la distancia HOY (todo sintético, sin datos reales):
+
+- `getMockDistance(originId, destId)` en `apps/web/src/lib/mock-data.ts:2065-2068`: mismo
+  municipio → 0; si no, lookup O(1) en `distanceIndex` (Map construido en 2059-2063 desde
+  `mockDistances`); par desconocido → **fallback fijo de 35 km**.
+- `mockDistances = generateDistances()` en `mock-data.ts:224-241`: matriz muni→muni
+  **sintética**: coordenadas x/y en km desde Madrid colocadas a mano (`MUNI_COORDS`,
+  58 municipios; los 27 ampliados salen de una regresión lineal x=f(lon), y=f(lat),
+  R²≈0,98), distancia euclídea × **1.3 (factor carretera)**, redondeada a entero, mínimo 1.
+- Tabla `distances` de Drizzle (`lib/db/schema.ts`) solo la usa la ruta DB legacy
+  `lib/travel-cost.ts:18-42` (estimación por partido, "probablemente no usada en modo mock").
+- **NO existe haversine en el repo** (ni en `apps/web` ni en `scripts/geo/*.mjs`): habría
+  que escribirla (~10 líneas).
+
+Coordenadas reales disponibles (trabajo geo previo):
+
+- **Personas**: `referee-roster.ts:57-58` (`latitude?/longitude?`), pobladas por
+  `pickRealAddress` (`referee-roster.ts:1764-1789`) desde `lib/data/addresses-cm.json`
+  (57 municipios con `centroid` + `points`). **Griñón (muni-041) NO está en el JSON** →
+  sus personas quedan con lat/lon `undefined` (rama 1780-1788, centroide `undefined`).
+- **Venues**: `lib/data/venue-coords.json`, 394/394 con lat/lon; 89 con `approx: true` →
+  flag `coordsApprox` al mergear en `mock-data.ts:1473-1483`.
+- **Ojo**: `EnrichedPerson` y `EnrichedMatch.venue` (`lib/types.ts:21-32, 87-105`) NO
+  llevan lat/lon; si se elige granularidad persona→pabellón hay que extender tipos y
+  enrichers.
+
+## Consumidores de distancia (grep completo, qué necesita cada uno)
+
+| Consumidor                                          | Dónde                                                                                                                                                                                             | Tipo de distancia                                                           |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Solver: feasibility coche (hard >30, soft 15-30)    | `solver.ts:805-808, 825`                                                                                                                                                                          | DIRECTA persona→pabellón (hoy muni persona→muni venue)                      |
+| Solver: diagnóstico "sin coche >30km"               | `solver.ts:975`                                                                                                                                                                                   | persona→pabellón                                                            |
+| Solver: `distanceKm` reportado en asignaciones      | `solver.ts:423`                                                                                                                                                                                   | persona→pabellón                                                            |
+| Solver: viaje entre partidos consecutivos (solape)  | `solver.ts:218` → `overlap.ts:76`                                                                                                                                                                 | venue→venue (muni→muni entre pabellones)                                    |
+| `calculateDailyTravelCost` (liquidación real/día)   | `mock-data.ts:2104-2118` (línea 2111)                                                                                                                                                             | muni persona→muni venue; la regla FBM agrega POR MUNICIPIO destino distinto |
+| `calculateMockTravelCost` (badges picker + persist) | `mock-data.ts:2085-2097`; se persiste como `distanceKm` en `api/admin/designations/route.ts:77`                                                                                                   | persona→pabellón sería lo honesto (es orientativo)                          |
+| `calculatePersonTravelCost`/`getPersonTravelCost`   | `mock-data.ts:2123, 2150`; dashboard `api/admin/dashboard/route.ts:150`, reportes `api/admin/reports/route.ts:158,190`, persons/me, admin/persons                                                 | vía `calculateDailyTravelCost` (muni→muni)                                  |
+| Panel verificación pre-publicación                  | `schedule-conflicts.ts:88-207`; cliente construye lookup desde `/api/catalog` (`asignacion-view.tsx:105-122`, fallback 35 replicado)                                                              | venue→venue                                                                 |
+| `getDepartureInfo` (hora de salida)                 | `utils.ts:37-43`; consume el `distanceKm` PERSISTIDO en la designación (`designation-card.tsx:66`, `match-detail-row.tsx:151`)                                                                    | persona→pabellón (hoy hereda el muni→muni guardado)                         |
+| Tests que fijan la semántica                        | `travel-cost-daily.test.ts`, `solver.test.ts` (mock local), `solver.bench.test.ts`, `overlap.test.ts`, `schedule-conflicts.test.ts`, `fbm-seed-municipality-coverage.test.ts` (asume fallback 35) | varios                                                                      |
+
+## Mini-spec
+
+Sustituir la geometría sintética (x/y a mano × 1.3) por distancias derivadas de las
+coordenadas reales OSM, sin cambiar la regla de negocio FBM (coste por persona y día,
+un trayecto por municipio de destino distinto, fijo diario si no sale de su municipio).
+El contrato `getMockDistance(muniA, muniB)` y `/api/catalog` se conservan salvo que la
+decisión A elija persona→pabellón, en cuyo caso se añade una función nueva junto a la
+actual (no se rompe la firma consumida por overlap/schedule-conflicts, que es muni→muni
+por naturaleza: viaje entre pabellones).
+
+## Decisiones abiertas (elige el usuario; recomendación marcada con ★)
+
+**A) Granularidad**
+
+- A1 persona→pabellón en todo: máxima precisión, pero contradice la regla FBM de
+  liquidación (que agrega por MUNICIPIO destino) y obliga a extender tipos/enrichers.
+- A2 solo recomputar muni→muni con centroides reales de `addresses-cm.json`: cambio
+  mínimo, mantiene firma y semántica; pierde precisión intra-municipio (Madrid capital
+  es enorme y seguiría siendo 0 km).
+- ★ A3 híbrido: liquidación/coste marginal sigue muni→muni (centroides reales, regla FBM
+  intacta); feasibility del coche + `distanceKm` persistido + hora de salida pasan a
+  persona→pabellón (es donde la precisión importa de verdad).
+
+**B) Métrica**
+
+- B1 haversine pura: gratis y offline, pero infraestima carretera ~1,2-1,4x → el
+  hard-cut de 30 km se volvería MÁS permisivo que hoy.
+- ★ B2 haversine × factor carretera 1.3 (calibrable con pares conocidos): gratis,
+  offline, y mantiene la escala del mock actual (que ya usa ×1.3), mínima perturbación
+  del hard-cut.
+- B3 Google Distance Matrix API: carretera real, pero de pago (~6,5 USD la matriz),
+  necesita key y seed; dejar como mejora futura solo para la matriz muni→muni (32k pares).
+
+**C) Fallback sin coordenada (Griñón, muni-041)**
+
+- C1 caer al mock actual (x/y sintético): mezcla dos métricas, comportamiento raro.
+- ★ C2 centroide manual de Griñón añadido a `addresses-cm.json` (+ flag approx): 1 dato,
+  unifica métrica; red de seguridad genérica en código: sin coord persona → centroide de
+  su municipio → si tampoco, fallback 35 km actual.
+- C3 excluir personas sin coord: pierde árbitros reales, descartada salvo veto del usuario.
+
+**D) Cache vs on-the-fly**
+
+- ★ D1 matriz muni→muni precalculada a la carga del módulo (58×58, como hoy: el Map
+  `distanceIndex` no cambia) + persona→pabellón on-the-fly (haversine es ~1µs, comparable
+  al lookup; el bench del solver decide si hace falta memoizar por par persona|venue).
+- D2 precalcular también persona×venue por jornada: solo si el bench (T5) detecta
+  regresión; añade complejidad sin evidencia aún.
+
+**Aviso transversal**: cambiar la métrica MUEVE el hard-cut del coche (30 km) y la
+penalización 15-30: personas hoy feasibles pueden dejar de serlo y viceversa. T5 mide el
+delta antes de dar por bueno el cambio.
+
+## Criterios de aceptación verificables
+
+- Pares conocidos dentro de rango carretera real (test unitario nuevo): Madrid–Alcalá
+  de Henares 25-35 km, Madrid–Móstoles 15-25 km, Madrid–Villarejo de Salvanés 40-58 km,
+  Alcalá–Torrejón 8-15 km.
+- Invariantes de `getMockDistance` conservados: simetría, mismo municipio = 0, munis
+  distintos ≥ 1, par desconocido → fallback 35.
+- Suite existente verde (`npm run test`): travel-cost-daily, solver, overlap,
+  schedule-conflicts, fbm-seed-municipality-coverage, geo-data (los tests de coste usan
+  `getMockDistance` para construir el esperado, así que son robustos al cambio de valores).
+- Persona de Griñón: obtiene coste finito y feasibility coherente según la decisión C
+  (test explícito con una persona sin lat/lon).
+- Bench del solver (`solver.bench.test.ts`): sin degradación >10% del tiempo actual.
+- Comparativa antes/después en una jornada de referencia (script one-off en scratchpad):
+  histograma de distancias, nº de candidatos feasibles por partido y coste total de la
+  propuesta; se revisa con el usuario si el delta de cobertura es material.
+
+## Task breakdown (tras decidir A-D)
+
+- **T1** (sonnet, low): módulo `lib/geo-distance.ts`: haversine + `ROAD_FACTOR`,
+  centroides de municipio leídos de `addresses-cm.json` (+ Griñón según C), tests
+  unitarios con los pares conocidos.
+- **T2** (sonnet, low): `generateDistances()` pasa a construir `mockDistances` desde
+  centroides reales (contrato de `getMockDistance` y `/api/catalog` intactos); revisar
+  el redondeo a entero y el mínimo 1.
+- **T3** (fable, high, solo si A1/A3): feasibility coche + `distanceKm` reportado con
+  persona→pabellón: extender `EnrichedPerson`/`EnrichedMatch.venue` con lat/lon, tocar
+  `solver.ts:423, 805, 975` y los enrichers de las rutas API; recalibrar el hard-cut si
+  el histograma lo pide.
+- **T4** (sonnet, low): fallback C implementado (dato de Griñón + red de seguridad en
+  `pickRealAddress` + test).
+- **T5** (sonnet, low): verificación de regresión: suite completa + bench + script
+  comparativo antes/después (histograma, feasibility, coste por jornada).
+- **T6** (fable, low): decidir qué pasa con los `distanceKm` YA persistidos en
+  designaciones (nacieron del mock): ¿recalcular al vuelo o dejar los históricos? Afecta
+  a `getDepartureInfo` y badges; proponer al usuario.
+
+## Fuera de scope (anotado)
+
+- Google Distance Matrix (B3) como seed de la tabla `distances` de Drizzle: fase DB real.
+- Persistencia en Supabase de la matriz: el modo mock sigue siendo la fuente de la verdad.
+- Cambiar la regla FBM de liquidación (por municipio destino): NO se toca.
+
+---
+
 # Plan: Aplicar propuesta con forceExisting=false — reemplazo de designaciones existentes (2026-07-23)
 
 Estado: ✅ EJECUTADO Y VERIFICADO (fix de borrado + T1/T2 completos + review adversarial fable APROBADO CON

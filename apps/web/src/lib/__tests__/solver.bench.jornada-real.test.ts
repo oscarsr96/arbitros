@@ -46,7 +46,11 @@ import { filterMatchesByRange } from '../match-query'
 // Sábado de la jornada punta (ver tasks/todo-import-temporada.md, sección P6).
 const JORNADA_ANCHOR_DATE = '2025-10-25'
 
-/** Enriquecido idéntico al de POST /api/optimize (app/api/optimize/route.ts). */
+/** Enriquecido idéntico al de POST /api/optimize (app/api/optimize/route.ts):
+ *  venue con sus coords reales (venue-coords.json) y persona con lat/lon
+ *  reales de mockPersons, para que roadKmBetween use distancia real igual
+ *  que en producción (antes este arnés pisaba el venue con 0,0 y omitía las
+ *  coords de la persona, cayendo siempre al fallback muni→muni). */
 function buildSolverInput(): SolverInput {
   const saturday = getJornadaSaturdayForDate(JORNADA_ANCHOR_DATE)
   const window = getMatchdayWindow(saturday)
@@ -64,7 +68,9 @@ function buildSolverInput(): SolverInput {
 
     return {
       ...m,
-      venue: venue ? { ...venue, latitude: 0, longitude: 0 } : undefined,
+      // MockVenue ya trae lat/lon reales (venue-coords.json); se pasan tal
+      // cual, igual que api/optimize/route.ts.
+      venue,
       competition: competition
         ? { ...competition, fineCategory: resolveFineCategory(competition) }
         : undefined,
@@ -91,6 +97,8 @@ function buildSolverInput(): SolverInput {
         address: p.address,
         postalCode: p.postalCode,
         municipalityId: p.municipalityId,
+        latitude: p.latitude,
+        longitude: p.longitude,
         active: p.active,
         hasCar: p.hasCar,
         municipality,

@@ -22,6 +22,7 @@ import {
   calculateDailyTravelCost,
 } from './mock-data'
 import { pairOverlap, timeToMinutes, isSolverConflict, type OverlapMatch } from './overlap'
+import { roadKmBetween } from './geo-distance'
 import {
   mapDesignationsToSlots,
   positionForSlot,
@@ -114,6 +115,19 @@ function matchPriorityRank(match: EnrichedMatch): number {
 // check (checkSlotEligibility ya da true a anotadores).
 function toEligibleRole(position?: DesignationPosition): EligibleRole | undefined {
   return position === 'principal' || position === 'auxiliar' ? position : undefined
+}
+
+// Distancia DIRECTA persona→pabellón en km: coords reales (roadKm = haversine
+// ×1.3) cuando persona Y venue las tienen; si falta alguna, fallback a la
+// matriz muni→muni (getMockDistance). Solo decide la feasibility del coche y
+// el `distanceKm` reportado — el COSTE sigue siendo muni→muni (regla FBM,
+// calculateDailyTravelCost).
+function personVenueKm(
+  person: EnrichedPerson,
+  venue: EnrichedMatch['venue'],
+  venueMuniId: string,
+): number {
+  return roadKmBetween(person, venue) ?? getMockDistance(person.municipalityId, venueMuniId)
 }
 
 // ¿El rechazo de elegibilidad vino del modelo FINO o del fallback legacy?
@@ -420,7 +434,7 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
           date,
           venueMuniId,
         )
-        const distanceKm = getMockDistance(person.municipalityId, venueMuniId)
+        const distanceKm = personVenueKm(person, inScopeMatch.venue, venueMuniId)
         const municipality = getMockMunicipality(person.municipalityId)
         assignments.push({
           matchId: d.matchId,
@@ -801,8 +815,9 @@ function findBestCandidate(
 
     // Distancia DIRECTA persona↔pabellón (no marginal): decide la restricción
     // de coche y es lo que se reporta como distanceKm (la persona conduce
-    // esos km igual, sea o no el primer partido del día).
-    const directKm = getMockDistance(person.municipalityId, venueMuniId)
+    // esos km igual, sea o no el primer partido del día). Coords reales si
+    // ambos las tienen; fallback muni→muni (personVenueKm).
+    const directKm = personVenueKm(person, match.venue, venueMuniId)
 
     // Hard constraint: sin coche y >30km directos → descartado
     if (!person.hasCar && directKm > 30) continue
@@ -971,8 +986,9 @@ function getUnassignedReason(
       continue
     }
 
-    // Comprobar hard constraint coche para diagnóstico (distancia directa)
-    const km = getMockDistance(person.municipalityId, venueMuni)
+    // Comprobar hard constraint coche para diagnóstico (distancia directa,
+    // misma métrica que findBestCandidate: coords reales o fallback muni→muni)
+    const km = personVenueKm(person, match.venue, venueMuni)
     if (!person.hasCar && km > 30) {
       noCarTooFar++
       continue

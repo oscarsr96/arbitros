@@ -29,6 +29,11 @@ export interface EnrichedMatch {
     metro?: string
     bus?: string
     observations?: string
+    // Coordenadas reales OSM del pabellón (ver MockVenue en mock-data.ts).
+    // Opcionales: sin ellas, la distancia persona→pabellón cae a muni→muni.
+    latitude?: number
+    longitude?: number
+    coordsApprox?: boolean
   }
   court?: {
     id: string
@@ -96,6 +101,11 @@ export interface EnrichedPerson {
   address: string
   postalCode: string
   municipalityId: string
+  // Coordenadas reales OSM de la dirección (ver MockPerson en referee-roster.ts).
+  // Opcionales (personas demo/fixtures sin geocode): sin ellas, la distancia
+  // persona→pabellón cae a muni→muni.
+  latitude?: number
+  longitude?: number
   active: boolean
   hasCar: boolean
   municipality?: { id: string; name: string }

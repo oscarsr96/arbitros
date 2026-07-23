@@ -54,7 +54,9 @@ export async function POST(request: Request) {
 
       return {
         ...m,
-        venue: venue ? { ...venue, latitude: 0, longitude: 0 } : undefined,
+        // MockVenue ya trae lat/lon reales (venue-coords.json); se pasan tal
+        // cual para la distancia persona→pabellón del solver.
+        venue,
         competition: competition
           ? { ...competition, fineCategory: resolveFineCategory(competition) }
           : undefined,
@@ -82,6 +84,8 @@ export async function POST(request: Request) {
           address: p.address,
           postalCode: p.postalCode,
           municipalityId: p.municipalityId,
+          latitude: p.latitude,
+          longitude: p.longitude,
           active: p.active,
           hasCar: p.hasCar,
           municipality,

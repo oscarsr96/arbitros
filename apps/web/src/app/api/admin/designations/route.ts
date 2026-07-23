@@ -8,6 +8,7 @@ import {
   calculateMockTravelCost,
 } from '@/lib/mock-data'
 import { checkDesignationConflict } from '@/lib/designation-validation'
+import { roadKmBetween } from '@/lib/geo-distance'
 import {
   autoFillPosition,
   isValidPositionForRole,
@@ -75,6 +76,12 @@ function createDesignation(
   }
   const venue = getMockVenue(match.venueId)
   const { cost, km } = calculateMockTravelCost(person.municipalityId, venue?.municipalityId ?? '')
+  // `distanceKm` persistido: distancia real persona→pabellón cuando ambos
+  // tienen coords (alimenta "Cómo llegar" y la hora de salida); si falta
+  // alguna, fallback muni→muni (km). Solo aplica a designaciones NUEVAS: las
+  // ya guardadas son histórico y no se reescriben. El coste estimado (cost)
+  // sigue siendo muni→muni (regla FBM).
+  const directKm = roadKmBetween(person, venue) ?? km
   const designation = {
     id: `desig-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     matchId,
@@ -82,7 +89,7 @@ function createDesignation(
     role,
     position: requestedPosition ?? autoFillPosition(mockDesignations, matchId, role),
     travelCost: cost.toFixed(2),
-    distanceKm: km.toFixed(1),
+    distanceKm: directKm.toFixed(1),
     status: 'pending' as const,
     notifiedAt: null,
     createdAt: new Date(),
