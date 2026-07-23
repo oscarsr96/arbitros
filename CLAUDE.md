@@ -8,21 +8,21 @@ Aplicación web para la Federación de Baloncesto de Madrid que automatiza la as
 
 ## Stack Tecnológico
 
-| Capa                      | Tecnología                                                                                      | Justificación                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Frontend**              | Next.js 14 (App Router) + TypeScript                                                            | SSR para SEO del portal público, RSC para rendimiento, rutas API integradas para prototipos rápidos |
-| **UI**                    | Tailwind CSS + shadcn/ui + Framer Motion                                                        | Componentes accesibles y consistentes, animaciones fluidas, diseño rápido sin CSS custom            |
-| **Estado cliente**        | Zustand                                                                                         | Ligero, sin boilerplate, perfecto para estado de UI (filtros, selecciones)                          |
-| **Backend**               | Next.js Route Handlers (fase 1) → migrar a servicio separado con Hono/Node si escala (fase 4+)  |
-| **Base de datos**         | PostgreSQL 16 (Supabase hosted)                                                                 | Relacional, robusto, extensiones geográficas con PostGIS, Row Level Security nativa                 |
-| **ORM**                   | Drizzle ORM                                                                                     | Type-safe, SQL-first, migraciones declarativas, excelente DX con TypeScript                         |
-| **Autenticación**         | Supabase Auth (magic link + OAuth Google)                                                       | Sin contraseñas para árbitros (simplifica onboarding), SSO para admins FBM                          |
-| **Motor de optimización** | Python (OR-Tools) como microservicio o Edge Function                                            | Google OR-Tools es el estándar para problemas de asignación con restricciones                       |
-| **Distancias**            | Matriz precalculada en PostgreSQL + Google Distance Matrix API (para seed inicial)              | ~180 municipios = ~32.000 pares, se calcula una vez y se cachea                                     |
-| **Notificaciones**        | Resend (email) + Web Push API                                                                   | Emails transaccionales y notificaciones push para designaciones                                     |
-| **Hosting**               | Vercel (frontend + API routes) + Supabase (DB + Auth) + Railway o Fly.io (microservicio Python) |
-| **Monitorización**        | Sentry (errores) + Vercel Analytics (rendimiento)                                               |
-| **CI/CD**                 | GitHub Actions → preview deploys en Vercel                                                      |
+| Capa                      | Tecnología                                                                                                                                                                            | Justificación                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Frontend**              | Next.js 14 (App Router) + TypeScript                                                                                                                                                  | SSR para SEO del portal público, RSC para rendimiento, rutas API integradas para prototipos rápidos |
+| **UI**                    | Tailwind CSS + shadcn/ui + Framer Motion                                                                                                                                              | Componentes accesibles y consistentes, animaciones fluidas, diseño rápido sin CSS custom            |
+| **Estado cliente**        | Zustand                                                                                                                                                                               | Ligero, sin boilerplate, perfecto para estado de UI (filtros, selecciones)                          |
+| **Backend**               | Next.js Route Handlers (fase 1) → migrar a servicio separado con Hono/Node si escala (fase 4+)                                                                                        |
+| **Base de datos**         | PostgreSQL 16 (Supabase hosted)                                                                                                                                                       | Relacional, robusto, extensiones geográficas con PostGIS, Row Level Security nativa                 |
+| **ORM**                   | Drizzle ORM                                                                                                                                                                           | Type-safe, SQL-first, migraciones declarativas, excelente DX con TypeScript                         |
+| **Autenticación**         | Supabase Auth (magic link + OAuth Google)                                                                                                                                             | Sin contraseñas para árbitros (simplifica onboarding), SSO para admins FBM                          |
+| **Motor de optimización** | Python (OR-Tools) como microservicio o Edge Function                                                                                                                                  | Google OR-Tools es el estándar para problemas de asignación con restricciones                       |
+| **Distancias**            | Matriz precalculada en PostgreSQL, generada offline con haversine × 1.3 sobre centroides reales (`lib/geo-distance.ts`); Google Distance Matrix API queda como mejora futura opcional | ~180 municipios = ~32.000 pares, se calcula una vez y se cachea                                     |
+| **Notificaciones**        | Resend (email) + Web Push API                                                                                                                                                         | Emails transaccionales y notificaciones push para designaciones                                     |
+| **Hosting**               | Vercel (frontend + API routes) + Supabase (DB + Auth) + Railway o Fly.io (microservicio Python)                                                                                       |
+| **Monitorización**        | Sentry (errores) + Vercel Analytics (rendimiento)                                                                                                                                     |
+| **CI/CD**                 | GitHub Actions → preview deploys en Vercel                                                                                                                                            |
 
 ---
 
@@ -199,10 +199,12 @@ nunca para liquidaciones ni para el objetivo del solver.
 
 Script que se ejecuta una vez para poblar la tabla `distances`:
 
-1. Obtener lista de los ~180 municipios de la Comunidad de Madrid.
-2. Para cada par (origen, destino), llamar a Google Distance Matrix API (modo driving).
-3. Insertar en tabla `distances`. Coste estimado: ~32.000 pares ÷ 25 por request = ~1.300 llamadas API ≈ 6,50 USD.
+1. Obtener lista de los ~180 municipios de la Comunidad de Madrid y sus centroides reales (`addresses-cm.json`, promedio de direcciones OSM muestreadas por municipio).
+2. Para cada par (origen, destino), calcular la distancia con haversine × 1.3 (factor carretera, `lib/geo-distance.ts`): offline, sin llamadas a API externa.
+3. Insertar en tabla `distances`.
 4. Actualizar periódicamente (anualmente es suficiente, las carreteras no cambian).
+
+Mejora futura opcional (mayor exactitud, no implementada): sustituir haversine × 1.3 por Google Distance Matrix API (modo driving); coste estimado ~32.000 pares ÷ 25 por request = ~1.300 llamadas API ≈ 6,50 USD.
 
 ---
 
@@ -465,7 +467,7 @@ Implementación: Supabase RLS (Row Level Security) con roles en metadata del JWT
 - [ ] Configurar Supabase: proyecto, base de datos PostgreSQL, Auth con magic link
 - [ ] Definir schema de Drizzle ORM completo y ejecutar migraciones iniciales
 - [ ] Script de seed: municipios de la Comunidad de Madrid (~180)
-- [ ] Script de seed: matriz de distancias (Google Distance Matrix API, ejecución única)
+- [ ] Script de seed: matriz de distancias (haversine × 1.3 sobre centroides reales, offline; Google Distance Matrix API como mejora futura opcional)
 - [ ] Script de seed: datos de demo (árbitros ficticios, pabellones, partidos de ejemplo)
 - [ ] Configurar Sentry, linting (ESLint + Prettier), Husky pre-commit hooks
 - [ ] CI básico con GitHub Actions (lint + type-check + build)
@@ -715,7 +717,7 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 # Optimizer service
 OPTIMIZER_URL=https://optimizer.railway.app
 
-# Google Maps (solo para seed de distancias)
+# Google Maps (opcional, mejora futura del seed de distancias; hoy el seed es offline con haversine × 1.3, no requiere key)
 GOOGLE_MAPS_API_KEY=AIza...
 
 # Resend (emails)
