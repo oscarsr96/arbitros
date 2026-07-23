@@ -1,3 +1,146 @@
+# Plan: Aplicar propuesta con forceExisting=false — reemplazo de designaciones existentes (2026-07-23)
+
+Estado: ✅ EJECUTADO Y VERIFICADO (fix de borrado + T1/T2 completos + review adversarial fable APROBADO CON
+RESERVAS, reservas de test ya cerradas) · integridad de datos del flujo semanal real
+
+## Resultado (2026-07-23)
+
+Fix de borrado en el POST en lote (`api/admin/designations/route.ts`): `replaceMatchIds` elimina las
+designaciones `pending` de los partidos reemplazados ANTES de insertar (protege `notified`/`completed`, que
+nunca se tocan). T1 (tests de contrato) y T2 (fix) completados.
+
+Reservas de test del juez adversarial (fable) cerradas: se añadieron los 4 casos que faltaban a
+`route.test.ts` (matchId en `replaceMatchIds` sin designaciones previas → `removed=0`; `completed` sobrevive
+al replace igual que `notified`; `replaceMatchIds: []` → no-op; el borrado se refleja en el JSON persistido
+tras la operación). Suite del fichero: **23/23 verdes**. `npx tsc --noEmit` en `apps/web`: limpio.
+
+**SEGUIMIENTO PENDIENTE (no bloqueante)**: edge semántico detectado por el juez — al aplicar sin forzar, un
+partido con una designación `pending` manual cuyo slot el solver deja `unassigned` mientras asigna otro slot
+del mismo partido → el `pending` se borra sin reposición y la cobertura baja. Coherente con "sin forzar" y
+visible en la propuesta, pero podría querer un guard/aviso. Sin fix por decisión de alcance quirúrgico.
+
+Nota: la suite completa da 1 fallo pre-existente ajeno (`dashboard route.test.ts`, umbral <200ms), flaky solo
+bajo carga concurrente, no relacionado con este fix.
+
+## Diagnóstico verificado contra el código (corrige el reporte previo)
+
+El diagnóstico de las reviews estaba MEDIO desfasado:
+
+- **El POST SÍ deduplica y SÍ corta la sobre-cobertura** desde el commit `7726818`
+  ("designations: rechazar duplicados y sobre-cobertura en el POST"):
+  `checkDesignationConflict` (`apps/web/src/lib/designation-validation.ts:29-45`) rechaza
+  persona repetida en el partido y exceso por rol, invocada en
+  `apps/web/src/app/api/admin/designations/route.ts:66-75`; el modo lote valida contra el
+  array VIVO (ve lo insertado antes en el mismo lote). Hoy NO se producen filas duplicadas
+  ni sobre-cobertura por partido/rol.
+- **La causa raíz REAL y sin fix es el borrado ausente**: nadie elimina las designaciones
+  que la propuesta reemplaza.
+  - Cliente: `handleApplyProposal`
+    (`apps/web/src/app/(admin)/asignacion/asignacion-view.tsx:359-398`) solo POSTea inserts
+    (366-377); ninguna llamada DELETE.
+  - Servidor: el modo lote (`apps/web/src/app/api/admin/designations/route.ts:104-136`)
+    solo inserta vía `createDesignation` (120-127); no existe semántica de reemplazo.
+- **Síntoma actual** con forceExisting=false sobre una jornada con designaciones previas:
+  cada asignación nueva que choca con una vieja cae en `conflicts` → aplicación A MEDIAS
+  (mezcla incoherente vieja+nueva), visible solo como toast "X aplicadas, Y fallidas".
+  Las viejas nunca se van.
+- **Hallazgo colateral del solver (fuera de alcance, NO tocar en esta tanda)**: con
+  forceExisting=false el solver mete TODAS las designaciones existentes en
+  `assignmentsByPerson` (`solver.ts:442-450`), así que el titular actual "solapa consigo
+  mismo" (`hasScheduleConflict`, `solver.ts:230-238`) y nunca puede ser re-propuesto para
+  su propio partido. Lado bueno: garantiza que la propuesta tampoco re-usa titulares en
+  partidos solapados → borrar sus designaciones al aplicar es SEGURO. Lado malo: las
+  propuestas "desde cero" excluyen a los titulares (subóptimas). Anotado para una tanda
+  futura del solver.
+
+## Mini-spec
+
+Comportamiento correcto al aplicar una propuesta:
+
+- **forceExisting=false**: para el conjunto de partidos que la propuesta cubre (matchIds
+  con ≥1 asignación `isNew`), BORRAR primero las designaciones existentes con
+  `status !== 'completed'` (misma regla que `DELETE /api/admin/designations/[id]`) y
+  DESPUÉS insertar las nuevas, todo en el MISMO request (atómico en servidor; el modo lote
+  existe precisamente porque N fetches del cliente eran frágiles). Partidos en scope sin
+  asignación en la propuesta conservan las suyas.
+- **forceExisting=true**: comportamiento actual intacto (rellena huecos libres, conserva
+  existentes).
+- **Invariante post-aplicación**: por partido y rol, designaciones ≤ needed; ninguna
+  persona dos veces en el mismo partido (lo garantiza `checkDesignationConflict`; los
+  tests lo fijan como invariante).
+
+Diseño cerrado:
+
+1. `lib/types.ts`: añadir `forceExisting: boolean` a `Proposal` (el cliente no debe
+   depender del toggle del store al aplicar: puede haber cambiado tras generar).
+2. `api/optimize/route.ts:125-132`: estampar `forceExisting: parameters.forceExisting` en
+   cada propuesta.
+3. `api/admin/designations/route.ts` (modo lote): campo opcional
+   `replaceMatchIds: string[]`. Si viene y no es array de strings → 400. Antes del bucle
+   de inserts: eliminar de `mockDesignations` toda designación con
+   `matchId ∈ replaceMatchIds` y `status !== 'completed'`; responder `removed: number`
+   además de applied/failed/conflicts. `persistDesignations()` una sola vez al final (ya
+   está).
+4. `asignacion-view.tsx` `handleApplyProposal`: si `!activeProposal.forceExisting`, enviar
+   `replaceMatchIds = [...new Set(newAssignments.map(a => a.matchId))]`; toast con
+   "N reemplazadas" si `removed > 0`.
+
+## Criterios de aceptación verificables
+
+- Test de reproducción: partido con cobertura completa (2/2 árbitros) + lote de 2 árbitros
+  distintos SIN `replaceMatchIds` → `applied=0`, las 2 viejas siguen (documenta el "a
+  medias" actual); CON `replaceMatchIds` → viejas fuera, nuevas dentro, exactamente
+  `refereesNeeded` designaciones del rol y JSON persistido coherente. Rojo antes del fix,
+  verde después.
+- `completed` sobrevive al replace; el insert que choca con ella cae en `conflicts`
+  (visible, no silencioso).
+- Invariante global tras cualquier combinación (con/sin replace, con completed en medio):
+  ningún partido supera `needed` por rol; nadie dos veces en el mismo partido.
+- Regresión forceExisting=true: lote SIN `replaceMatchIds` = comportamiento actual; los
+  tests existentes de `route.test.ts` siguen verdes sin modificarlos.
+- `pnpm typecheck` 0 · suite completa verde (407 actuales + nuevos).
+
+## Task breakdown
+
+**T1. Tests de contrato del reemplazo (TDD, rojos primero)** · ejecutor: `sonnet` · esfuerzo: `low`
+(a) `apps/web/src/app/api/admin/designations/__tests__/route.test.ts` (infra ya montada:
+FBM_DATA_DIR temporal, fixture de partido propio, beforeEach que vacía `mockDesignations`).
+(b) Nuevo describe "POST lote con replaceMatchIds" con los casos de los criterios de
+aceptación + `replaceMatchIds` mal tipado → 400.
+(c) Aceptación: los tests nuevos fallan contra el código actual por el motivo esperado
+(replace ignorado), el resto de la suite intacta.
+
+**T2. Fix: replace en lote + `Proposal.forceExisting` + cliente** · ejecutor: `sonnet` · esfuerzo: `high` · depende de T1
+(a) Ficheros: `api/admin/designations/route.ts`, `lib/types.ts`, `api/optimize/route.ts`,
+`(admin)/asignacion/asignacion-view.tsx` (4 ficheros, según diseño 1-4).
+(b) Surgical: NO tocar `solver.ts` ni `designation-validation.ts`; el hallazgo colateral
+del solver queda anotado, no se corrige.
+(c) Aceptación: T1 en verde + criterios globales.
+
+**T3. Verificación adversarial independiente** · ejecutor: `fable` · esfuerzo: `low` · depende de T2
+(a) Re-medir el criterio con VOLUMEN REAL, no fixtures: sobre el seed completo (24.508
+partidos), designar una jornada, generar propuesta forceExisting=false, aplicarla vía el
+route handler y comprobar el invariante global (≤ needed por partido/rol, nadie duplicado,
+nadie en dos partidos solapados vía `getPublishConflicts`).
+(b) Grep de otros llamadores del POST lote (hoy solo `asignacion-view.tsx`) y del contrato
+de respuesta (`applied/failed/removed`).
+(c) Aceptación: invariante en verde con datos de producción; veredicto LISTO / NO LISTO.
+
+Lecciones a inyectar en los handoffs (de `tasks/lessons.md`):
+
+- Verificar el informe del subagente re-midiendo el criterio de aceptación de forma
+  independiente; los verdes con datos de juguete no dicen nada del caso real.
+- Si la premisa de un plan es un dato (aquí, un diagnóstico), el primer paso es
+  re-verificarlo (este plan ya corrigió medio diagnóstico contra el código real).
+
+## Decisión abierta (para el usuario, no bloquea T1)
+
+- ¿El replace debe borrar también designaciones `notified` (ya publicadas)? Provisional:
+  SÍ (misma regla que `DELETE /[id]`, que solo protege `completed`). Si se prefiere
+  proteger lo publicado, el filtro pasa a `status === 'pending'` (una línea en T2).
+
+---
+
 # Plan: Terminar la geolocalización real (direcciones de personas + coords de venues) (2026-07-22)
 
 Estado: ✅ EJECUTADO Y VERIFICADO (gate + review adversarial fable) · SIN COMMITEAR (pendiente push) · project-claude · tipo ampliar+modificar · tamaño M · ejecutor: MIXTO (fetch mecánico en background + sesión cableado/tests + fable review)

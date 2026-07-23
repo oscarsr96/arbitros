@@ -229,6 +229,292 @@ describe('POST en lote con position', () => {
   })
 })
 
+describe('POST lote con replaceMatchIds', () => {
+  it('reemplaza una designación pending existente: la vieja se va, la nueva se aplica (no coexisten)', async () => {
+    mockDesignations.push({
+      id: 'old-pending-1',
+      matchId: match.id,
+      personId: 'person-001',
+      role: 'arbitro',
+      position: 'principal',
+      travelCost: '3.00',
+      distanceKm: '0',
+      status: 'pending',
+      notifiedAt: null,
+      createdAt: new Date('2026-07-01T10:00:00.000Z'),
+    })
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-002', role: 'arbitro', position: 'principal' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(res.status).toBe(200)
+    expect(body.applied).toBe(1)
+    expect(body.failed).toBe(0)
+    expect(body.removed).toBe(1)
+
+    const forMatch = mockDesignations.filter((d) => d.matchId === match.id)
+    expect(forMatch).toHaveLength(1)
+    expect(forMatch[0].personId).toBe('person-002')
+  })
+
+  it('una designación notified para un partido reemplazado NO se borra', async () => {
+    mockDesignations.push(
+      {
+        id: 'notified-1',
+        matchId: match.id,
+        personId: 'person-001',
+        role: 'arbitro',
+        position: 'principal',
+        travelCost: '3.00',
+        distanceKm: '0',
+        status: 'notified',
+        notifiedAt: new Date('2026-07-02T10:00:00.000Z'),
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+      {
+        id: 'old-pending-2',
+        matchId: match.id,
+        personId: 'person-002',
+        role: 'arbitro',
+        position: 'auxiliar',
+        travelCost: '2.00',
+        distanceKm: '0',
+        status: 'pending',
+        notifiedAt: null,
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+    )
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-003', role: 'arbitro', position: 'principal' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(body.removed).toBe(1) // solo la pending, la notified no cuenta
+    expect(body.applied).toBe(0)
+    expect(body.failed).toBe(1)
+    expect(body.conflicts[0].reason).toContain('ya está ocupada')
+
+    const notified = mockDesignations.find((d) => d.id === 'notified-1')
+    expect(notified).toBeDefined()
+    expect(notified?.status).toBe('notified')
+    expect(mockDesignations.find((d) => d.id === 'old-pending-2')).toBeUndefined()
+  })
+
+  it('forceExisting=true (sin replaceMatchIds) no borra nada', async () => {
+    mockDesignations.push({
+      id: 'kept-pending-1',
+      matchId: match.id,
+      personId: 'person-001',
+      role: 'arbitro',
+      position: 'principal',
+      travelCost: '3.00',
+      distanceKm: '0',
+      status: 'pending',
+      notifiedAt: null,
+      createdAt: new Date('2026-07-01T10:00:00.000Z'),
+    })
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-002', role: 'arbitro', position: 'auxiliar' },
+        ],
+      }),
+    )
+    const body = await res.json()
+    expect(body.applied).toBe(1)
+    expect(body.removed).toBe(0)
+    expect(mockDesignations.filter((d) => d.matchId === match.id)).toHaveLength(2)
+  })
+
+  it('removed refleja el número correcto con varios reemplazos en el mismo partido', async () => {
+    mockDesignations.push(
+      {
+        id: 'old-pending-3',
+        matchId: match.id,
+        personId: 'person-001',
+        role: 'arbitro',
+        position: 'principal',
+        travelCost: '3.00',
+        distanceKm: '0',
+        status: 'pending',
+        notifiedAt: null,
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+      {
+        id: 'old-pending-4',
+        matchId: match.id,
+        personId: scorers[0],
+        role: 'anotador',
+        position: 'anotador',
+        travelCost: '2.00',
+        distanceKm: '0',
+        status: 'pending',
+        notifiedAt: null,
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+    )
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-002', role: 'arbitro', position: 'principal' },
+          { matchId: match.id, personId: scorers[1], role: 'anotador', position: 'anotador' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(body.removed).toBe(2)
+    expect(body.applied).toBe(2)
+  })
+
+  it('replaceMatchIds mal tipado → 400', async () => {
+    const res = await route.POST(
+      postRequest({
+        assignments: [{ matchId: match.id, personId: 'person-001', role: 'arbitro' }],
+        replaceMatchIds: 'no-es-un-array',
+      }),
+    )
+    expect(res.status).toBe(400)
+    const { error } = await res.json()
+    expect(error).toContain('replaceMatchIds')
+    expect(mockDesignations).toHaveLength(0)
+  })
+
+  it('matchId en replaceMatchIds sin designaciones previas → no borra nada, removed=0', async () => {
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-001', role: 'arbitro', position: 'principal' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(body.removed).toBe(0)
+    expect(body.applied).toBe(1)
+    expect(mockDesignations.filter((d) => d.matchId === match.id)).toHaveLength(1)
+  })
+
+  it('una designación completed para un partido reemplazado NO se borra', async () => {
+    mockDesignations.push(
+      {
+        id: 'completed-1',
+        matchId: match.id,
+        personId: 'person-001',
+        role: 'arbitro',
+        position: 'principal',
+        travelCost: '3.00',
+        distanceKm: '0',
+        status: 'completed',
+        notifiedAt: new Date('2026-07-02T10:00:00.000Z'),
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+      {
+        id: 'old-pending-5',
+        matchId: match.id,
+        personId: 'person-002',
+        role: 'arbitro',
+        position: 'auxiliar',
+        travelCost: '2.00',
+        distanceKm: '0',
+        status: 'pending',
+        notifiedAt: null,
+        createdAt: new Date('2026-07-01T10:00:00.000Z'),
+      },
+    )
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-003', role: 'arbitro', position: 'principal' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(body.removed).toBe(1) // solo la pending, la completed no cuenta
+    expect(body.applied).toBe(0)
+    expect(body.failed).toBe(1)
+    expect(body.conflicts[0].reason).toContain('ya está ocupada')
+
+    const completed = mockDesignations.find((d) => d.id === 'completed-1')
+    expect(completed).toBeDefined()
+    expect(completed?.status).toBe('completed')
+    expect(mockDesignations.find((d) => d.id === 'old-pending-5')).toBeUndefined()
+  })
+
+  it('replaceMatchIds vacío ([]) → no-op, no borra nada', async () => {
+    mockDesignations.push({
+      id: 'kept-pending-2',
+      matchId: match.id,
+      personId: 'person-001',
+      role: 'arbitro',
+      position: 'principal',
+      travelCost: '3.00',
+      distanceKm: '0',
+      status: 'pending',
+      notifiedAt: null,
+      createdAt: new Date('2026-07-01T10:00:00.000Z'),
+    })
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-002', role: 'arbitro', position: 'auxiliar' },
+        ],
+        replaceMatchIds: [],
+      }),
+    )
+    const body = await res.json()
+    expect(body.applied).toBe(1)
+    expect(body.removed).toBe(0)
+    expect(mockDesignations.filter((d) => d.matchId === match.id)).toHaveLength(2)
+  })
+
+  it('el borrado queda reflejado en la persistencia: la pending borrada no está en el JSON', async () => {
+    mockDesignations.push({
+      id: 'old-pending-6',
+      matchId: match.id,
+      personId: 'person-001',
+      role: 'arbitro',
+      position: 'principal',
+      travelCost: '3.00',
+      distanceKm: '0',
+      status: 'pending',
+      notifiedAt: null,
+      createdAt: new Date('2026-07-01T10:00:00.000Z'),
+    })
+
+    const res = await route.POST(
+      postRequest({
+        assignments: [
+          { matchId: match.id, personId: 'person-002', role: 'arbitro', position: 'principal' },
+        ],
+        replaceMatchIds: [match.id],
+      }),
+    )
+    const body = await res.json()
+    expect(body.removed).toBe(1)
+
+    const persisted = JSON.parse(readFileSync(FILE, 'utf-8'))
+    expect(persisted.find((d: { id: string }) => d.id === 'old-pending-6')).toBeUndefined()
+    expect(persisted.find((d: { personId: string }) => d.personId === 'person-002')).toBeDefined()
+  })
+})
+
 describe('getMockDesignationsForMatch propaga nick y refereeLevel', () => {
   it('persona con nick → person.nick relleno; sin refereeLevel → null', async () => {
     await route.POST(postRequest({ matchId: match.id, personId: 'person-001', role: 'arbitro' }))

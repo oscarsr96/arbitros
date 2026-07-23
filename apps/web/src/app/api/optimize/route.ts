@@ -129,6 +129,7 @@ export async function POST(request: Request) {
         assignments,
         metrics: result.metrics,
         unassigned,
+        forceExisting: parameters.forceExisting,
       })
     }
 

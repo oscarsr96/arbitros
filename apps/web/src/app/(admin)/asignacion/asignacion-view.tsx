@@ -363,6 +363,14 @@ export function AsignacionView() {
 
     setApplying(true)
     try {
+      // Propuesta generada SIN forzar: los partidos que cubre reemplazan sus
+      // designaciones `pending` existentes (las publicadas no se tocan, ver
+      // `replaceMatchIds` en el route). Con forzar, comportamiento actual intacto.
+      const replaceMatchIds =
+        activeProposal.forceExisting === false
+          ? [...new Set(newAssignments.map((a) => a.matchId))]
+          : undefined
+
       const res = await fetch('/api/admin/designations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,6 +381,7 @@ export function AsignacionView() {
             role: a.role,
             position: a.position,
           })),
+          ...(replaceMatchIds ? { replaceMatchIds } : {}),
         }),
       })
 
@@ -381,12 +390,16 @@ export function AsignacionView() {
         throw new Error(data.error ?? 'Error al aplicar la propuesta')
       }
 
-      const { applied, failed } = await res.json()
+      const { applied, failed, removed } = await res.json()
       clearAllProposals()
       fetchMatches()
 
       if (failed === 0) {
-        toast.success(`${applied} asignaciones aplicadas correctamente`)
+        toast.success(
+          removed > 0
+            ? `${applied} asignaciones aplicadas correctamente (${removed} reemplazadas)`
+            : `${applied} asignaciones aplicadas correctamente`,
+        )
       } else {
         toast.warning(`${applied} aplicadas, ${failed} fallidas`)
       }

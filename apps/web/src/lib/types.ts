@@ -244,6 +244,11 @@ export interface Proposal {
   assignments: ProposedAssignment[]
   metrics: SolverMetrics
   unassigned: UnassignedSlot[]
+  // Parámetro `forceExisting` con el que se lanzó el solver que generó esta
+  // propuesta. El cliente lo usa al aplicar (en vez del toggle actual del
+  // store, que puede haber cambiado tras generar) para decidir si debe pedir
+  // el reemplazo de las designaciones existentes de los partidos cubiertos.
+  forceExisting?: boolean
 }
 
 export type OptimizationState = 'idle' | 'running' | 'done' | 'error'

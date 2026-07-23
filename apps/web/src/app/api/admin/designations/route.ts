@@ -95,7 +95,8 @@ function createDesignation(
 // el lector `/api/admin/matches`; una ruta nueva y "fría" en Next dev tendría su
 // propio `mockDesignations` aislado y las inserciones no se verían):
 //   - { matchId, personId, role, position? }  → una designación (manual, sustitución, re-optimizar).
-//   - { assignments: [{matchId,personId,role,position?}, ...] } → lote (aplicar una propuesta en UNA llamada).
+//   - { assignments: [{matchId,personId,role,position?}, ...], replaceMatchIds? } → lote
+//     (aplicar una propuesta en UNA llamada).
 export async function POST(request: Request) {
   const body = await request.json()
 
@@ -114,6 +115,36 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+
+    // `replaceMatchIds` (opcional): partidos que la propuesta reemplaza (aplicar sin
+    // forzar). Se borran ANTES de insertar las designaciones `pending` de esos
+    // partidos; las `notified`/`completed` (ya publicadas) nunca se tocan, así que si
+    // la propuesta quiere ocupar su slot la inserción choca con
+    // `checkDesignationConflict` y cae en `conflicts` (visible, no silencioso).
+    if (
+      body?.replaceMatchIds !== undefined &&
+      (!Array.isArray(body.replaceMatchIds) ||
+        body.replaceMatchIds.some((id: unknown) => typeof id !== 'string'))
+    ) {
+      return NextResponse.json(
+        { error: 'replaceMatchIds debe ser un array de strings' },
+        { status: 400 },
+      )
+    }
+    const replaceMatchIds = body.replaceMatchIds as string[] | undefined
+
+    let removed = 0
+    if (replaceMatchIds && replaceMatchIds.length > 0) {
+      const matchIdSet = new Set(replaceMatchIds)
+      for (let i = mockDesignations.length - 1; i >= 0; i--) {
+        const d = mockDesignations[i]
+        if (matchIdSet.has(d.matchId) && d.status === 'pending') {
+          mockDesignations.splice(i, 1)
+          removed++
+        }
+      }
+    }
+
     let applied = 0
     const conflicts: { matchId: string; personId: string; role: string; reason: string }[] = []
     const created = []
@@ -132,6 +163,7 @@ export async function POST(request: Request) {
       failed: conflicts.length,
       conflicts,
       designations: created,
+      removed,
     })
   }
 
