@@ -28,6 +28,7 @@ Problemas verificados contra el código/datos HOY:
   matchIds del seed viejo** (`fbm-match-NAC-PAR-J01-...`, pre-importación de temporada).
   `ensureDesignationsHydrated` las descarta al hidratar (log "huérfanas descartadas") → los reportes
   corren sobre un store efectivamente VACÍO. Nada de la Fase 4 es verificable sin sanear esto.
+  **→ RESUELTO por 4.0.1 (2026-07-24)**: 2.576 designaciones reales, 0 huérfanas (ver "4.0 — resultado").
 - **P2 (bug de agregación)**: en `reports/route.ts`, `loadByPerson` (l.141) y `liquidation` (l.164)
   se rotulan "jornada actual" pero iteran TODAS las designaciones de la persona sin filtrar por la
   ventana viernes→jueves. Con datos multi-jornada, la "liquidación de la jornada" mezclaría la
@@ -40,6 +41,16 @@ Problemas verificados contra el código/datos HOY:
   demo (J13-J14 ficticias con skip-logic en el route).
 - **P5**: "partidos sin cubrir histórico" (roadmap) no existe: la cobertura solo se calcula para la
   jornada actual.
+- **P6 (bug de dinero, hallado en 4.0.2 con datos reales, 2026-07-24)**: `summary.totalCost` de
+  `reports/route.ts` **infracalcula ~67%** (mide 1.975,54 € cuando la ventana real vale 6.076,70 € el
+  2025-10-25). Filtra por `matchday === currentMatchday` (route.ts:36-39,136-138) asumiendo "ventana
+  viernes→jueves = 1 matchday", pero `matchday` es un contador POR COMPETICIÓN: una ventana real
+  mezcla ~48 competiciones con matchday {1..6} y el route solo suma la primera (matchday=2, 539/1309
+  partidos). La FÓRMULA de coste es correcta (verificado); el defecto es la VENTANA de filtrado.
+  Mismo origen conceptual que P2 (confundir nº de matchday con ventana de fechas). **Fix en 4.2.2**
+  (scope por ventana de fechas viernes→jueves vía `getMatchdayWindow`, no por número de matchday);
+  4.5.1 lo verifica. Documentado con `it.fails` en
+  `apps/web/src/app/api/admin/reports/__tests__/route.real-data.test.ts`.
 
 ### Mini-spec
 
@@ -97,6 +108,24 @@ adicional, no como rediseño).
   test existente). (b) Aceptación: summary/costByMatchday/liquidation no vacíos;
   covered+partial+uncovered == totalMatches; summary.totalCost == Σ byDay de las personas de esa
   ventana (reconciliación, hoy no testeada).
+
+**4.0 — resultado (2026-07-24)**
+
+- **4.0.1 (fable) OK**: regeneradas **2.576 designaciones** reales contra el seed actual, **0 huérfanas**
+  (matchId/personId 100% resuelven; formato nuevo `fbm-match-liga-vips-...` con position/travelCost/distanceKm).
+  Backup de las 120 antiguas en `apps/web/.fbm-data/designations.pre-fase4.bak` (intacto). `designations.json` = 863 KB.
+  Cero cambios en producción; funciones de coste intactas. Script one-off: `scratchpad/gen-designaciones-fase4.ts`.
+  - Cobertura por jornada (solves SEPARADOS, cap 3/persona/jornada):
+    - `2025-10-25` (punta, ventana 2025-10-24→30): **2.364/3.686 slots (64,1%)**, 583/1.309 partidos completos → `partial`.
+      El 64% es **techo de capacidad del roster** (activos × 3 < 3.686 slots), NO fallo del solver.
+    - `2025-11-01` (ventana 2025-10-31→11-06): **212/212 slots (100%)**, `optimal` (el seed solo trae 53 partidos esa semana).
+  - Estados sembrados para ejercitar filtros portal/perfil: `completed`=2.364 (toda 2025-10-25) · `notified`=65 (vie+sáb de la 2ª) · `pending`=147 (resto 2ª).
+- **4.0.2 (sonnet) VERDE**: smoke E2E de `/api/admin/reports` con datos reales (hidrata las 2.576 vía
+  `ensureDesignationsHydrated`, no fixture). Partición de partidos cuadra (covered 583 + partial 392 +
+  uncovered 334 = 1.309). Test permanente `route.real-data.test.ts` (5/5, incluye `it.fails` que
+  documenta P6). Fórmula de coste sin regresión. **Efecto colateral valioso**: destapó el bug **P6**
+  (infracálculo ~67% de `summary.totalCost`), que se arregla en 4.2.
+- **4.0 CERRADA** (2026-07-24): datos reales saneados + pipeline de reportes verificado. Desbloquea 4.1/4.2.
 
 **4.1 Tarifas oficiales (BLOQUEADA por decisión U1)**
 
