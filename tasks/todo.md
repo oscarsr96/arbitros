@@ -1,3 +1,217 @@
+## Fase 4 — Reportes y Liquidaciones (PLAN) (2026-07-24)
+
+Estado: 📋 PLANIFICADO (sin ejecutar; pendiente de las DECISIONES PENDIENTES DEL USUARIO al final)
+
+### Contexto verificado (2026-07-24) — la Fase 4 está PARCIALMENTE construida
+
+Lo que YA existe (no rehacer, ampliar):
+
+- **API**: `apps/web/src/app/api/admin/reports/route.ts` — summary de jornada (coste/cobertura vía
+  `resolveDefaultJornada`), loadByPerson, liquidation con `byDay`, costByMatchday (temporada),
+  costByMunicipality, monthlyLiquidation (por jornadas, no por mes). Índices por request (patrón
+  anti-cuadrático ya aplicado). Tests en `__tests__/route.test.ts` (invariantes de summary).
+- **UI**: `apps/web/src/app/(admin)/reportes/reportes-view.tsx` — cards, cobertura, gráficos recharts
+  (coste por jornada, coste por municipio), carga por persona, tabla de liquidación con toggle
+  jornada/"mensual" (label hardcodeado "J13-J15"), sheet de detalle por persona.
+- **Exports**: `apps/web/src/lib/export-xlsx.ts` (SheetJS `xlsx`, client-side) y `export-pdf.ts`
+  (`jspdf` + `jspdf-autotable`, client-side): liquidación jornada, mensual y justificante por persona.
+- **Historial por persona**: admin `personal/person-detail-sheet.tsx` (designaciones + totalTravelCost);
+  portal `perfil` solo agregados (totalMatches/completed/totalEarned vía `getPersonTravelCost`), sin
+  lista de partidos.
+- **Tarifas estructurales**: `apps/web/src/lib/fbm-calendar/bases-fbm.ts` tiene las 22 filas de la
+  Tabla A (p. 25) con `refereesNeeded/scorersNeeded` y `basesLabel`, pero **SIN importes €**.
+  `fbm-calendar/category-mapping.ts#basesCategoryOf(webName)` ya resuelve nombre→`BasesCategory`.
+
+Problemas verificados contra el código/datos HOY:
+
+- **P1 (dato, confirmado)**: `apps/web/.fbm-data/designations.json` tiene **120 designaciones con
+  matchIds del seed viejo** (`fbm-match-NAC-PAR-J01-...`, pre-importación de temporada).
+  `ensureDesignationsHydrated` las descarta al hidratar (log "huérfanas descartadas") → los reportes
+  corren sobre un store efectivamente VACÍO. Nada de la Fase 4 es verificable sin sanear esto.
+- **P2 (bug de agregación)**: en `reports/route.ts`, `loadByPerson` (l.141) y `liquidation` (l.164)
+  se rotulan "jornada actual" pero iteran TODAS las designaciones de la persona sin filtrar por la
+  ventana viernes→jueves. Con datos multi-jornada, la "liquidación de la jornada" mezclaría la
+  temporada entera.
+- **P3 (incoherencia detalle/total)**: el detalle por partido de `liquidation.matches` usa
+  `calculateMockTravelCost` (estimación por partido): las líneas NO suman el `totalCost` real por
+  día. Afecta al sheet de la UI, al XLSX (hoja Detalle) y al PDF justificante.
+- **P4**: "mensual" real es "grupo de jornadas" (sin mes natural); labels de temporada hardcodeados
+  ("2024-25" en vista y `export-pdf.ts`, la real es 2025/2026); `mockHistoricalMatchdays` es residuo
+  demo (J13-J14 ficticias con skip-logic en el route).
+- **P5**: "partidos sin cubrir histórico" (roadmap) no existe: la cobertura solo se calcula para la
+  jornada actual.
+
+### Mini-spec
+
+**Entra**: saneamiento/regeneración de datos de designaciones para verificar; modelado de la tabla
+de tarifas oficiales € (INPUT del usuario, ver decisiones); liquidación = desplazamiento + honorarios
+como conceptos SEPARADOS; agregación por jornada/mes natural/temporada con selector; histórico de
+cobertura por jornada; exports XLSX/PDF con desglose por día que SUMA el total; historial de
+temporada por persona (portal + admin).
+
+**NO entra**: retenciones IRPF/facturación/SEPA; pagos reales; migrar persistencia a Supabase; mapa
+de calor geográfico (el bar chart por municipio existente satisface el roadmap; mapa real = mejora
+futura); notificaciones; T6 (distanceKm persistidos del mock, sigue pendiente de la tanda de
+distancias); Google Distance Matrix.
+
+**Supuestos explícitos**:
+
+- `getPersonTravelCost`/`calculatePersonTravelCost`/`calculateDailyTravelCost` (mock-data.ts) son la
+  fuente de la verdad del desplazamiento y NO se tocan ni se duplican. Los honorarios son un módulo
+  NUEVO aparte que nunca modifica esas funciones.
+- Persistencia sigue siendo globalThis + JSON (`.fbm-data/`); los reportes leen del store hidratado.
+- Reportes es la ÚNICA excepción autorizada a agregar por mes/temporada (regla de dominio); el resto
+  del sistema sigue semana a semana.
+- Tarifas: continuidad Bases 2026/2027 ↔ calendarios 2025/2026 (misma salvedad ya documentada en
+  `bases-fbm.ts`).
+- El "árbitro logueado" del portal sigue siendo `DEMO_PERSON_ID` (sin auth real en esta fase).
+
+### Sub-fases y dependencias
+
+```
+4.0 datos ──┬─→ 4.2 panel (no depende de tarifas)
+            ├─→ 4.1 tarifas (BLOQUEADA por input € del usuario) ─→ 4.3 liquidación/exports
+            └─→ 4.4 historial persona (mejora con 4.1, no la requiere)
+4.5 verificación ← todas
+```
+
+4.1 puede arrancar en paralelo con 4.2 en cuanto el usuario entregue los importes; si tarda, 4.3 se
+ejecuta en "modo solo desplazamiento" y se amplía después (los honorarios entran como columna
+adicional, no como rediseño).
+
+### Task breakdown
+
+**4.0 Preparación y saneamiento de datos**
+
+- **4.0.1 Regenerar designaciones válidas contra el seed actual** · `fable` · `high`
+  (a) Archivar `apps/web/.fbm-data/designations.json` → `designations.pre-fase4.bak` (no borrar).
+  Generar designaciones reales: solver sobre 2 jornadas del calendario real (propuesta: la punta
+  2025-10-25 y la siguiente) vía `/api/optimize` + aplicar con el POST lote
+  (`api/admin/designations`, `replaceMatchIds`), o script one-off en scratchpad que use las mismas
+  funciones. Marcar parte como `completed`/`notified` para ejercitar los filtros de estado del
+  portal/perfil. (b) Aceptación VERIFICABLE: al arrancar, `ensureDesignationsHydrated` NO loguea
+  huérfanas (0 descartes); `designations.json` >0 registros y 100% de matchId/personId resuelven;
+  cobertura obtenida del solve anotada en esta sección.
+- **4.0.2 Smoke de reportes con datos reales** · `sonnet` · `low`
+  (a) GET `/api/admin/reports` (system time dentro de una jornada designada, patrón fake timers del
+  test existente). (b) Aceptación: summary/costByMatchday/liquidation no vacíos;
+  covered+partial+uncovered == totalMatches; summary.totalCost == Σ byDay de las personas de esa
+  ventana (reconciliación, hoy no testeada).
+
+**4.1 Tarifas oficiales (BLOQUEADA por decisión U1)**
+
+- **4.1.1 Transcribir importes € de Bases p.25** · usuario + sesión · `low`
+  (a) El usuario pasa los importes (o el PDF y la sesión los transcribe y el usuario los CONFIRMA):
+  las 22 filas de la Tabla A × concepto (árbitro principal / auxiliar si las Bases distinguen /
+  oficial de mesa por posición). PROHIBIDO inventar o estimar cifras. (b) Aceptación: tabla
+  confirmada por el usuario, con `basesLabel` de trazabilidad por fila.
+- **4.1.2 Modelar `FEES_BY_BASES_CATEGORY` en `bases-fbm.ts`** · `sonnet` · `low`
+  (a) Mismo patrón hoja/puro que `ARBITRATION_BY_BASES_CATEGORY`, keyed por `BasesCategory`.
+  (b) Aceptación: test de completitud 22/22 filas; typecheck 0; módulo sigue sin imports de dominio.
+- **4.1.3 Resolución partido→tarifa por designación** · `fable` · `high`
+  (a) Helper nuevo (p. ej. `lib/designation-fees.ts`): designación → competición del partido →
+  `basesCategoryOf`/nombre canónico → importe según rol y posición (`designation-positions.ts`).
+  Partido sin `BasesCategory` resoluble → fee `null` + contador "sin tarifa" VISIBLE (nunca 0
+  silencioso). (b) Aceptación: test que mide qué % de las 48 canónicas de los calendarios reales
+  resuelve a fila de Bases (número anotado, no asumido); casos null cubiertos; NO toca
+  `calculateDailyTravelCost` ni ninguna función de coste de desplazamiento.
+- **4.1.4 Integrar honorarios en la API de reports** · `sonnet` · `high`
+  (a) `liquidation`/`monthlyLiquidation`/`loadByPerson` ganan campos separados: `fees`,
+  `travelCost`, `total = fees + travelCost` (+ `unresolvedFees: number` por persona). (b) Aceptación:
+  tests de route con fixture (persona con 2 partidos de categorías distintas); el desplazamiento
+  reportado no cambia ni un céntimo respecto a antes (invariante de no-regresión).
+
+**4.2 Panel de reportes (agregaciones correctas)**
+
+- **4.2.1 Fix P2: acotar "jornada actual" a la ventana** · `sonnet` · `low`
+  (a) `loadByPerson` y `liquidation` filtran designaciones por la ventana viernes→jueves resuelta.
+  (b) Aceptación: test rojo→verde con designaciones en 2 jornadas donde la vista jornada solo suma
+  la de la ventana.
+- **4.2.2 Selector de ámbito jornada/mes/temporada** · `sonnet` · `high`
+  (a) API acepta `?jornada=YYYY-MM-DD` | `?month=YYYY-MM` | `?scope=season` (reusar
+  `parseMatchRange`/`listJornadas` de `match-query.ts`); UI con selector (patrón del selector de
+  jornada de Asignación). (b) Aceptación: cambiar de ámbito actualiza summary/liquidación/exports;
+  URL deep-linkable; payload de temporada acotado (agregados, nunca 24.508 partidos al cliente).
+- **4.2.3 Mes natural** · `sonnet` · `low`
+  (a) Agregación por mes calendario (`match.date.slice(0,7)`) para coste y liquidación mensual.
+  (b) Aceptación: test con designaciones en 2 meses distintos; una jornada que cruza de mes
+  (viernes 31 / sábado 1) reparte cada partido en SU mes por fecha real (criterio documentado).
+- **4.2.4 Histórico de cobertura por jornada (P5)** · `sonnet` · `low`
+  (a) Serie covered/partial/uncovered por matchday sobre toda la temporada (índices por request,
+  mismo patrón anti-cuadrático del route) + gráfico en la UI. (b) Aceptación: Σ de cada jornada ==
+  nº de partidos de esa jornada; payload ~29 filas × 4 números.
+- **4.2.5 Retirar `mockHistoricalMatchdays` + skip-logic (según decisión U4)** · `sonnet` · `low`
+  (a) Eliminar el residuo demo del route y de mock-data (o conservar, según U4). (b) Aceptación:
+  tests del route siguen verdes; sin huérfanos (grep de referencias).
+- **4.2.6 Labels de temporada reales** · `sonnet` · `low`
+  (a) "2024-25" hardcodeado (vista + defaults de `export-pdf.ts`/`profile-view`) → derivado del
+  seed (2025/2026). (b) Aceptación: grep sin literales de temporada obsoletos.
+
+**4.3 Liquidación mensual + exports (depende de 4.2.3; honorarios cuando 4.1 esté)**
+
+- **4.3.1 Liquidación mensual por mes natural** · `sonnet` · `high`
+  (a) Persona × mes: partidos, desglose POR DÍA (regla FBM), km, desplazamiento, honorarios (si
+  4.1), total, IBAN. Sustituye el "mensual = J13-J15" actual. (b) Aceptación: test de route; Σ días
+  == total persona; Σ personas == total mes.
+- **4.3.2 XLSX mensual con desglose por día (fix P3)** · `sonnet` · `high`
+  (a) `export-xlsx.ts`: hoja resumen + hoja detalle donde las líneas son DÍAS (no partidos
+  estimados) y suman exactamente el total; columnas separadas desplazamiento/honorarios/total.
+  Mantener SheetJS client-side (decisión U3). (b) Aceptación: abrir el fichero generado y
+  verificar que las sumas cuadran con la API (verificación manual documentada + test unitario de la
+  función de armado de filas).
+- **4.3.3 PDF justificante por persona (fix P3)** · `sonnet` · `low`
+  (a) `export-pdf.ts`: justificante mensual por árbitro con desglose por día + honorarios + total;
+  membrete FBM ya existente. (b) Aceptación: PDF de una persona con 2 días cuadra con la API.
+- **4.3.4 Coherencia detalle/total en la UI** · `sonnet` · `low`
+  (a) El sheet de detalle muestra el desglose `byDay` real (ya viaja en la API) como principal; el
+  por-partido queda marcado "estimación" o se retira. (b) Aceptación: lo que ve el usuario suma el
+  total mostrado.
+
+**4.4 Historial por persona**
+
+- **4.4.1 Portal: historial de temporada** · `sonnet` · `high`
+  (a) Ampliar `/api/persons/me` con la lista resuelta de designaciones de la temporada (fecha,
+  partido, pabellón, estado) + `byDay` + total acumulado (todo vía `getPersonTravelCost`, cero
+  fórmulas nuevas); sección nueva en `perfil` (o página `historial`). Payload acotado a las
+  designaciones de la persona (decenas, no miles). (b) Aceptación: para `DEMO_PERSON_ID` con
+  designaciones en ≥2 fechas, la lista está completa y el total == `getPersonTravelCost`; el
+  árbitro solo ve SUS datos.
+- **4.4.2 Admin: ampliar person-detail-sheet** · `sonnet` · `low`
+  (a) Añadir desglose por día y total de temporada (+ honorarios si 4.1) al sheet existente de
+  `personal/`. (b) Aceptación: total del sheet == total de reportes para la misma persona/ámbito.
+
+**4.5 Verificación adversarial (cierre)**
+
+- **4.5.1 Gate + reconciliación cruzada** · `fable` · `high`
+  (a) Subagente fresco con requisitos + diff. Reconciliar el MISMO personId en dashboard, reports
+  (jornada/mes/temporada) y portal: total idéntico en los tres; invariantes de dinero (Σ byDay ==
+  total; Σ liquidación jornada == summary.totalCost; desplazamiento pre/post tarifas sin cambios);
+  `pnpm typecheck` 0; suite completa verde; sin huérfanos. (b) Aceptación: veredicto LISTO/NO
+  LISTO con los números pegados en esta sección.
+
+### DECISIONES PENDIENTES DEL USUARIO (confirmar ANTES de ejecutar)
+
+- **U1 (bloqueante de 4.1)** Importes € de las Bases Generales p.25 ("Compensaciones de arbitraje"):
+  transcribir la tabla completa (22 filas × concepto). Confirmar si las Bases distinguen árbitro
+  principal vs auxiliar y cómo se paga cada posición de mesa (anotador/cronometrador/24s). Sin esto,
+  4.3 sale en modo "solo desplazamiento".
+- **U2** "Liquidación mensual" = mes NATURAL (recomendado, es lo que dice el roadmap y lo que
+  liquida tesorería) vs bloque de jornadas (lo que hay hoy).
+- **U3** Export: mantener `xlsx` + `jspdf` client-side (recomendado: ya funciona, cero deps nuevas,
+  los datos ya están en el navegador) vs generación server-side. Las skills `xlsx`/`pdf` del agente
+  son para ficheros one-off fuera del runtime de la app: no aplican al código de producto.
+- **U4** `mockHistoricalMatchdays` (J13-J14 demo ficticias): retirar tras 4.0 (recomendado: con
+  designaciones reales ya no aportan y contaminan las series) vs conservar.
+- **U5** Datos de verificación (4.0.1): confirmar las 2 jornadas a designar (propuesta: 2025-10-25 y
+  la siguiente) y el archivado del `designations.json` actual como `.bak`.
+- **U6** ¿El portal del árbitro muestra honorarios además del desplazamiento en su historial/total
+  (recomendado: sí, cuando exista 4.1)? Afecta a 4.4.1 y al justificante PDF.
+- **U7 (relacionada, fuera de scope salvo orden)** T6 de la tanda de distancias sigue abierto: los
+  `distanceKm` persistidos nacidos del mock. 4.0.1 lo mitiga de facto (designaciones regeneradas),
+  pero la decisión general sigue sin tomar.
+
+---
+
 # Rendimiento del solver — diagnóstico (2026-07-23)
 
 Estado: 📋 DIAGNÓSTICO CERRADO (solo medición y plan; sin cambios de código — la
