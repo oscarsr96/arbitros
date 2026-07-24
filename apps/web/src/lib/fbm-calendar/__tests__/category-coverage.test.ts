@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { mapCategory, allCanonicalCategories } from '../category-mapping'
-import { ARBITRATION_BY_BASES_CATEGORY, SCHEDULE_BY_BASES_CATEGORY } from '../bases-fbm'
+import {
+  ARBITRATION_BY_BASES_CATEGORY,
+  SCHEDULE_BY_BASES_CATEGORY,
+  FEES_BY_BASES_CATEGORY,
+} from '../bases-fbm'
 import {
   resolveFineCategory,
   CANONICALS_WITHOUT_FINE_CATEGORY,
@@ -467,6 +471,39 @@ describe('bases-fbm: las dos tablas oficiales', () => {
       expect(window?.endTime, key).toBe('20:30')
       expect(window?.startTime, key).toBe('09:00')
     }
+  })
+})
+
+describe('bases-fbm: honorarios (Tabla C, p. 25)', () => {
+  it('la Tabla C tiene las mismas 22 claves que la Tabla A', () => {
+    expect(Object.keys(FEES_BY_BASES_CATEGORY).sort()).toEqual(
+      Object.keys(ARBITRATION_BY_BASES_CATEGORY).sort(),
+    )
+  })
+
+  it('ningún importe es negativo', () => {
+    for (const [key, fees] of Object.entries(FEES_BY_BASES_CATEGORY)) {
+      for (const role of [
+        'principal',
+        'auxiliar',
+        'anotador',
+        'cronometrador',
+        'veinticuatro',
+      ] as const) {
+        expect(fees[role], `${key}.${role}`).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('1ª Div. Nac. Masculina: principal 111,60 €, anotador 31,80 €', () => {
+    expect(FEES_BY_BASES_CATEGORY.primera_nac_masc.principal).toBe(111.6)
+    expect(FEES_BY_BASES_CATEGORY.primera_nac_masc.anotador).toBe(31.8)
+  })
+
+  it('Minibasket: principal 21,15 €, auxiliar 0 € (arbitraje simple), anotador 16,00 €', () => {
+    expect(FEES_BY_BASES_CATEGORY.minibasket.principal).toBe(21.15)
+    expect(FEES_BY_BASES_CATEGORY.minibasket.auxiliar).toBe(0)
+    expect(FEES_BY_BASES_CATEGORY.minibasket.anotador).toBe(16.0)
   })
 })
 

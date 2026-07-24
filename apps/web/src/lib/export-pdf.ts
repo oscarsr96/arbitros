@@ -1,5 +1,12 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { formatLocalDate, seasonLabel } from './mock-data-client'
+
+// Default de temporada = la de HOY (`seasonLabel`, única fuente de la app):
+// antes era el literal fijo '2024-25', ya desactualizado. Los llamadores con
+// datos reales (reportes-view) pasan la temporada explícita derivada del
+// rango de fechas del informe; este default solo cubre llamadas sin ese dato.
+const CURRENT_SEASON = () => seasonLabel(formatLocalDate(new Date()))
 
 interface LiquidationPerson {
   name: string
@@ -22,7 +29,7 @@ interface LiquidationPerson {
 export function exportLiquidationPdf(
   liquidation: LiquidationPerson[],
   matchday: number,
-  season: string = '2024-25',
+  season: string = CURRENT_SEASON(),
 ) {
   const doc = new jsPDF()
 
@@ -72,7 +79,7 @@ export function exportLiquidationPdf(
 export function exportPersonDetailPdf(
   person: LiquidationPerson,
   matchday: number,
-  season: string = '2024-25',
+  season: string = CURRENT_SEASON(),
 ) {
   const doc = new jsPDF()
 
@@ -143,7 +150,7 @@ interface MonthlyLiquidationPerson {
 export function exportMonthlyLiquidationPdf(
   data: MonthlyLiquidationPerson[],
   matchdays: number[],
-  season: string = '2024-25',
+  season: string = CURRENT_SEASON(),
 ) {
   const doc = new jsPDF({ orientation: 'landscape' })
 

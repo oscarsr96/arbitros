@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
 import { User, Phone, MapPin, Mail, Shield, Trophy, Banknote } from 'lucide-react'
+import { formatLocalDate, seasonLabel } from '@/lib/mock-data-client'
 
 const categoryLabels: Record<string, string> = {
   provincial: 'Provincial',
@@ -184,7 +185,7 @@ export function ProfileView() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Trophy className="h-4 w-4" />
-            Temporada 2024-25
+            Temporada {seasonLabel(formatLocalDate(new Date()))}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

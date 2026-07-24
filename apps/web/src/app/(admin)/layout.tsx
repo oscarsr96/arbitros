@@ -1,18 +1,8 @@
 import { AdminSidebar } from '@/components/admin-sidebar'
 import { Toaster } from '@/components/ui/sonner'
 import { mockMatches } from '@/lib/mock-data'
-import { formatLocalDate } from '@/lib/mock-data-client'
+import { formatLocalDate, seasonLabel } from '@/lib/mock-data-client'
 import { resolveDefaultJornada } from '@/lib/match-query'
-
-// "2025/26" a partir de una fecha ISO. Temporada española: arranca en
-// septiembre, así que un mes < 9 (ene-ago) pertenece a la temporada iniciada
-// el año anterior.
-function seasonLabel(dateISO: string): string {
-  const year = Number(dateISO.slice(0, 4))
-  const month = Number(dateISO.slice(5, 7))
-  const startYear = month >= 9 ? year : year - 1
-  return `${startYear}/${String(startYear + 1).slice(2)}`
-}
 
 // Server Component: mock-data.ts (server-only) y `new Date()` son seguros
 // aquí, igual que en un route handler (sin hidratación de cliente de por

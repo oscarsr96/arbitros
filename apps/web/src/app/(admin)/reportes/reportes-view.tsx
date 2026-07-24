@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +21,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   Cell,
 } from 'recharts'
@@ -29,15 +31,23 @@ import {
   exportPersonDetailPdf,
   exportMonthlyLiquidationPdf,
 } from '@/lib/export-pdf'
+import { formatLocalDate, seasonLabel } from '@/lib/mock-data-client'
+import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
+
+type ReportScope = 'jornada' | 'month' | 'season'
 
 interface ReportData {
   summary: {
+    scope: ReportScope
+    scopeLabel: string
+    from: string
+    to: string
     totalCost: number
     totalMatches: number
     covered: number
     partial: number
     uncovered: number
-    matchday: number
+    matchday: number | null
   }
   loadByPerson: {
     personId: string
@@ -65,7 +75,17 @@ interface ReportData {
     totalCost: number
   }[]
   costByMatchday: { matchday: number; cost: number; matches: number }[]
+  costByMonth: { month: string; cost: number; matches: number }[]
   costByMunicipality: { municipality: string; totalCost: number; count: number }[]
+  coverageHistory: {
+    saturday: string
+    from: string
+    to: string
+    totalMatches: number
+    covered: number
+    partial: number
+    uncovered: number
+  }[]
   monthlyLiquidation: {
     personId: string
     name: string
@@ -81,20 +101,53 @@ interface ReportData {
 
 const FBM_NAVY = '#00205B'
 const FBM_GOLD = '#C8A951'
+const COVERAGE_GREEN = '#16a34a'
+const COVERAGE_ORANGE = '#f97316'
+const COVERAGE_RED = '#ef4444'
+
+function scopeButtonClass(active: boolean) {
+  return `rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+    active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+  }`
+}
 
 export function ReportesView() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedPerson, setSelectedPerson] = useState<string | null>(null)
   const [liquidationView, setLiquidationView] = useState<'current' | 'monthly'>('current')
   const [selectedMonthlyPerson, setSelectedMonthlyPerson] = useState<string | null>(null)
 
+  // Ámbito del informe (4.2.2): reflejado en la URL (`?jornada=` | `?month=` |
+  // `?scope=season`), igual que consume el contrato de /api/admin/reports.
+  // Deep-linkable: recargar o compartir la URL reproduce el mismo ámbito.
+  const jornadaParam = searchParams.get('jornada')
+  const monthParam = searchParams.get('month')
+  const scope: ReportScope =
+    searchParams.get('scope') === 'season' ? 'season' : monthParam ? 'month' : 'jornada'
+  const jornadaValue = jornadaParam ?? (data && scope === 'jornada' ? data.summary.scopeLabel : '')
+  const monthValue = monthParam ?? (data && scope === 'month' ? data.summary.scopeLabel : '')
+
+  const goToJornada = (saturday: string) => router.push(`${pathname}?jornada=${saturday}`)
+  const goToMonth = (month: string) => router.push(`${pathname}?month=${month}`)
+  const goToSeason = () => router.push(`${pathname}?scope=season`)
+  const goToDefaultJornada = () => router.push(pathname)
+
+  const queryString = searchParams.toString()
   useEffect(() => {
-    fetch('/api/admin/reports')
+    setLoading(true)
+    fetch(`/api/admin/reports${queryString ? `?${queryString}` : ''}`)
       .then((r) => r.json())
       .then(setData)
       .finally(() => setLoading(false))
-  }, [])
+  }, [queryString])
+
+  // Temporada real derivada del rango del informe (fuente única `seasonLabel`,
+  // ver mock-data-client.ts): antes literal fijo "2024-25" desactualizado.
+  const seasonText = data ? seasonLabel(data.summary.from || formatLocalDate(new Date())) : ''
 
   const exportCSV = () => {
     if (!data) return
@@ -113,40 +166,35 @@ export function ReportesView() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `liquidacion-jornada-${data.summary.matchday}.csv`
+    // Nombre de fichero por ámbito: `matchday` ya no aplica a mes/temporada.
+    a.download = `liquidacion-${data.summary.scope}-${data.summary.scopeLabel}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   const handleExportExcel = () => {
     if (!data) return
-    exportLiquidationXlsx(data.liquidation, data.costByMatchday, data.summary.matchday)
+    exportLiquidationXlsx(data.liquidation, data.costByMatchday, data.summary.matchday ?? 0)
   }
 
   const handleExportPdf = () => {
     if (!data) return
-    exportLiquidationPdf(data.liquidation, data.summary.matchday)
+    exportLiquidationPdf(data.liquidation, data.summary.matchday ?? 0, seasonText)
   }
 
   const handleExportPersonPdf = () => {
     if (!data || !selectedLiquidation) return
-    exportPersonDetailPdf(selectedLiquidation, data.summary.matchday)
+    exportPersonDetailPdf(selectedLiquidation, data.summary.matchday ?? 0, seasonText)
   }
 
   const handleExportMonthlyExcel = () => {
     if (!data) return
-    const matchdays = [
-      ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
-    ].sort()
-    exportMonthlyLiquidationXlsx(data.monthlyLiquidation, matchdays)
+    exportMonthlyLiquidationXlsx(data.monthlyLiquidation, monthlyMatchdays)
   }
 
   const handleExportMonthlyPdf = () => {
     if (!data) return
-    const matchdays = [
-      ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
-    ].sort()
-    exportMonthlyLiquidationPdf(data.monthlyLiquidation, matchdays)
+    exportMonthlyLiquidationPdf(data.monthlyLiquidation, monthlyMatchdays, seasonText)
   }
 
   const selectedLiquidation = data?.liquidation.find((p) => p.personId === selectedPerson)
@@ -175,13 +223,34 @@ export function ReportesView() {
       ? Math.round((data.summary.covered / data.summary.totalMatches) * 100)
       : 0
 
+  // Jornadas cubiertas por la liquidación mensual (temporada completa, ajena al
+  // ámbito elegido arriba): única fuente para el label del toggle y los dos
+  // exports mensuales, antes recalculada tres veces (y una vez sin comparador
+  // numérico en `.sort()`, ver export-pdf.ts para el mismo patrón correcto).
+  const monthlyMatchdays = [
+    ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
+  ].sort((a, b) => a - b)
+  const monthlyRangeLabel =
+    monthlyMatchdays.length > 0
+      ? `J${monthlyMatchdays[0]}-J${monthlyMatchdays[monthlyMatchdays.length - 1]}`
+      : 'Mensual'
+
+  // Texto de ámbito para la cabecera: `matchday` ya no aplica a mes/temporada
+  // (viene `null` del API, ver route.ts).
+  const scopeText =
+    data.summary.scope === 'season'
+      ? 'Temporada completa'
+      : data.summary.scope === 'month'
+        ? `Mes ${data.summary.scopeLabel}`
+        : `Jornada${data.summary.matchday ? ` ${data.summary.matchday}` : ''}`
+
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Informes de la jornada {data.summary.matchday} — Temporada 2024-25
+            {scopeText} — Temporada {seasonText}
           </p>
         </div>
         <DropdownMenu>
@@ -209,10 +278,65 @@ export function ReportesView() {
         </DropdownMenu>
       </div>
 
+      {/* Selector de ámbito (4.2.2): jornada / mes / temporada, deep-linkable */}
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button onClick={goToDefaultJornada} className={scopeButtonClass(scope === 'jornada')}>
+            Jornada
+          </button>
+          <button
+            onClick={() => goToMonth(monthParam ?? formatLocalDate(new Date()).slice(0, 7))}
+            className={scopeButtonClass(scope === 'month')}
+          >
+            Mes
+          </button>
+          <button onClick={goToSeason} className={scopeButtonClass(scope === 'season')}>
+            Temporada
+          </button>
+        </div>
+
+        {scope === 'jornada' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500" htmlFor="reportes-jornada">
+              Jornada
+            </label>
+            <input
+              id="reportes-jornada"
+              type="date"
+              value={jornadaValue}
+              onChange={(e) => {
+                if (e.target.value) goToJornada(getJornadaSaturdayForDate(e.target.value))
+              }}
+              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm"
+            />
+          </div>
+        )}
+        {scope === 'month' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-500" htmlFor="reportes-month">
+              Mes
+            </label>
+            <input
+              id="reportes-month"
+              type="month"
+              value={monthValue}
+              onChange={(e) => {
+                if (e.target.value) goToMonth(e.target.value)
+              }}
+              className="rounded-md border border-gray-200 px-2 py-1.5 text-sm"
+            />
+          </div>
+        )}
+
+        <span className="text-xs text-gray-400">
+          {data.summary.from} → {data.summary.to}
+        </span>
+      </div>
+
       {/* Summary cards */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-xs font-medium uppercase text-gray-500">Coste total jornada</p>
+          <p className="text-xs font-medium uppercase text-gray-500">Coste total</p>
           <p className="mt-1 text-2xl font-bold text-gray-900">
             {data.summary.totalCost.toFixed(2)} €
           </p>
@@ -221,7 +345,7 @@ export function ReportesView() {
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs font-medium uppercase text-gray-500">Partidos</p>
           <p className="mt-1 text-2xl font-bold text-gray-900">{data.summary.totalMatches}</p>
-          <p className="mt-1 text-xs text-gray-400">En la jornada</p>
+          <p className="mt-1 text-xs text-gray-400">En el rango seleccionado</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs font-medium uppercase text-gray-500">Personas asignadas</p>
@@ -291,10 +415,45 @@ export function ReportesView() {
         </div>
       </div>
 
+      {/* Coverage history - recharts stacked bar, temporada completa (4.2.4) */}
+      <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-4 text-sm font-semibold text-gray-800">
+          Cobertura por jornada (temporada completa)
+        </h2>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={data.coverageHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="saturday"
+              tickFormatter={(v: string) => v.slice(5)}
+              fontSize={10}
+              tick={{ fill: '#6b7280' }}
+              interval="preserveStartEnd"
+            />
+            <YAxis fontSize={11} tick={{ fill: '#6b7280' }} allowDecimals={false} />
+            <Tooltip labelFormatter={(label) => `Jornada del ${label}`} />
+            <Legend
+              formatter={(value) =>
+                value === 'covered' ? 'Cubiertos' : value === 'partial' ? 'Parcial' : 'Sin cubrir'
+              }
+            />
+            <Bar dataKey="covered" stackId="coverage" fill={COVERAGE_GREEN} name="covered" />
+            <Bar dataKey="partial" stackId="coverage" fill={COVERAGE_ORANGE} name="partial" />
+            <Bar
+              dataKey="uncovered"
+              stackId="coverage"
+              fill={COVERAGE_RED}
+              radius={[4, 4, 0, 0]}
+              name="uncovered"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* Cost by municipality - horizontal bar chart */}
       <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
         <h2 className="mb-4 text-sm font-semibold text-gray-800">
-          Coste por municipio (jornadas 13-15)
+          Coste por municipio (temporada completa)
         </h2>
         <ResponsiveContainer
           width="100%"
@@ -388,7 +547,7 @@ export function ReportesView() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Jornada actual
+                Ámbito seleccionado
               </button>
               <button
                 onClick={() => setLiquidationView('monthly')}
@@ -398,7 +557,7 @@ export function ReportesView() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Mensual (J13-J15)
+                Mensual ({monthlyRangeLabel})
               </button>
             </div>
           </div>
@@ -656,7 +815,9 @@ function MonthlyLiquidationTable({
   data: MonthlyLiquidationData[]
   onSelectPerson: (personId: string) => void
 }) {
-  const allMatchdays = [...new Set(data.flatMap((p) => p.matchdays.map((m) => m.matchday)))].sort()
+  const allMatchdays = [...new Set(data.flatMap((p) => p.matchdays.map((m) => m.matchday)))].sort(
+    (a, b) => a - b,
+  )
   const grandTotal = data.reduce((sum, p) => sum + p.totalCost, 0)
 
   return (

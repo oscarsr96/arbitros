@@ -37,6 +37,18 @@ export function formatLocalDate(d: Date): string {
   return `${year}-${month}-${day}`
 }
 
+// "2025/26" a partir de una fecha ISO. Temporada española: arranca en
+// septiembre, así que un mes < 9 (ene-ago) pertenece a la temporada iniciada
+// el año anterior. Única fuente de la etiqueta de temporada de toda la app
+// (antes duplicada como literal "2024-25" hardcodeado y ya desactualizado en
+// reportes, export-pdf y el perfil del portal).
+export function seasonLabel(dateISO: string): string {
+  const year = Number(dateISO.slice(0, 4))
+  const month = Number(dateISO.slice(5, 7))
+  const startYear = month >= 9 ? year : year - 1
+  return `${startYear}/${String(startYear + 1).slice(2)}`
+}
+
 export const nextSaturday = (() => {
   const d = new Date()
   d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7))

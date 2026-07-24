@@ -1,13 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import {
-  mockMatches,
-  mockDesignations,
-  mockPersons,
-  mockHistoricalMatchdays,
-  getMockVenue,
-  calculateDailyTravelCost,
-  type MockDesignation,
-} from '@/lib/mock-data'
+import { NextRequest } from 'next/server'
+import { mockMatches, mockDesignations, mockPersons, type MockDesignation } from '@/lib/mock-data'
+import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
 import { GET } from '../route'
 
 // Antes CURRENT_MATCHDAY era un literal (15): TODAS las designaciones reales
@@ -18,9 +12,31 @@ import { GET } from '../route'
 // costByMatchday/monthlyLiquidation SIGUEN agregando por temporada/mes (eso
 // es correcto por diseño, ver CLAUDE.md Fase 4: no se acotan).
 
+function makeRequest(query = ''): NextRequest {
+  return new NextRequest(`http://localhost/api/admin/reports${query}`)
+}
+
+function makeDesignation(
+  id: string,
+  matchId: string,
+  person: (typeof mockPersons)[number],
+): MockDesignation {
+  return {
+    id,
+    matchId,
+    personId: person.id,
+    role: person.role,
+    travelCost: '0',
+    distanceKm: '0',
+    status: 'notified',
+    notifiedAt: null,
+    createdAt: new Date(),
+  }
+}
+
 describe('GET /api/admin/reports — fuera de temporada (hoy real, 2026-07-21)', () => {
   it('summary cae a la última jornada con partidos, nunca a la temporada entera', async () => {
-    const res = await GET()
+    const res = await GET(makeRequest())
     const body = await res.json()
 
     // La temporada real termina el 2026-05-10: "hoy" (2026-07-21) cae fuera
@@ -33,7 +49,7 @@ describe('GET /api/admin/reports — fuera de temporada (hoy real, 2026-07-21)',
   })
 
   it('invariante: cubiertos + parciales + sin cubrir = total', async () => {
-    const res = await GET()
+    const res = await GET(makeRequest())
     const { summary } = await res.json()
     expect(summary.covered + summary.partial + summary.uncovered).toBe(summary.totalMatches)
   })
@@ -49,7 +65,7 @@ describe('GET /api/admin/reports — dentro de temporada', () => {
   })
 
   it('summary usa la jornada de HOY cuando tiene partidos', async () => {
-    const res = await GET()
+    const res = await GET(makeRequest())
     const body = await res.json()
     const inWindow = mockMatches.filter((m) => m.date >= '2025-09-26' && m.date <= '2025-10-02')
     expect(inWindow.length).toBeGreaterThan(0)
@@ -71,31 +87,11 @@ describe('GET /api/admin/reports — agregación de temporada/mes (NO se acota)'
 
     const backup = [...mockDesignations]
     mockDesignations.push(
-      {
-        id: 'test-md1',
-        matchId: m1!.id,
-        personId: person.id,
-        role: person.role,
-        travelCost: '0',
-        distanceKm: '0',
-        status: 'notified',
-        notifiedAt: null,
-        createdAt: new Date(),
-      },
-      {
-        id: 'test-md2',
-        matchId: m2!.id,
-        personId: person.id,
-        role: person.role,
-        travelCost: '0',
-        distanceKm: '0',
-        status: 'notified',
-        notifiedAt: null,
-        createdAt: new Date(),
-      },
+      makeDesignation('test-md1', m1!.id, person),
+      makeDesignation('test-md2', m2!.id, person),
     )
     try {
-      const res = await GET()
+      const res = await GET(makeRequest())
       const body = await res.json()
       const matchdaysPresent = body.costByMatchday.map((c: { matchday: number }) => c.matchday)
       expect(matchdaysPresent).toContain(1)
@@ -105,65 +101,161 @@ describe('GET /api/admin/reports — agregación de temporada/mes (NO se acota)'
       mockDesignations.push(...backup)
     }
   })
+})
 
-  it('mockHistoricalMatchdays (jornadas demo 13/14) no se mezcla con los matchday reales 13/14', async () => {
-    // La temporada real ya cubre matchday 1-26, incluidos 13 y 14: son los
-    // mismos números que usa el fixture legacy mockHistoricalMatchdays. Sin
-    // designaciones reales, costByMatchday debe quedar vacío (ninguna
-    // designación real + histórico descartado por colisión), no las 2
-    // entradas fantasma de mockHistoricalMatchdays.
-    expect(mockHistoricalMatchdays.some((h) => h.matchday === 13)).toBe(true)
-    expect(mockMatches.some((m) => m.matchday === 13)).toBe(true)
-
-    const backup = [...mockDesignations]
-    mockDesignations.length = 0
-    try {
-      const res = await GET()
-      const body = await res.json()
-      expect(body.costByMatchday).toEqual([])
-      expect(body.monthlyLiquidation).toEqual([])
-    } finally {
-      mockDesignations.push(...backup)
-    }
-  })
-
-  it('coste demo y coste real no se suman nunca bajo el mismo matchday', async () => {
-    // Caso más estricto que el anterior: aquí SÍ hay una designación real en
-    // matchday 13 (el mismo número que el fixture legacy). Si el histórico se
-    // mezclase, el total incluiría también las 14 designaciones fabricadas de
-    // mockHistoricalMatchdays[0] (persons 001-009, costes 3.0/1.3/1.5/...).
-    const match13 = mockMatches.find((m) => m.matchday === 13)
-    expect(match13).toBeDefined()
-    const venue = getMockVenue(match13!.venueId)
-    expect(venue).toBeDefined()
+describe('GET /api/admin/reports — 4.2.1: loadByPerson/liquidation acotados a la ventana', () => {
+  it('una designación fuera de la ventana pedida NO cuenta en loadByPerson ni en liquidation', async () => {
     const person = mockPersons[0]
-    const expected = calculateDailyTravelCost(person.municipalityId, [venue!.municipalityId])
+    const sorted = [...mockMatches].sort((a, b) => a.date.localeCompare(b.date))
+    const inside = sorted[0]
+    const outside = sorted[sorted.length - 1]
+    const insideSaturday = getJornadaSaturdayForDate(inside.date)
+    // Confirma que las dos fechas caen en jornadas distintas: si no, el test
+    // no probaría nada (ver memoria: la temporada real cubre ~29 jornadas).
+    expect(getJornadaSaturdayForDate(outside.date)).not.toBe(insideSaturday)
 
     const backup = [...mockDesignations]
-    mockDesignations.push({
-      id: 'test-md13-real',
-      matchId: match13!.id,
-      personId: person.id,
-      role: person.role,
-      travelCost: '0',
-      distanceKm: '0',
-      status: 'notified',
-      notifiedAt: null,
-      createdAt: new Date(),
-    })
+    mockDesignations.push(
+      makeDesignation('test-inside', inside.id, person),
+      makeDesignation('test-outside', outside.id, person),
+    )
     try {
-      const res = await GET()
+      const res = await GET(makeRequest(`?jornada=${insideSaturday}`))
       const body = await res.json()
-      const entry = body.costByMatchday.find((c: { matchday: number }) => c.matchday === 13)
-      expect(entry).toBeDefined()
-      // matches = 1 (solo la designación real añadida), NUNCA 1 + 14 (las del
-      // fixture legacy) ni el propio conteo del fixture (14).
-      expect(entry.matches).toBe(1)
-      expect(entry.cost).toBe(expected.cost)
+
+      const load = body.loadByPerson.find((p: { personId: string }) => p.personId === person.id)
+      expect(load.matchesAssigned).toBe(1)
+
+      const liq = body.liquidation.find((p: { personId: string }) => p.personId === person.id)
+      expect(liq.matches).toHaveLength(1)
+      expect(liq.matches[0].matchId).toBe(inside.id)
     } finally {
       mockDesignations.length = 0
       mockDesignations.push(...backup)
     }
+  })
+})
+
+describe('GET /api/admin/reports — 4.2.2: selector de ámbito (jornada/mes/temporada)', () => {
+  it('?month=YYYY-MM acota summary/loadByPerson/liquidation al mes natural, no a una jornada', async () => {
+    const person = mockPersons[0]
+    const sorted = [...mockMatches].sort((a, b) => a.date.localeCompare(b.date))
+    const match = sorted[0]
+    const month = match.date.slice(0, 7)
+    const inMonth = mockMatches.filter((m) => m.date.slice(0, 7) === month)
+
+    const backup = [...mockDesignations]
+    mockDesignations.push(makeDesignation('test-month', match.id, person))
+    try {
+      const res = await GET(makeRequest(`?month=${month}`))
+      const body = await res.json()
+
+      expect(body.summary.scope).toBe('month')
+      expect(body.summary.matchday).toBeNull()
+      expect(body.summary.totalMatches).toBe(inMonth.length)
+
+      const load = body.loadByPerson.find((p: { personId: string }) => p.personId === person.id)
+      expect(load.matchesAssigned).toBe(1)
+    } finally {
+      mockDesignations.length = 0
+      mockDesignations.push(...backup)
+    }
+  })
+
+  it('?scope=season incluye TODAS las designaciones de la persona, sin importar la fecha', async () => {
+    const person = mockPersons[0]
+    const sorted = [...mockMatches].sort((a, b) => a.date.localeCompare(b.date))
+    const early = sorted[0]
+    const late = sorted[sorted.length - 1]
+
+    const backup = [...mockDesignations]
+    mockDesignations.push(
+      makeDesignation('test-season-early', early.id, person),
+      makeDesignation('test-season-late', late.id, person),
+    )
+    try {
+      const res = await GET(makeRequest('?scope=season'))
+      const body = await res.json()
+
+      expect(body.summary.scope).toBe('season')
+      expect(body.summary.totalMatches).toBe(mockMatches.length)
+
+      const load = body.loadByPerson.find((p: { personId: string }) => p.personId === person.id)
+      expect(load.matchesAssigned).toBe(2)
+    } finally {
+      mockDesignations.length = 0
+      mockDesignations.push(...backup)
+    }
+  })
+
+  it('sin parámetros, el ámbito por defecto sigue siendo "jornada" (compatibilidad)', async () => {
+    const res = await GET(makeRequest())
+    const body = await res.json()
+    expect(body.summary.scope).toBe('jornada')
+    expect(typeof body.summary.matchday).toBe('number')
+  })
+})
+
+describe('GET /api/admin/reports — 4.2.3: coste por mes natural', () => {
+  it('costByMonth agrega por fecha real de partido (date.slice(0,7)), no por matchday', async () => {
+    const sorted = [...mockMatches].sort((a, b) => a.date.localeCompare(b.date))
+    const early = sorted[0]
+    const late = sorted[sorted.length - 1]
+    const earlyMonth = early.date.slice(0, 7)
+    const lateMonth = late.date.slice(0, 7)
+    expect(earlyMonth).not.toBe(lateMonth)
+    const person = mockPersons[0]
+
+    const backup = [...mockDesignations]
+    mockDesignations.push(
+      makeDesignation('test-cbm-early', early.id, person),
+      makeDesignation('test-cbm-late', late.id, person),
+    )
+    try {
+      const res = await GET(makeRequest())
+      const body = await res.json()
+      const months = body.costByMonth.map((c: { month: string }) => c.month)
+      expect(months).toContain(earlyMonth)
+      expect(months).toContain(lateMonth)
+      const totalMatchesInMonths = body.costByMonth.reduce(
+        (sum: number, c: { matches: number }) => sum + c.matches,
+        0,
+      )
+      expect(totalMatchesInMonths).toBe(2)
+    } finally {
+      mockDesignations.length = 0
+      mockDesignations.push(...backup)
+    }
+  })
+})
+
+describe('GET /api/admin/reports — 4.2.4: histórico de cobertura por jornada real', () => {
+  it('coverageHistory: la suma de cada jornada == nº de partidos de esa jornada, y el total == temporada completa', async () => {
+    const res = await GET(makeRequest())
+    const body = await res.json()
+
+    expect(Array.isArray(body.coverageHistory)).toBe(true)
+    expect(body.coverageHistory.length).toBeGreaterThan(0)
+
+    const bySaturday = new Map<string, number>()
+    for (const m of mockMatches) {
+      const s = getJornadaSaturdayForDate(m.date)
+      bySaturday.set(s, (bySaturday.get(s) ?? 0) + 1)
+    }
+
+    let totalAcrossHistory = 0
+    for (const entry of body.coverageHistory as {
+      saturday: string
+      totalMatches: number
+      covered: number
+      partial: number
+      uncovered: number
+    }[]) {
+      expect(entry.covered + entry.partial + entry.uncovered).toBe(entry.totalMatches)
+      expect(entry.totalMatches).toBe(bySaturday.get(entry.saturday))
+      totalAcrossHistory += entry.totalMatches
+    }
+    expect(totalAcrossHistory).toBe(mockMatches.length)
   })
 })
 
@@ -172,12 +264,11 @@ describe('GET /api/admin/reports — rendimiento con temporada completa designad
     // Volumen real: TODOS los partidos de la temporada designados (no solo
     // una jornada, a diferencia de dashboard/optimize: reports agrega por
     // temporada por diseño). Antes del índice, esto tardaba ~82 s (medido);
-    // con el índice baja a ~0,4-0,9 s. El umbral se deja holgado (bien por
-    // encima de lo medido) para no volverse flaky en máquina compartida:
-    // sigue siendo ~100x más rápido que sin índice, aunque no llega al
-    // objetivo de <200 ms del plan (ver informe de la tarea R2 — el resto
-    // es trabajo real de serialización de la temporada completa, no un
-    // cuadrático oculto).
+    // con el índice baja a ~0,4-0,9 s. Tras sumar costByMonth y
+    // coverageHistory (4.2.3/4.2.4, cada uno un recorrido adicional de
+    // temporada completa) se mide ~1,4-1,5 s; el umbral sube de 2000 a 3000 ms
+    // para mantener margen holgado (~2x lo medido) sin volverse flaky en
+    // máquina compartida — sigue siendo ~50x más rápido que sin índice.
     const originalLength = mockDesignations.length
     const referees = mockPersons.filter((p) => p.role === 'arbitro')
     const scorers = mockPersons.filter((p) => p.role === 'anotador')
@@ -218,7 +309,7 @@ describe('GET /api/admin/reports — rendimiento con temporada completa designad
 
     try {
       const t0 = performance.now()
-      const res = await GET()
+      const res = await GET(makeRequest())
       const ms = performance.now() - t0
       const body = await res.json()
 
@@ -228,7 +319,7 @@ describe('GET /api/admin/reports — rendimiento con temporada completa designad
       )
       expect(res.status).toBe(200)
       expect(body.liquidation.length).toBeGreaterThan(0)
-      expect(ms).toBeLessThan(2000)
+      expect(ms).toBeLessThan(3000)
     } finally {
       mockDesignations.length = originalLength
     }

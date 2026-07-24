@@ -8,6 +8,7 @@
 // viven aquí.
 
 import { getMatchdayWindow, getJornadaSaturdayForDate } from './matchday-availability'
+import { formatLocalDate } from './mock-data-client'
 
 export interface MatchDateRange {
   from?: string
@@ -18,10 +19,19 @@ export interface MatchLike {
   date: string
 }
 
+/** Rango [from, to] de un mes natural (`YYYY-MM`), por fecha real de partido. */
+export function getMonthRange(month: string): MatchDateRange {
+  const [year, mon] = month.split('-').map(Number)
+  const from = `${month}-01`
+  const to = formatLocalDate(new Date(year, mon, 0)) // día 0 del mes siguiente = último día de éste
+  return { from, to }
+}
+
 /**
  * Traduce los parámetros de query a un rango [from, to] inclusivo.
  *
  * - `jornada=YYYY-MM-DD` (sábado de la jornada) → ventana viernes→jueves.
+ * - `month=YYYY-MM` → mes natural completo.
  * - `from` / `to` sueltos → rango explícito; cualquiera de los dos puede faltar
  *   (extremo abierto).
  * - Sin parámetros → rango vacío = sin filtro (compatibilidad: los consumidores
@@ -32,6 +42,10 @@ export function parseMatchRange(searchParams: URLSearchParams): MatchDateRange {
   if (jornada) {
     const window = getMatchdayWindow(jornada)
     return { from: window.friday, to: window.thursday }
+  }
+  const month = searchParams.get('month')
+  if (month) {
+    return getMonthRange(month)
   }
   return {
     from: searchParams.get('from') ?? undefined,

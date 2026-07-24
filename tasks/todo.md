@@ -1,6 +1,9 @@
 ## Fase 4 — Reportes y Liquidaciones (PLAN) (2026-07-24)
 
-Estado: 📋 PLANIFICADO (sin ejecutar; pendiente de las DECISIONES PENDIENTES DEL USUARIO al final)
+Estado: ✅ 4.1 + 4.2 COMPLETAS Y VERIFICADAS (2026-07-24). Pendientes: 4.3, 4.4 (y sus cabos, ver
+"4.1+4.2 — resultado"). Ejecutor = **Mixto según plan**. U1-U6 resueltas (`fase4-tarifas-oficiales.md`).
+Olas ejecutadas: BETA=4.1.2 ∥ ALFA1=4.2.1-4.2.5 → GAMMA=4.1.3 (fable) → DELTA=4.1.4 ∥ ALFA2=4.2 front
+→ EPSILON gate+review adversarial (fable max) = LISTO. SIN COMMITEAR.
 
 ### Contexto verificado (2026-07-24) — la Fase 4 está PARCIALMENTE construida
 
@@ -175,6 +178,54 @@ adicional, no como rediseño).
 - **4.2.6 Labels de temporada reales** · `sonnet` · `low`
   (a) "2024-25" hardcodeado (vista + defaults de `export-pdf.ts`/`profile-view`) → derivado del
   seed (2025/2026). (b) Aceptación: grep sin literales de temporada obsoletos.
+
+**4.1+4.2 — resultado (2026-07-24)**
+
+Ejecutado con 5 subagentes (Mixto) + verificación adversarial (EPSILON, fable `effort:max`).
+
+- **4.1.2 (sonnet) OK**: `FEES_BY_BASES_CATEGORY` en `bases-fbm.ts` (22 filas, importes € oficiales;
+  campos `principal/auxiliar/anotador/cronometrador/veinticuatro`, alineados con `DesignationPosition`).
+  Test de completitud 22/22 + spot checks. Módulo sigue puro (sin imports de dominio).
+- **4.1.3 (fable) OK**: `lib/designation-fees.ts` NUEVO — `resolveDesignationFee` + `sumDesignationFees`.
+  Cobertura **49/49 canónicas** SOLO pasando el `competition` COMPLETO (name canónica + `category` slug);
+  por nombre suelto solo 22/49. Suma en céntimos. Fee `null` visible (nunca 0 silencioso). 16/16 test.
+- **4.2.1-4.2.5 (sonnet, ALFA1) OK** en `route.ts`+`match-query.ts`+`mock-data.ts`: loadByPerson/liquidation
+  acotados a la ventana viernes→jueves (P2); contrato `?jornada|?month|?scope=season`; **P6 CERRADO**
+  (summary.totalCost suma la ventana por FECHAS, no por nº de matchday): `2025-10-25` pasó de 1.975,54 €
+  → **6.076,70 €**. Campos nuevos `costByMonth` y `coverageHistory` (por `saturday` de jornada real).
+  `mockHistoricalMatchdays` eliminado (sin huérfanos).
+- **4.1.4 (sonnet, DELTA) OK** en `route.ts`: honorarios en loadByPerson/liquidation → campos SEPARADOS
+  `fees`/`total`(=fees+travelCost)/`unresolvedFees`; desplazamiento INTACTO (invariante blindado por test).
+  `monthlyLiquidation` NO integrada = **TODO(4.3.1)**: `resolveDesignationFee` no escala a temporada
+  (67.872 designaciones rompen el umbral de 3s) sin **memoizar la resolución por `competitionId`**, no por
+  designación. 17/17 test del route.
+- **4.2.2/4.2.4/4.2.6 (sonnet, ALFA2) OK**: selector Jornada/Mes/Temporada deep-linkable (next/navigation);
+  gráfico recharts de `coverageHistory`; `seasonLabel` como único punto de verdad (quitados '2024-25'/'J13-J15').
+  `summary.matchday` pasa a `number | null`.
+- **EPSILON (fable max) = LISTO**: suite **466/0**, typecheck 0. Reconciliado con datos reales:
+  desplazamiento 6.076,70 € sin cambio; honorarios 60.831,60 €, **0 unresolved de 2.364 designaciones**;
+  `total == fees + travelCost`. Bug arreglado en sitio: `MonthlyLiquidationTable` ordenaba jornadas
+  lexicográficamente (`.sort()` sin comparador) → `.sort((a,b)=>a-b)`.
+
+**Cabos abiertos (para 4.3/4.4, NO de esta tanda):**
+
+1. La UI de reportes aún NO muestra `fees/total/unresolvedFees` (no están en el `interface ReportData` de
+   `reportes-view.tsx`); la columna "Total (€)" muestra solo desplazamiento. El "contador visible" de
+   unresolved queda pendiente de pintarse → 4.3.4 / 4.4.
+2. `scope=season` serializa liquidation con detalle por partido: **1,4 MB hoy** (989 personas), pero con la
+   temporada completa designada (~67k designaciones) extrapola a decenas de MB → 4.3 debe agregar/paginar
+   ese scope.
+3. Exports XLSX/PDF reciben `matchday ?? 0` en mes/temporada → justificantes titulados "Jornada 0"
+   (cosmético) → arreglar al hacer 4.3.2/4.3.3.
+4. **Doble conteo de fijo diario** (hallado por ALFA1, fuera de scope): `costByMatchday/costByMunicipality/
+monthlyLiquidation` agrupan días por `(persona, matchday, fecha)` en vez de `(persona, fecha)`; si una
+   persona pita 2 competiciones el mismo día real cuenta 2 fijos en vez de 1 (mismo espíritu que P6). Decidir
+   si entra en 4.3.1.
+5. Desalineación de seed preexistente: `mockSeason.name: '2024-25'` (`mock-data.ts:189`) sigue mal (la real
+   es 2025/2026); la UI lo esquiva derivando de fecha, pero el dato del seed conviene alinearlo.
+6. Verificación VISUAL del panel (render con dev server + selector de ámbito) NO ejecutada: la verificación
+   fue lógica/integración. Recomendado un vistazo en navegador antes de dar 4.2 por cerrado de cara a usuario.
+7. Trabajo SIN COMMITEAR (esta tanda + la previa de "distancias reales"): decidir commits separados.
 
 **4.3 Liquidación mensual + exports (depende de 4.2.3; honorarios cuando 4.1 esté)**
 

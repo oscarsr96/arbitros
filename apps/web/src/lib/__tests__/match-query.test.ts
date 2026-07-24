@@ -3,6 +3,7 @@ import {
   parseMatchRange,
   filterMatchesByRange,
   getMatchesDateRange,
+  getMonthRange,
   listJornadas,
   resolveDefaultJornada,
 } from '../match-query'
@@ -55,6 +56,32 @@ describe('parseMatchRange', () => {
       new URLSearchParams({ jornada: SATURDAY, from: '2020-01-01', to: '2030-01-01' }),
     )
     expect(range).toEqual({ from: '2025-09-26', to: '2025-10-02' })
+  })
+
+  it('traduce ?month al mes natural completo', () => {
+    const range = parseMatchRange(new URLSearchParams({ month: '2025-10' }))
+    expect(range).toEqual({ from: '2025-10-01', to: '2025-10-31' })
+  })
+
+  it('jornada tiene prioridad sobre month', () => {
+    const range = parseMatchRange(new URLSearchParams({ jornada: SATURDAY, month: '2020-01' }))
+    expect(range).toEqual({ from: '2025-09-26', to: '2025-10-02' })
+  })
+})
+
+describe('getMonthRange', () => {
+  it('meses de 31/30 días', () => {
+    expect(getMonthRange('2025-10')).toEqual({ from: '2025-10-01', to: '2025-10-31' })
+    expect(getMonthRange('2025-04')).toEqual({ from: '2025-04-01', to: '2025-04-30' })
+  })
+
+  it('febrero: 28 días en año normal, 29 en bisiesto', () => {
+    expect(getMonthRange('2026-02')).toEqual({ from: '2026-02-01', to: '2026-02-28' })
+    expect(getMonthRange('2024-02')).toEqual({ from: '2024-02-01', to: '2024-02-29' })
+  })
+
+  it('diciembre no se desborda al año siguiente', () => {
+    expect(getMonthRange('2025-12')).toEqual({ from: '2025-12-01', to: '2025-12-31' })
   })
 })
 
