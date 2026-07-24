@@ -1,7 +1,8 @@
 ## Fase 4 — Reportes y Liquidaciones (PLAN) (2026-07-24)
 
-Estado: ✅ 4.1 + 4.2 COMPLETAS Y VERIFICADAS (2026-07-24). Pendientes: 4.3, 4.4 (y sus cabos, ver
-"4.1+4.2 — resultado"). Ejecutor = **Mixto según plan**. U1-U6 resueltas (`fase4-tarifas-oficiales.md`).
+Estado: ✅ 4.1 + 4.2 COMPLETAS (commit f80e5cc). ✅ 4.3 COMPLETA Y VERIFICADA (2026-07-24, ver
+"4.3 — resultado"). Pendiente 4.4. Olas 4.3: A=4.3.1 backend → B=4.3.2 xlsx ∥ 4.3.3 pdf → C=4.3.4 UI
+→ KAPPA gate+review adversarial (fable max) = LISTO. Ejecutor = **Mixto según plan**. U1-U6 resueltas (`fase4-tarifas-oficiales.md`).
 Olas ejecutadas: BETA=4.1.2 ∥ ALFA1=4.2.1-4.2.5 → GAMMA=4.1.3 (fable) → DELTA=4.1.4 ∥ ALFA2=4.2 front
 → EPSILON gate+review adversarial (fable max) = LISTO. SIN COMMITEAR.
 
@@ -246,6 +247,48 @@ monthlyLiquidation` agrupan días por `(persona, matchday, fecha)` en vez de `(p
   (a) El sheet de detalle muestra el desglose `byDay` real (ya viaja en la API) como principal; el
   por-partido queda marcado "estimación" o se retira. (b) Aceptación: lo que ve el usuario suma el
   total mostrado.
+
+**4.3 — resultado (2026-07-24)**
+
+Ejecutado con 4 subagentes (Mixto, todo sonnet) + verificación adversarial (KAPPA, fable `effort:max`).
+
+- **4.3.1 (ZETA) OK** en `route.ts`: `monthlyLiquidation` reescrita a MES NATURAL (objeto
+  `{month, people:[{personId,name,role,municipality,bankIban, days:[{date,matches,municipalities,km,
+travelCost}], travelCost,fees,total,unresolvedFees}], totalTravelCost,totalFees,total}`). Honorarios
+  memoizados **por `competitionId`** (escala a temporada, umbral <3s intacto). **Doble-conteo del fijo
+  diario eliminado**: agrupa por `(personId,date)` vía `calculatePersonTravelCost`, nunca por matchday.
+  20/20 test (nuevo `route.monthly-liquidation.test.ts`).
+- **4.3.2 (ETA) OK**: `exportMonthlyLiquidationXlsx(data: MonthlyLiquidation)` + pura `buildMonthlyRows`.
+  Hoja Resumen (Desplazamiento/Honorarios/Total separados) + hoja Detalle 1 fila/DÍA que suma el total
+  (fix P3). Fichero por mes. 5/5 test.
+- **4.3.3 (THETA) OK**: `exportMonthlyJustificantePdf(person, month, season?)` + pura
+  `buildJustificanteRows`. Justificante por persona, tabla por día, totales separados, aviso
+  `unresolvedFees`. 3/3 test.
+- **4.3.4 (IOTA) OK** en `reportes-view.tsx`: `ReportData` gana `fees/total/unresolvedFees`+`byDay`; UI
+  con 3 columnas Desplazamiento/Honorarios/Total + badge "N sin tarifa"; sheet jornada usa `byDay[]` real
+  como desglose principal (retirada la cifra estimada por-partido, cierra P3 en la UI); XLSX cableado a la
+  firma nueva; botón "Descargar justificante (PDF)"; legacy `exportMonthlyLiquidationPdf` retirado.
+- **KAPPA (fable max) = LISTO**: suite **476/1** (1 = flaky conocido), typecheck 0. Reconciliación al
+  céntimo con datos reales `?month=2025-10`: 950 personas, 6.076,70 € desplazamiento + 60.831,60 €
+  honorarios = **66.908,30 €**; XLSX/PDF/API coinciden; no-regresión jornada 6.076,70 €; doble-conteo
+  eliminado en toda la cadena. **Fixes aplicados por KAPPA**: cabo "Jornada 0" cerrado (los 3 exports del
+  ámbito seleccionado reciben `scopeLabel` "Jornada 15"/"Mes 2025-10"/"Temporada completa"); justificante
+  usaba temporada de hoy → `seasonLabel(mes)`; huérfano `exportMonthlyLiquidationPdf` (~80 líneas)
+  eliminado; timeouts explícitos (20s) en 2 tests que flaqueaban bajo carga concurrente (no cuadrático).
+
+**Cabos abiertos tras 4.3 (para 4.4 / aparte):**
+
+1. `exportPersonDetailPdf` de JORNADA aún tabula costes estimados por partido con pie = total real por día
+   (P3 sin cerrar en ESE PDF concreto; el justificante mensual sí cuadra). → alinear en 4.4.
+2. Los exports del ámbito SELECCIONADO (XLSX/PDF/CSV de jornada) muestran solo desplazamiento, sin las
+   columnas de honorarios que la UI ya pinta. → añadir honorarios a esos exports.
+3. `?month=` no valida formato (garbage → mes vacío silencioso). Validación de entrada pendiente.
+4. (De 4.3.1) `costByMatchday`/`costByMunicipality` mantienen el doble-conteo por `(persona,matchday,
+fecha)`; arreglarlo exige DECIDIR a qué matchday atribuir el fijo de un día que mezcla competiciones.
+5. (Heredado) `scope=season` serializa liquidation por persona (1,4 MB con parte de la temporada; con
+   temporada completa designada crecería) — agregar/paginar si se llena la temporada.
+6. Verificación VISUAL del panel (render + selector + exports reales) NO ejecutada; recomendable antes de
+   dar la fase por cerrada de cara a usuario.
 
 **4.4 Historial por persona**
 

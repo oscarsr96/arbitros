@@ -11,13 +11,20 @@ import {
   calculateMockTravelCost,
   type MockDesignation,
 } from '@/lib/mock-data'
-import { sumDesignationFees, type DesignationFeeEntry } from '@/lib/designation-fees'
+import {
+  sumDesignationFees,
+  feeBasesCategoryOf,
+  type DesignationFeeEntry,
+} from '@/lib/designation-fees'
+import { FEES_BY_BASES_CATEGORY, type BasesCategory } from '@/lib/fbm-calendar/bases-fbm'
+import { isValidPositionForRole } from '@/lib/designation-positions'
 import { formatLocalDate } from '@/lib/mock-data-client'
 import {
   resolveDefaultJornada,
   filterMatchesByRange,
   parseMatchRange,
   getMatchesDateRange,
+  getMonthRange,
   type MatchDateRange,
 } from '@/lib/match-query'
 import { getMatchdayWindow, getJornadaSaturdayForDate } from '@/lib/matchday-availability'
@@ -28,11 +35,15 @@ import { getMatchdayWindow, getJornadaSaturdayForDate } from '@/lib/matchday-ava
 //
 // A diferencia de dashboard/optimize, reports SÍ agrega por TEMPORADA y por
 // MES a propósito (CLAUDE.md Fase 4: "coste total por jornada / mes /
-// temporada"): costByMatchday, costByMonth, costByMunicipality,
-// monthlyLiquidation y coverageHistory cubren SIEMPRE la temporada entera,
-// vengan los parámetros que vengan. Lo único que responde al ámbito elegido
-// (`?jornada=` | `?month=` | `?scope=season`) es `summary`, `loadByPerson` y
-// `liquidation` (la vista "de trabajo" del designador para ESE ámbito).
+// temporada"): costByMatchday, costByMonth, costByMunicipality y
+// coverageHistory cubren SIEMPRE la temporada entera, vengan los parámetros
+// que vengan. `summary`, `loadByPerson` y `liquidation` responden al ámbito
+// elegido (`?jornada=` | `?month=` | `?scope=season`): es la vista "de
+// trabajo" del designador para ESE ámbito. `monthlyLiquidation` (4.3.1) es un
+// tercer eje, independiente de `scope`: SIEMPRE un mes natural (el de
+// `?month=` si se da, si no el mes que contiene el `from` del ámbito elegido,
+// o el mes real de hoy en `scope=season`), con desglose por día y honorarios
+// incluidos — la vista de liquidación mensual real, no un bloque de jornadas.
 //
 // GET /api/admin/reports
 //   ?jornada=YYYY-MM-DD  → ventana de esa jornada FBM (viernes→jueves)
@@ -350,65 +361,158 @@ export async function GET(request: NextRequest) {
     }))
     .sort((a, b) => b.totalCost - a.totalCost)
 
-  // ── Liquidación mensual: por persona, agregando jornadas (temporada
-  //    completa, por número de matchday; 4.3.1 la sustituye por mes natural) ──
-  const monthlyMap: Record<
-    string,
-    {
-      personId: string
-      name: string
-      role: string
-      municipality: string
-      bankIban: string
-      matchdays: { matchday: number; matches: number; cost: number; km: number }[]
-      totalMatches: number
-      totalKm: number
-      totalCost: number
+  // ── Liquidación mensual (4.3.1): MES NATURAL con desglose POR DÍA, no un
+  //    bloque de jornadas (sustituye la agregación anterior por Nº de
+  //    matchday). Agrupa igual que `calculatePersonTravelCost`: por
+  //    (persona, fecha real), nunca por matchday (bug del cabo 4: dos
+  //    competiciones distintas el mismo día real no deben pagar dos fijos).
+  //    Reparto de mes: cada partido cuenta en SU mes por fecha real
+  //    (`filterMatchesByRange`/`getMonthRange` filtran por `date`, así que un
+  //    partido de viernes 31 y otro de sábado 1 caen en meses distintos aunque
+  //    compartan jornada FBM). Mes por defecto (sin `?month=`): el que
+  //    contiene el `from` del ámbito elegido, o el mes real de hoy si no hay
+  //    rango (scope=season). ──
+  const liquidationMonth = monthParam ?? (range.from ?? todayISO).slice(0, 7)
+  const liquidationMonthRange = getMonthRange(liquidationMonth)
+  const liquidationMonthMatches = filterMatchesByRange(mockMatches, liquidationMonthRange)
+
+  interface MonthlyMatchDetail {
+    matchId: string
+    date: string
+    time: string
+    homeTeam: string
+    awayTeam: string
+    venue: string
+    municipality: string
+  }
+  const monthDetailsByPerson = new Map<string, MonthlyMatchDetail[]>()
+  const monthItemsByPerson = new Map<string, { date: string; venueMunicipalityId: string }[]>()
+  const monthFeeCentsByPerson = new Map<string, { cents: number; unresolved: number }>()
+
+  // Memoización OBLIGATORIA por competitionId (4.1.4 midió que resolver la
+  // categoría de Bases por DESIGNACIÓN, a escala de temporada, rompe el
+  // umbral de 3s): `feeBasesCategoryOf` tokeniza nombre/categoría contra ~48
+  // reglas, así que se resuelve UNA vez por competición y se reutiliza para
+  // todas sus designaciones del mes. El importe final por rol/posición es un
+  // lookup directo en `FEES_BY_BASES_CATEGORY` (barato); se replica aquí en
+  // vez de reusar `resolveDesignationFee` porque esa función retokeniza en
+  // cada llamada (no acepta una `basesCategory` ya resuelta).
+  const basesCategoryByCompetition = new Map<string, BasesCategory | null>()
+
+  for (const match of liquidationMonthMatches) {
+    const desigs = designationsByMatch.get(match.id)
+    if (!desigs || desigs.length === 0) continue
+    const venue = venuesById.get(match.venueId)
+    const venueMunicipalityId = venue?.municipalityId ?? ''
+    const municipalityName = venueMunicipalityId
+      ? (municipalitiesById.get(venueMunicipalityId)?.name ?? '')
+      : ''
+
+    let basesCategory: BasesCategory | null
+    if (basesCategoryByCompetition.has(match.competitionId)) {
+      basesCategory = basesCategoryByCompetition.get(match.competitionId) ?? null
+    } else {
+      const competition = competitionsById.get(match.competitionId)
+      basesCategory = competition ? feeBasesCategoryOf(competition) : null
+      basesCategoryByCompetition.set(match.competitionId, basesCategory)
     }
-  > = {}
-  for (const d of days) {
-    if (!monthlyMap[d.personId]) {
-      const person = personsById.get(d.personId)
+    const fees = basesCategory ? FEES_BY_BASES_CATEGORY[basesCategory] : null
+
+    for (const d of desigs) {
+      const detail: MonthlyMatchDetail = {
+        matchId: match.id,
+        date: match.date,
+        time: match.time,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        venue: venue?.name ?? '',
+        municipality: municipalityName,
+      }
+      const detailList = monthDetailsByPerson.get(d.personId)
+      if (detailList) detailList.push(detail)
+      else monthDetailsByPerson.set(d.personId, [detail])
+
+      const itemList = monthItemsByPerson.get(d.personId)
+      const item = { date: match.date, venueMunicipalityId }
+      if (itemList) itemList.push(item)
+      else monthItemsByPerson.set(d.personId, [item])
+
+      let fee: number | null = null
+      if (fees) {
+        if (d.position !== undefined) {
+          fee = isValidPositionForRole(d.position, d.role) ? fees[d.position] : null
+        } else if (d.role === 'arbitro') {
+          fee = fees.principal
+        }
+      }
+      const feeAgg = monthFeeCentsByPerson.get(d.personId) ?? { cents: 0, unresolved: 0 }
+      if (fee === null) feeAgg.unresolved++
+      else feeAgg.cents += Math.round(fee * 100)
+      monthFeeCentsByPerson.set(d.personId, feeAgg)
+    }
+  }
+
+  const monthlyLiquidationPeople = [...monthItemsByPerson.entries()]
+    .map(([personId, items]) => {
+      const person = personsById.get(personId)
       const municipality = person ? municipalitiesById.get(person.municipalityId) : undefined
-      monthlyMap[d.personId] = {
-        personId: d.personId,
-        name: person?.name ?? d.personId,
+      const { totalCost: travelCost, byDay } = calculatePersonTravelCost(
+        person?.municipalityId ?? '',
+        items,
+      )
+
+      const detailsByDate = new Map<string, MonthlyMatchDetail[]>()
+      for (const detail of monthDetailsByPerson.get(personId) ?? []) {
+        const list = detailsByDate.get(detail.date)
+        if (list) list.push(detail)
+        else detailsByDate.set(detail.date, [detail])
+      }
+
+      const days = byDay.map((day) => {
+        const dayMatches = (detailsByDate.get(day.date) ?? [])
+          .slice()
+          .sort((a, b) => a.time.localeCompare(b.time))
+        return {
+          date: day.date,
+          matches: dayMatches,
+          municipalities: [...new Set(dayMatches.map((m) => m.municipality))],
+          km: day.km,
+          travelCost: day.cost,
+        }
+      })
+
+      const feeAgg = monthFeeCentsByPerson.get(personId) ?? { cents: 0, unresolved: 0 }
+      const fees = feeAgg.cents / 100
+      const total = Number((travelCost + fees).toFixed(2))
+
+      return {
+        personId,
+        name: person?.name ?? personId,
         role: person?.role ?? '',
         municipality: municipality?.name ?? '',
         bankIban: person?.bankIban ?? '',
-        matchdays: [],
-        totalMatches: 0,
-        totalKm: 0,
-        totalCost: 0,
+        days,
+        travelCost,
+        fees,
+        total,
+        unresolvedFees: feeAgg.unresolved,
       }
-    }
-    const p = monthlyMap[d.personId]
-    // Una persona puede tener varios días dentro de una misma jornada (sáb+dom):
-    // se acumulan en la misma entrada de jornada.
-    let md = p.matchdays.find((m) => m.matchday === d.matchday)
-    if (!md) {
-      md = { matchday: d.matchday, matches: 0, cost: 0, km: 0 }
-      p.matchdays.push(md)
-    }
-    md.matches += d.matches
-    md.cost = Number((md.cost + d.cost).toFixed(2))
-    md.km = Number((md.km + d.km).toFixed(1))
-    p.totalMatches += d.matches
-    p.totalKm = Number((p.totalKm + d.km).toFixed(1))
-    p.totalCost = Number((p.totalCost + d.cost).toFixed(2))
+    })
+    .sort((a, b) => b.total - a.total)
+
+  const monthlyTotalTravelCost = Number(
+    monthlyLiquidationPeople.reduce((sum, p) => sum + p.travelCost, 0).toFixed(2),
+  )
+  const monthlyTotalFees = Number(
+    monthlyLiquidationPeople.reduce((sum, p) => sum + p.fees, 0).toFixed(2),
+  )
+  const monthlyLiquidation = {
+    month: liquidationMonth,
+    people: monthlyLiquidationPeople,
+    totalTravelCost: monthlyTotalTravelCost,
+    totalFees: monthlyTotalFees,
+    total: Number((monthlyTotalTravelCost + monthlyTotalFees).toFixed(2)),
   }
-  // TODO(4.3.1): monthlyLiquidation aún agrupa por Nº de matchday (temporada
-  // completa); 4.3.1 lo sustituye por mes natural. Añadir honorarios aquí
-  // significaría resolver `sumDesignationFees` para TODAS las designaciones de
-  // la temporada (67.872 en el barrido de rendimiento) en cada request, lo que
-  // mide un salto de ~1,4 s a ~4,8 s y rompe el umbral de rendimiento del
-  // handler (ver route.test.ts, "sin cuadráticos"). Forzarlo aquí para una
-  // agrupación que se reescribe en breve no compensa: honorarios de
-  // monthlyLiquidation se añaden en 4.3.1 junto con el cambio a mes natural.
-  const monthlyLiquidation = Object.values(monthlyMap)
-    .map((p) => ({ ...p, matchdays: p.matchdays.sort((a, b) => a.matchday - b.matchday) }))
-    .filter((p) => p.totalMatches > 0)
-    .sort((a, b) => b.totalCost - a.totalCost)
 
   // ── Histórico de cobertura por jornada FBM real (P5, 4.2.4): temporada
   //    completa, por VENTANA DE FECHAS viernes→jueves (no por número de

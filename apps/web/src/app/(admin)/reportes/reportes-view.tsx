@@ -25,11 +25,15 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
-import { exportLiquidationXlsx, exportMonthlyLiquidationXlsx } from '@/lib/export-xlsx'
+import {
+  exportLiquidationXlsx,
+  exportMonthlyLiquidationXlsx,
+  type MonthlyLiquidation,
+} from '@/lib/export-xlsx'
 import {
   exportLiquidationPdf,
   exportPersonDetailPdf,
-  exportMonthlyLiquidationPdf,
+  exportMonthlyJustificantePdf,
 } from '@/lib/export-pdf'
 import { formatLocalDate, seasonLabel } from '@/lib/mock-data-client'
 import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
@@ -55,6 +59,9 @@ interface ReportData {
     role: string
     matchesAssigned: number
     totalCost: number
+    fees: number
+    total: number
+    unresolvedFees: number
   }[]
   liquidation: {
     personId: string
@@ -72,7 +79,14 @@ interface ReportData {
       travelCost: number
       distanceKm: number
     }[]
+    // Desglose real por día (regla FBM, `calculatePersonTravelCost`): fuente
+    // de verdad del desplazamiento, suma == totalCost. `matches[]` de arriba
+    // es una estimación por partido, solo informativa (fix P3).
+    byDay: { date: string; cost: number; km: number }[]
     totalCost: number
+    fees: number
+    total: number
+    unresolvedFees: number
   }[]
   costByMatchday: { matchday: number; cost: number; matches: number }[]
   costByMonth: { month: string; cost: number; matches: number }[]
@@ -86,17 +100,18 @@ interface ReportData {
     partial: number
     uncovered: number
   }[]
-  monthlyLiquidation: {
-    personId: string
-    name: string
-    role: string
-    municipality: string
-    bankIban: string
-    matchdays: { matchday: number; matches: number; cost: number; km: number }[]
-    totalMatches: number
-    totalKm: number
-    totalCost: number
-  }[]
+  monthlyLiquidation: MonthlyLiquidation
+}
+
+// "2026-07" → "Julio 2026". Duplica el helper privado de export-pdf.ts (no
+// exportado): un mes natural legible para el toggle de la vista mensual.
+function monthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number)
+  const label = new Date(year, m - 1, 1).toLocaleDateString('es-ES', {
+    month: 'long',
+    year: 'numeric',
+  })
+  return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
 const FBM_NAVY = '#00205B'
@@ -149,6 +164,16 @@ export function ReportesView() {
   // ver mock-data-client.ts): antes literal fijo "2024-25" desactualizado.
   const seasonText = data ? seasonLabel(data.summary.from || formatLocalDate(new Date())) : ''
 
+  // Etiqueta de ámbito para títulos y ficheros de los exports del ámbito
+  // seleccionado (fix "Jornada 0": en mes/temporada `matchday` viene null).
+  const exportScopeLabel = !data
+    ? ''
+    : data.summary.scope === 'season'
+      ? 'Temporada completa'
+      : data.summary.scope === 'month'
+        ? `Mes ${data.summary.scopeLabel}`
+        : `Jornada ${data.summary.matchday || data.summary.scopeLabel}`
+
   const exportCSV = () => {
     if (!data) return
     const headers = ['Persona', 'Rol', 'Municipio', 'IBAN', 'Partidos', 'Coste Total (€)']
@@ -174,32 +199,43 @@ export function ReportesView() {
 
   const handleExportExcel = () => {
     if (!data) return
-    exportLiquidationXlsx(data.liquidation, data.costByMatchday, data.summary.matchday ?? 0)
+    exportLiquidationXlsx(data.liquidation, data.costByMatchday, exportScopeLabel)
   }
 
   const handleExportPdf = () => {
     if (!data) return
-    exportLiquidationPdf(data.liquidation, data.summary.matchday ?? 0, seasonText)
+    exportLiquidationPdf(data.liquidation, exportScopeLabel, seasonText)
   }
 
   const handleExportPersonPdf = () => {
     if (!data || !selectedLiquidation) return
-    exportPersonDetailPdf(selectedLiquidation, data.summary.matchday ?? 0, seasonText)
+    exportPersonDetailPdf(selectedLiquidation, exportScopeLabel, seasonText)
   }
 
   const handleExportMonthlyExcel = () => {
     if (!data) return
-    exportMonthlyLiquidationXlsx(data.monthlyLiquidation, monthlyMatchdays)
+    exportMonthlyLiquidationXlsx(data.monthlyLiquidation)
   }
 
-  const handleExportMonthlyPdf = () => {
-    if (!data) return
-    exportMonthlyLiquidationPdf(data.monthlyLiquidation, monthlyMatchdays, seasonText)
+  const handleExportMonthlyPersonPdf = () => {
+    if (!data || !selectedMonthlyLiq) return
+    const month = data.monthlyLiquidation.month
+    // Temporada derivada del MES liquidado, no de hoy: un justificante de
+    // octubre generado meses después debe seguir diciendo su temporada real.
+    exportMonthlyJustificantePdf(selectedMonthlyLiq, month, seasonLabel(`${month}-01`))
   }
 
   const selectedLiquidation = data?.liquidation.find((p) => p.personId === selectedPerson)
-  const selectedMonthlyLiq = data?.monthlyLiquidation.find(
+  const selectedMonthlyLiq = data?.monthlyLiquidation.people.find(
     (p) => p.personId === selectedMonthlyPerson,
+  )
+  // Derivados para las tarjetas del sheet mensual: `MonthlyLiquidation` ya no
+  // trae totalMatches/totalKm precalculados (ese shape era del `matchdays[]`
+  // legacy), se agregan aquí desde `days[]`.
+  const monthlyTotalMatches =
+    selectedMonthlyLiq?.days.reduce((sum, d) => sum + d.matches.length, 0) ?? 0
+  const monthlyTotalKm = Number(
+    (selectedMonthlyLiq?.days.reduce((sum, d) => sum + d.km, 0) ?? 0).toFixed(1),
   )
 
   if (loading || !data) {
@@ -223,17 +259,10 @@ export function ReportesView() {
       ? Math.round((data.summary.covered / data.summary.totalMatches) * 100)
       : 0
 
-  // Jornadas cubiertas por la liquidación mensual (temporada completa, ajena al
-  // ámbito elegido arriba): única fuente para el label del toggle y los dos
-  // exports mensuales, antes recalculada tres veces (y una vez sin comparador
-  // numérico en `.sort()`, ver export-pdf.ts para el mismo patrón correcto).
-  const monthlyMatchdays = [
-    ...new Set(data.monthlyLiquidation.flatMap((p) => p.matchdays.map((m) => m.matchday))),
-  ].sort((a, b) => a - b)
-  const monthlyRangeLabel =
-    monthlyMatchdays.length > 0
-      ? `J${monthlyMatchdays[0]}-J${monthlyMatchdays[monthlyMatchdays.length - 1]}`
-      : 'Mensual'
+  // Label del toggle mensual: mes natural de `monthlyLiquidation.month`
+  // (antes "J13-J15", un rango de jornada que ya no aplica: la liquidación
+  // mensual se reescribió a mes natural, ver mensaje de la tanda 4.3).
+  const monthlyRangeLabel = monthLabel(data.monthlyLiquidation.month)
 
   // Texto de ámbito para la cabecera: `matchday` ya no aplica a mes/temporada
   // (viene `null` del API, ver route.ts).
@@ -587,6 +616,11 @@ export function ReportesView() {
               </Button>
             </div>
           ) : (
+            // El PDF mensual completo (`exportMonthlyLiquidationPdf`) se retira: es
+            // la versión legacy basada en `matchdays` ("Jornada 0"), incompatible
+            // con el nuevo shape de mes natural. El Excel ya trae honorarios y el
+            // justificante PDF por persona (botón en el sheet de detalle) cubre el
+            // caso de uso real (entregar un justificante individual).
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -596,15 +630,6 @@ export function ReportesView() {
               >
                 <FileSpreadsheet className="h-3 w-3" />
                 Excel mensual
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportMonthlyPdf}
-                className="gap-2 text-xs"
-              >
-                <FileText className="h-3 w-3" />
-                PDF mensual
               </Button>
             </div>
           )}
@@ -619,6 +644,12 @@ export function ReportesView() {
                   <th className="px-3 py-2 text-xs font-medium text-gray-600">Rol</th>
                   <th className="px-3 py-2 text-xs font-medium text-gray-600">Municipio</th>
                   <th className="px-3 py-2 text-xs font-medium text-gray-600">Partidos</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
+                    Desplazamiento (€)
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
+                    Honorarios (€)
+                  </th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
                     Total (€)
                   </th>
@@ -643,8 +674,22 @@ export function ReportesView() {
                     </td>
                     <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
                     <td className="px-3 py-2 text-xs text-gray-600">{person.matches.length}</td>
-                    <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                    <td className="px-3 py-2 text-right text-xs text-gray-600">
                       {person.totalCost.toFixed(2)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs text-gray-600">
+                      {person.fees.toFixed(2)}
+                      {person.unresolvedFees > 0 && (
+                        <Badge
+                          variant="outline"
+                          className="ml-1 border-orange-300 text-[10px] text-orange-600"
+                        >
+                          {person.unresolvedFees} sin tarifa
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                      {person.total.toFixed(2)}
                     </td>
                     <td className="px-3 py-2">
                       <button
@@ -663,7 +708,13 @@ export function ReportesView() {
                     Total
                   </td>
                   <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
-                    {data.summary.totalCost.toFixed(2)} €
+                    {data.liquidation.reduce((sum, p) => sum + p.totalCost, 0).toFixed(2)} €
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+                    {data.liquidation.reduce((sum, p) => sum + p.fees, 0).toFixed(2)} €
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+                    {data.liquidation.reduce((sum, p) => sum + p.total, 0).toFixed(2)} €
                   </td>
                   <td />
                 </tr>
@@ -691,31 +742,73 @@ export function ReportesView() {
           </SheetHeader>
           {selectedLiquidation && (
             <div className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Partidos</p>
                   <p className="text-lg font-bold">{selectedLiquidation.matches.length}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-3">
-                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-xs text-gray-500">Desplazamiento</p>
                   <p className="text-lg font-bold">{selectedLiquidation.totalCost.toFixed(2)} €</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Honorarios</p>
+                  <p className="text-lg font-bold">{selectedLiquidation.fees.toFixed(2)} €</p>
+                  {selectedLiquidation.unresolvedFees > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="mt-1 border-orange-300 text-[10px] text-orange-600"
+                    >
+                      {selectedLiquidation.unresolvedFees} sin tarifa
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg bg-blue-50 p-3">
+                <p className="text-xs text-gray-500">Total</p>
+                <p className="text-lg font-bold text-blue-900">
+                  {selectedLiquidation.total.toFixed(2)} €
+                </p>
+              </div>
+              <Separator />
+              {/* Desglose real por día (fix P3): coste FBM es por día, no por
+                  partido; esta suma == Desplazamiento de arriba. La lista de
+                  partidos de abajo es solo informativa (qué se pitó ese rango). */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500">Desglose por día</p>
+                <div className="space-y-2">
+                  {selectedLiquidation.byDay.map((d) => (
+                    <div
+                      key={d.date}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{d.date}</p>
+                        <p className="text-xs text-gray-500">{d.km.toFixed(1)} km</p>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">{d.cost.toFixed(2)} €</p>
+                    </div>
+                  ))}
                 </div>
               </div>
               <Separator />
-              <div className="space-y-2">
-                {selectedLiquidation.matches.map((m) => (
-                  <div key={m.matchId} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-sm font-medium text-gray-900">
-                      {m.homeTeam} vs {m.awayTeam}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      {m.date} · {m.time} — {m.venue}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-600">
-                      {m.travelCost.toFixed(2)} € · {m.distanceKm.toFixed(1)} km
-                    </p>
-                  </div>
-                ))}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500">Partidos</p>
+                <div className="space-y-2">
+                  {selectedLiquidation.matches.map((m) => (
+                    <div
+                      key={m.matchId}
+                      className="rounded-lg border border-gray-200 bg-gray-50 p-3"
+                    >
+                      <p className="text-sm font-medium text-gray-900">
+                        {m.homeTeam} vs {m.awayTeam}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {m.date} · {m.time} — {m.venue}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
               <Separator />
               <div className="text-xs text-gray-500">
@@ -752,33 +845,61 @@ export function ReportesView() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Partidos</p>
-                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalMatches}</p>
+                  <p className="text-lg font-bold">{monthlyTotalMatches}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-3">
                   <p className="text-xs text-gray-500">Km totales</p>
-                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalKm}</p>
+                  <p className="text-lg font-bold">{monthlyTotalKm}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Desplazamiento</p>
+                  <p className="text-lg font-bold">{selectedMonthlyLiq.travelCost.toFixed(2)} €</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">Honorarios</p>
+                  <p className="text-lg font-bold">{selectedMonthlyLiq.fees.toFixed(2)} €</p>
+                  {selectedMonthlyLiq.unresolvedFees > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="mt-1 border-orange-300 text-[10px] text-orange-600"
+                    >
+                      {selectedMonthlyLiq.unresolvedFees} sin tarifa
+                    </Badge>
+                  )}
+                </div>
+                <div className="rounded-lg bg-blue-50 p-3">
                   <p className="text-xs text-gray-500">Total</p>
-                  <p className="text-lg font-bold">{selectedMonthlyLiq.totalCost.toFixed(2)} €</p>
+                  <p className="text-lg font-bold text-blue-900">
+                    {selectedMonthlyLiq.total.toFixed(2)} €
+                  </p>
                 </div>
               </div>
               <Separator />
-              <div className="space-y-2">
-                {selectedMonthlyLiq.matchdays.map((md) => (
-                  <div
-                    key={md.matchday}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Jornada {md.matchday}</p>
-                      <p className="text-xs text-gray-500">
-                        {md.matches} partido{md.matches !== 1 ? 's' : ''} · {md.km} km
+              {/* Desglose real por día (`days[]`, mismo contrato que la liquidación
+                  jornada): suma de travelCost == Desplazamiento de arriba. */}
+              <div>
+                <p className="mb-2 text-xs font-medium text-gray-500">Desglose por día</p>
+                <div className="space-y-2">
+                  {selectedMonthlyLiq.days.map((day) => (
+                    <div
+                      key={day.date}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{day.date}</p>
+                        <p className="text-xs text-gray-500">
+                          {day.matches.length} partido{day.matches.length !== 1 ? 's' : ''} ·{' '}
+                          {day.municipalities.join(', ')} · {day.km} km
+                        </p>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {day.travelCost.toFixed(2)} €
                       </p>
                     </div>
-                    <p className="text-sm font-medium text-gray-900">{md.cost.toFixed(2)} €</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
               <Separator />
               <div className="text-xs text-gray-500">
@@ -786,6 +907,15 @@ export function ReportesView() {
                 <p>Municipio: {selectedMonthlyLiq.municipality}</p>
                 <p>Rol: {selectedMonthlyLiq.role === 'arbitro' ? 'Árbitro' : 'Anotador'}</p>
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportMonthlyPersonPdf}
+                className="w-full gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Descargar justificante (PDF)
+              </Button>
             </div>
           )}
         </SheetContent>
@@ -795,31 +925,18 @@ export function ReportesView() {
 }
 
 // ── Monthly Liquidation Table ─────────────────────────────────────────────
-
-interface MonthlyLiquidationData {
-  personId: string
-  name: string
-  role: string
-  municipality: string
-  bankIban: string
-  matchdays: { matchday: number; matches: number; cost: number; km: number }[]
-  totalMatches: number
-  totalKm: number
-  totalCost: number
-}
+// Shape reescrito a mes natural (4.3): ya no hay columnas J1..Jn por jornada,
+// el desglose por persona vive en `people[].days[]` (ver MonthlyLiquidation
+// en lib/export-xlsx.ts). Partidos/Km se agregan aquí desde `days[]` porque
+// el contrato ya no los trae precalculados.
 
 function MonthlyLiquidationTable({
   data,
   onSelectPerson,
 }: {
-  data: MonthlyLiquidationData[]
+  data: MonthlyLiquidation
   onSelectPerson: (personId: string) => void
 }) {
-  const allMatchdays = [...new Set(data.flatMap((p) => p.matchdays.map((m) => m.matchday)))].sort(
-    (a, b) => a - b,
-  )
-  const grandTotal = data.reduce((sum, p) => sum + p.totalCost, 0)
-
   return (
     <div className="overflow-auto">
       <table className="w-full text-sm">
@@ -828,68 +945,82 @@ function MonthlyLiquidationTable({
             <th className="px-3 py-2 text-xs font-medium text-gray-600">Persona</th>
             <th className="px-3 py-2 text-xs font-medium text-gray-600">Rol</th>
             <th className="px-3 py-2 text-xs font-medium text-gray-600">Municipio</th>
-            {allMatchdays.map((md) => (
-              <th key={md} className="px-3 py-2 text-center text-xs font-medium text-gray-600">
-                J{md}
-              </th>
-            ))}
             <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Partidos</th>
             <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Km</th>
+            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
+              Desplazamiento (€)
+            </th>
+            <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">
+              Honorarios (€)
+            </th>
             <th className="px-3 py-2 text-right text-xs font-medium text-gray-600">Total (€)</th>
             <th className="px-3 py-2 text-xs font-medium text-gray-600" />
           </tr>
         </thead>
         <tbody>
-          {data.map((person) => (
-            <tr key={person.personId} className="border-b border-gray-50">
-              <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
-              <td className="px-3 py-2">
-                <Badge
-                  variant="outline"
-                  className={`text-xs ${
-                    person.role === 'arbitro'
-                      ? 'border-blue-200 text-blue-600'
-                      : 'border-purple-200 text-purple-600'
-                  }`}
-                >
-                  {person.role === 'arbitro' ? 'Árb.' : 'Anot.'}
-                </Badge>
-              </td>
-              <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
-              {allMatchdays.map((md) => {
-                const entry = person.matchdays.find((m) => m.matchday === md)
-                return (
-                  <td key={md} className="px-3 py-2 text-center text-xs text-gray-600">
-                    {entry ? `${entry.cost.toFixed(2)}` : '—'}
-                  </td>
-                )
-              })}
-              <td className="px-3 py-2 text-center text-xs text-gray-600">{person.totalMatches}</td>
-              <td className="px-3 py-2 text-center text-xs text-gray-600">{person.totalKm}</td>
-              <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
-                {person.totalCost.toFixed(2)}
-              </td>
-              <td className="px-3 py-2">
-                <button
-                  onClick={() => onSelectPerson(person.personId)}
-                  className="text-xs font-medium text-blue-600 hover:underline"
-                >
-                  Detalle
-                </button>
-              </td>
-            </tr>
-          ))}
+          {data.people.map((person) => {
+            const totalMatches = person.days.reduce((sum, d) => sum + d.matches.length, 0)
+            const totalKm = Number(person.days.reduce((sum, d) => sum + d.km, 0).toFixed(1))
+            return (
+              <tr key={person.personId} className="border-b border-gray-50">
+                <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
+                <td className="px-3 py-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${
+                      person.role === 'arbitro'
+                        ? 'border-blue-200 text-blue-600'
+                        : 'border-purple-200 text-purple-600'
+                    }`}
+                  >
+                    {person.role === 'arbitro' ? 'Árb.' : 'Anot.'}
+                  </Badge>
+                </td>
+                <td className="px-3 py-2 text-xs text-gray-600">{person.municipality}</td>
+                <td className="px-3 py-2 text-center text-xs text-gray-600">{totalMatches}</td>
+                <td className="px-3 py-2 text-center text-xs text-gray-600">{totalKm}</td>
+                <td className="px-3 py-2 text-right text-xs text-gray-600">
+                  {person.travelCost.toFixed(2)}
+                </td>
+                <td className="px-3 py-2 text-right text-xs text-gray-600">
+                  {person.fees.toFixed(2)}
+                  {person.unresolvedFees > 0 && (
+                    <Badge
+                      variant="outline"
+                      className="ml-1 border-orange-300 text-[10px] text-orange-600"
+                    >
+                      {person.unresolvedFees} sin tarifa
+                    </Badge>
+                  )}
+                </td>
+                <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">
+                  {person.total.toFixed(2)}
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    onClick={() => onSelectPerson(person.personId)}
+                    className="text-xs font-medium text-blue-600 hover:underline"
+                  >
+                    Detalle
+                  </button>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
         <tfoot>
           <tr className="border-t bg-gray-50">
-            <td
-              colSpan={3 + allMatchdays.length + 2}
-              className="px-3 py-2 text-sm font-semibold text-gray-900"
-            >
+            <td colSpan={5} className="px-3 py-2 text-sm font-semibold text-gray-900">
               Total
             </td>
             <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
-              {grandTotal.toFixed(2)} €
+              {data.totalTravelCost.toFixed(2)} €
+            </td>
+            <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+              {data.totalFees.toFixed(2)} €
+            </td>
+            <td className="px-3 py-2 text-right text-sm font-bold text-gray-900">
+              {data.total.toFixed(2)} €
             </td>
             <td />
           </tr>

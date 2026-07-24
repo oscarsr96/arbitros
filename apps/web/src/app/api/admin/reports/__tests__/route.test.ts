@@ -9,8 +9,9 @@ import { GET } from '../route'
 // "actual" ficticia, así que summary.totalMatches/totalCost reportaban la
 // temporada completa como si fuera la jornada de hoy. Estos tests verifican
 // que `summary` se resuelve con la jornada FBM real (viernes→jueves) y que
-// costByMatchday/monthlyLiquidation SIGUEN agregando por temporada/mes (eso
-// es correcto por diseño, ver CLAUDE.md Fase 4: no se acotan).
+// costByMatchday SIGUE agregando por temporada/mes (eso es correcto por
+// diseño, ver CLAUDE.md Fase 4: no se acota). `monthlyLiquidation` es un eje
+// aparte desde 4.3.1 (mes natural, ver route.ts y route.monthly-liquidation.test.ts).
 
 function makeRequest(query = ''): NextRequest {
   return new NextRequest(`http://localhost/api/admin/reports${query}`)
@@ -64,6 +65,9 @@ describe('GET /api/admin/reports — dentro de temporada', () => {
     vi.useRealTimers()
   })
 
+  // Timeout explícito: un GET de temporada completa bajo la suite entera en
+  // paralelo puede superar los 5 s por defecto (medido 7,6 s con la máquina
+  // saturada por optimize-range; en aislamiento ~0,6-1,8 s).
   it('summary usa la jornada de HOY cuando tiene partidos', async () => {
     const res = await GET(makeRequest())
     const body = await res.json()
@@ -71,11 +75,11 @@ describe('GET /api/admin/reports — dentro de temporada', () => {
     expect(inWindow.length).toBeGreaterThan(0)
     expect(body.summary.totalMatches).toBe(inWindow.length)
     expect(body.summary.matchday).toBe(inWindow[0].matchday)
-  })
+  }, 20_000)
 })
 
 describe('GET /api/admin/reports — agregación de temporada/mes (NO se acota)', () => {
-  it('costByMatchday y monthlyLiquidation cubren más de una jornada cuando hay designaciones en varias', async () => {
+  it('costByMatchday cubre más de una jornada cuando hay designaciones en varias', async () => {
     // Dos designaciones sintéticas en jornadas reales distintas (matchday 1 y
     // matchday 2, según el seed): si costByMatchday se hubiese acotado a la
     // jornada actual (como dashboard/optimize) solo aparecería una.

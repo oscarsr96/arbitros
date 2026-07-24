@@ -24,10 +24,16 @@ interface CostByMatchday {
   matches: number
 }
 
+// "Jornada 15" | "Mes 2025-10" | "Temporada completa" → slug de fichero.
+const scopeSlug = (label: string) => label.toLowerCase().replace(/\s+/g, '-')
+
+// `scopeLabel` es la etiqueta legible del ámbito exportado (fix "Jornada 0":
+// en ámbito mes/temporada no hay matchday, así que el fichero se nombra por
+// la etiqueta real del ámbito, no por un número de jornada).
 export function exportLiquidationXlsx(
   liquidation: LiquidationPerson[],
   costByMatchday: CostByMatchday[],
-  matchday: number,
+  scopeLabel: string,
 ) {
   const wb = XLSX.utils.book_new()
 
@@ -92,78 +98,132 @@ export function exportLiquidationXlsx(
   ]
   XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle')
 
-  XLSX.writeFile(wb, `liquidacion-jornada-${matchday}.xlsx`)
+  XLSX.writeFile(wb, `liquidacion-${scopeSlug(scopeLabel)}.xlsx`)
 }
 
 // ── Monthly Liquidation Export ───────────────────────────────────────────
+// Contrato del backend (/api/admin/reports?month=YYYY-MM): el detalle son
+// DÍAS (no partidos estimados), ya agrupados por (persona, fecha) sin
+// doble-conteo. No se recalcula coste aquí: se consume travelCost/fees/total
+// tal cual llega.
+
+interface MonthlyLiquidationDay {
+  date: string
+  matches: {
+    matchId: string
+    date: string
+    time: string
+    homeTeam: string
+    awayTeam: string
+    venue: string
+    municipality: string
+  }[]
+  municipalities: string[]
+  km: number
+  travelCost: number
+}
 
 interface MonthlyLiquidationPerson {
+  personId: string
   name: string
   role: string
   municipality: string
   bankIban: string
-  matchdays: { matchday: number; matches: number; cost: number; km: number }[]
-  totalMatches: number
-  totalKm: number
-  totalCost: number
+  days: MonthlyLiquidationDay[]
+  travelCost: number
+  fees: number
+  total: number
+  unresolvedFees: number
 }
 
-export function exportMonthlyLiquidationXlsx(
-  data: MonthlyLiquidationPerson[],
-  matchdays: number[],
-) {
+export interface MonthlyLiquidation {
+  month: string
+  people: MonthlyLiquidationPerson[]
+  totalTravelCost: number
+  totalFees: number
+  total: number
+}
+
+type MonthlyResumenRow = Record<string, string | number>
+type MonthlyDetailRow = Record<string, string | number>
+
+function roleLabel(role: string) {
+  return role === 'arbitro' ? 'Árbitro' : 'Anotador'
+}
+
+// Función pura de armado de filas (testeable sin XLSX/writeFile).
+export function buildMonthlyRows(data: MonthlyLiquidation): {
+  resumenRows: MonthlyResumenRow[]
+  detailRows: MonthlyDetailRow[]
+  fileName: string
+} {
+  const resumenRows: MonthlyResumenRow[] = data.people.map((p) => ({
+    Persona: p.name,
+    Rol: roleLabel(p.role),
+    Municipio: p.municipality,
+    IBAN: p.bankIban,
+    'Desplazamiento (€)': p.travelCost,
+    'Honorarios (€)': p.fees,
+    'Total (€)': p.total,
+    'Tarifas pendientes': p.unresolvedFees,
+  }))
+  resumenRows.push({
+    Persona: 'TOTAL',
+    Rol: '',
+    Municipio: '',
+    IBAN: '',
+    'Desplazamiento (€)': data.totalTravelCost,
+    'Honorarios (€)': data.totalFees,
+    'Total (€)': data.total,
+    'Tarifas pendientes': data.people.reduce((sum, p) => sum + p.unresolvedFees, 0),
+  })
+
+  const detailRows: MonthlyDetailRow[] = []
+  for (const p of data.people) {
+    for (const day of p.days) {
+      detailRows.push({
+        Persona: p.name,
+        Rol: roleLabel(p.role),
+        Fecha: day.date,
+        Partidos: day.matches.length,
+        Municipios: day.municipalities.join(', '),
+        Km: day.km,
+        'Desplazamiento (€)': day.travelCost,
+      })
+    }
+  }
+
+  return { resumenRows, detailRows, fileName: `liquidacion-mensual-${data.month}.xlsx` }
+}
+
+export function exportMonthlyLiquidationXlsx(data: MonthlyLiquidation) {
+  const { resumenRows, detailRows, fileName } = buildMonthlyRows(data)
   const wb = XLSX.utils.book_new()
 
-  // Sheet 1: Resumen mensual
-  const resumenData = data.map((p) => {
-    const row: Record<string, string | number> = {
-      Persona: p.name,
-      Rol: p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
-      Municipio: p.municipality,
-      IBAN: p.bankIban,
-    }
-    for (const md of matchdays) {
-      const entry = p.matchdays.find((m) => m.matchday === md)
-      row[`J${md} (€)`] = entry ? entry.cost : 0
-    }
-    row['Total Partidos'] = p.totalMatches
-    row['Total Km'] = p.totalKm
-    row['Total (€)'] = p.totalCost
-    return row
-  })
-  const wsResumen = XLSX.utils.json_to_sheet(resumenData)
-  const cols = [
+  const wsResumen = XLSX.utils.json_to_sheet(resumenRows)
+  wsResumen['!cols'] = [
     { wch: 30 },
     { wch: 12 },
     { wch: 20 },
     { wch: 28 },
-    ...matchdays.map(() => ({ wch: 10 })),
+    { wch: 16 },
     { wch: 14 },
-    { wch: 10 },
     { wch: 12 },
+    { wch: 16 },
   ]
-  wsResumen['!cols'] = cols
-  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen mensual')
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
 
-  // Sheet 2: Detalle por jornada
-  const detailRows: Record<string, string | number>[] = []
-  for (const p of data) {
-    for (const md of p.matchdays) {
-      detailRows.push({
-        Persona: p.name,
-        Rol: p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
-        Jornada: md.matchday,
-        Partidos: md.matches,
-        Km: md.km,
-        'Coste (€)': md.cost,
-      })
-    }
-  }
   const wsDetail = XLSX.utils.json_to_sheet(detailRows)
-  wsDetail['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 }]
-  XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle por jornada')
+  wsDetail['!cols'] = [
+    { wch: 30 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 16 },
+  ]
+  XLSX.utils.book_append_sheet(wb, wsDetail, 'Detalle')
 
-  const mdLabel =
-    matchdays.length > 0 ? `J${matchdays[0]}-J${matchdays[matchdays.length - 1]}` : 'mensual'
-  XLSX.writeFile(wb, `liquidacion-mensual-${mdLabel}.xlsx`)
+  XLSX.writeFile(wb, fileName)
 }

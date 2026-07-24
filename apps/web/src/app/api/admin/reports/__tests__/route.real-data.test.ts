@@ -53,6 +53,9 @@ describe.skipIf(!hasRealData)(
       expect(mockDesignations.length).toBeGreaterThan(0)
     })
 
+    // Timeout explícito: un GET de temporada completa bajo la suite entera en
+    // paralelo puede superar los 5 s por defecto (medido 17 s con la máquina
+    // saturada por optimize-range; en aislamiento ~1-2,5 s).
     it('summary, costByMatchday y liquidation no están vacíos', async () => {
       const res = await GET(makeRequest())
       const body = await res.json()
@@ -60,7 +63,7 @@ describe.skipIf(!hasRealData)(
       expect(body.summary.totalMatches).toBeGreaterThan(0)
       expect(body.costByMatchday.length).toBeGreaterThan(0)
       expect(body.liquidation.length).toBeGreaterThan(0)
-    })
+    }, 20_000)
 
     it('invariante de cobertura: covered + partial + uncovered == totalMatches', async () => {
       const res = await GET(makeRequest())
