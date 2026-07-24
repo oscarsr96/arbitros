@@ -1,3 +1,108 @@
+# Rendimiento del solver — diagnóstico (2026-07-23)
+
+Estado: 📋 DIAGNÓSTICO CERRADO (solo medición y plan; sin cambios de código — la
+instrumentación temporal de timing se revirtió, árbol limpio).
+
+## 1. Magnitud real medida: los "4,5-7 min" están DESMONTADOS
+
+Bench oficial (`apps/web/src/lib/__tests__/solver.bench.jornada-real.test.ts`, `BENCH=1`),
+jornada punta REAL 2025-10-25: **1.309 partidos, 1.279 personas activas, 3.686 slots**,
+temporada sin designar (peor caso: designar de cero). Tres corridas frías hoy:
+
+| Corrida | `solve()` |
+| ------- | --------- |
+| 1       | 8,52 s    |
+| 2       | 8,83 s    |
+| 3       | 15,43 s   |
+
+**Mediana 8,8 s, peor caso 15,4 s. El objetivo <30 s se cumple HOY en todas las
+observaciones.** Trazabilidad completa del número fantasma:
+
+- Los "4,5-7 min" **nunca se midieron**: eran extrapolación del punto sintético 800×480 →
+  61,9 s (todo-import-temporada.md §0.4), invalidada ya el 2026-07-21 con medición real
+  (mediana 20,8 s, §10 de ese fichero). La memoria auto (`import-temporada-completa`)
+  **aún repite los 4,5-7 min y debe corregirse**.
+- El "~3 s" del plan de distancias reales (tabla de abajo en este fichero) es el mismo
+  bench en condiciones más favorables. La varianza entre sesiones/procesos es grande
+  (3-27 s según carga de máquina), pero **ninguna medición real ha superado jamás los 27 s**.
+- Los minutos reales solo aparecen al resolver la TEMPORADA entera de golpe (24.508
+  partidos), que es un bug de alcance ya erradicado del flujo (se designa semana a semana,
+  regla de dominio 2026-07-21), no un caso de uso.
+
+## 2. Complejidad y hotspots (con instrumentación real, 1 corrida, ya revertida)
+
+El bucle principal es greedy: por cada slot libre (S=3.686) recorre el roster del rol
+(~645 de media) → **O(S×P) = 2.378.606 iteraciones de candidato, 188.028 candidatos
+puntuados**. No hay cuadrático accidental M×P×M: los índices por persona/partido de los
+micro-refactors previos ya lo eliminaron. Todo el coste restante es factor constante por
+candidato. Desglose medido (corrida instrumentada de 6,61 s; secciones ≈ 5,96 s):
+
+| Hotspot                                                                                  | Dónde                    | ms    | %    | Causa                                                                                                                                                                                                      |
+| ---------------------------------------------------------------------------------------- | ------------------------ | ----- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isPersonAvailable`                                                                      | `mock-data.ts:2183-2197` | 2.956 | ~45% | ~2,3 M llamadas; cada una construye la clave string `personId\|weekStart\|dayOfWeek` y re-parsea "HH:MM" (`toMinutesOfDay`) por franja. El índice es O(1) pero el trabajo por llamada no es gratis a 2,3 M |
+| `hasScheduleConflict`                                                                    | `solver.ts:224-255`      | 855   | ~13% | por candidato, `pairOverlap` contra sus asignaciones acumuladas (acotado por carga máx; factor constante, no cuadrático)                                                                                   |
+| `getUnassignedReason`                                                                    | `solver.ts:919-1009`     | 791   | ~12% | 1.322 huecos × re-escaneo COMPLETO del roster del rol repitiendo todos los checks que `findBestCandidate` acaba de hacer                                                                                   |
+| `maxLoad` por slot                                                                       | `solver.ts:770-773`      | 653   | ~10% | `for..in` sobre Record de 1.279 entradas UNA VEZ POR SLOT (4,7 M iteraciones); trivialmente incremental (ya previsto en B2.3 de todo-import-temporada)                                                     |
+| `calculateMarginalTravelCost`                                                            | `solver.ts:283-296`      | 483   | ~7%  | 188 k llamadas con `filter`+`map`+`Set`+spread (presión de GC); correcto, solo alocación                                                                                                                   |
+| resto (elegibilidad 76, km/haversine 82, sort 60, incompat 40, preámbulo 0, totalCost 4) | —                        | ~260  | ~4%  | ninguno es cuello                                                                                                                                                                                          |
+
+## 3. Opciones
+
+### Opción A — optimizar el solver TS (recomendada)
+
+<30 s no solo es plausible: **ya se cumple**. Estas 4 optimizaciones construyen margen
+(mediana esperada ~3-5 s, ~2-3× de speedup):
+
+1. **Cache de disponibilidad por (fecha, hora)** → `Map<'date|time', Set<personId>>`
+   construida perezosamente (pocas decenas de combinaciones por jornada; hoy 2,3 M llamadas
+   → ~130 k). Ataca el 45%. Alternativa mínima: pre-parsear los minutos en las entradas
+   del índice y cachear la clave por persona×fecha.
+2. **`maxLoad` incremental** (mantener el máximo al incrementar `personLoadCount`). Ataca
+   el 10%. Ya especificado en B2.3.
+3. **`getUnassignedReason` sin re-escaneo**: acumular los contadores de rechazo DENTRO de
+   `findBestCandidate` (ya visita a todos) y devolverlos cuando no hay candidato. Ataca el 12%.
+4. (Menor) evitar alocaciones en `calculateMarginalTravelCost` (contar munis distintos sin
+   `Set`+spread). Ataca el 7%.
+
+Riesgo: bajo; el invariante "mismas asignaciones" está blindado por los fingerprints
+(`solver-fingerprint-baseline.json` + `solver-fingerprint-jornada-real.json`). 1 y 3 no
+cambian resultados; 2 exige puntuación bit a bit idéntica (verificable con el arnés).
+
+### Opción B — microservicio Python OR-Tools (Fase 3)
+
+Implica: servicio nuevo (FastAPI + CP-SAT), Dockerfile, deploy en Railway/Fly, serializar
+~1.300 partidos + 1.279 personas + matriz de distancias por request, latencia de red, ops
+y un segundo lenguaje. **Por RENDIMIENTO no se justifica: el cuello nunca fue el tamaño del
+espacio de búsqueda ni la implementación TS, y el objetivo ya se cumple.** Su escenario
+correcto es la CALIDAD de la solución: el greedy deja 1.322/3.686 huecos (cobertura 64,1%)
+en el montaje idealizado y optimiza coste localmente; si la FBM exige cobertura/coste
+globalmente óptimos o restricciones combinatorias duras (parejas, equidad multi-semana),
+eso es CP-SAT, no micro-optimización. Esa decisión es de producto, no de rendimiento.
+
+## 4. Recomendación
+
+**Opción A, sin /council.** No hay decisión arquitectónica irreversible que tomar: el
+objetivo se cumple hoy y la Opción A es reversible, barata y verificable con los
+fingerprints. La Fase 3 (OR-Tools) queda aparcada hasta que la COBERTURA/calidad (no la
+velocidad) sea el problema declarado; ese día sí merecería /council (introduce stack,
+deploy y ops nuevos).
+
+## 5. Desglose tentativo (Opción A)
+
+| Tarea | Qué                                                                                                                                                          | Ejecutor         | Esfuerzo |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | -------- |
+| A0    | Corregir la memoria `import-temporada-completa` (retirar "4,5-7 min"; solver medido en segundos)                                                             | sesión principal | trivial  |
+| A1    | Cache disponibilidad por (fecha,hora) en `mock-data.ts` + invalidación junto a `invalidateAvailabilityIndex`                                                 | sonnet           | medio    |
+| A2    | `maxLoad` incremental en `solver.ts` (B2.3)                                                                                                                  | sonnet           | bajo     |
+| A3    | Contadores de rechazo en `findBestCandidate` → eliminar re-escaneo de `getUnassignedReason`                                                                  | sonnet           | medio    |
+| A4    | Micro-alocaciones de `calculateMarginalTravelCost` (opcional, solo si A1-A3 no bastan)                                                                       | haiku            | bajo     |
+| A5    | Verificación: fingerprints intactos (baseline sintética + jornada real) + mediana de 3 corridas frías del bench, criterio ≤30 s con margen (esperado ~3-5 s) | team-lead        | bajo     |
+
+Nota: A1-A3 no deben cambiar ni una asignación; correr `BENCH=1` con baseline ANTES de
+tocar nada (ya commiteada en `f008736`).
+
+---
+
 # Plan: Distancias reales en el solver (coords OSM en coste y feasibility) (2026-07-23)
 
 Estado: ✅ EJECUTADO Y VERIFICADO (Fase A módulo `geo-distance.ts` + Fase B integración en el
