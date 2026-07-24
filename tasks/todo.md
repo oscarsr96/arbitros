@@ -1,8 +1,9 @@
 ## Fase 4 — Reportes y Liquidaciones (PLAN) (2026-07-24)
 
 Estado: ✅ 4.1 + 4.2 COMPLETAS (commit f80e5cc). ✅ 4.3 COMPLETA Y VERIFICADA (2026-07-24, ver
-"4.3 — resultado"). Pendiente 4.4. Olas 4.3: A=4.3.1 backend → B=4.3.2 xlsx ∥ 4.3.3 pdf → C=4.3.4 UI
-→ KAPPA gate+review adversarial (fable max) = LISTO. Ejecutor = **Mixto según plan**. U1-U6 resueltas (`fase4-tarifas-oficiales.md`).
+"4.3 — resultado"). ✅ 4.3 COMPLETA (commit fa548fc). ✅ 4.4 COMPLETA Y VERIFICADA (2026-07-24, ver
+"4.4 — resultado"). 🎉 **FASE 4 COMPLETA (4.1-4.4)**, reconciliación cruzada portal==admin==reports al
+céntimo (LAMBDA). Pendiente: push (3 commits) + verificación visual opcional. Ejecutor = **Mixto según plan**. U1-U6 resueltas (`fase4-tarifas-oficiales.md`).
 Olas ejecutadas: BETA=4.1.2 ∥ ALFA1=4.2.1-4.2.5 → GAMMA=4.1.3 (fable) → DELTA=4.1.4 ∥ ALFA2=4.2 front
 → EPSILON gate+review adversarial (fable max) = LISTO. SIN COMMITEAR.
 
@@ -302,6 +303,42 @@ fecha)`; arreglarlo exige DECIDIR a qué matchday atribuir el fijo de un día qu
 - **4.4.2 Admin: ampliar person-detail-sheet** · `sonnet` · `low`
   (a) Añadir desglose por día y total de temporada (+ honorarios si 4.1) al sheet existente de
   `personal/`. (b) Aceptación: total del sheet == total de reportes para la misma persona/ámbito.
+
+**4.4 — resultado (2026-07-24)**
+
+Ejecutado con 3 subagentes en paralelo (Mixto, sonnet) + verificación cruzada de cierre (LAMBDA, fable `max`).
+
+- **4.4.1 (PORTAL) OK**: `/api/persons/me` gana `history: {designations[], byDay[], travelCost, totalKm,
+fees, total, unresolvedFees}`; Card "Historial de temporada" en `(portal)/perfil/profile-view.tsx`
+  (designaciones con estado + desglose por día + totales Despl./Honorarios/Total). Invariante
+  `travelCost == getPersonTravelCost(DEMO)` por test. Privacidad: la ruta solo resuelve DEMO_PERSON_ID.
+  Honorarios U6 mostrados. 1/1 test.
+- **4.4.2 (ADMIN) OK**: `api/admin/persons/[id]/route.ts` gana `byDay[]`/`totalFees`/`unresolvedFees`/
+  `totalCost` y `fee`/`feeReason` por designación; `person-detail-sheet.tsx` muestra desglose por día +
+  totales separados + badge de sin-tarifa. Invariante `total == reports(scope=season)` por test. 2/2.
+- **Cabos exports (EXPORTS) OK**: `exportLiquidationXlsx/Pdf` y `exportCSV` de jornada ganan columnas
+  Desplazamiento/Honorarios/Total + unresolvedFees (cabo 2). `exportPersonDetailPdf` reescrito a 1 fila
+  por DÍA desde `byDay` real (cabo 1 = **fix P3 cerrado** también en el PDF de jornada; Σ filas == pie,
+  con test que prueba que la vieja suma por partido no cuadraba). 15 test nuevos.
+- **LAMBDA (fable max) = LISTO**: suite **485 passed / 2 skipped** (solo flaky dashboard, verde aislado),
+  typecheck 0. **Reconciliación cruzada al céntimo** portal==admin==reports?scope=season: person-001
+  (DEMO, 4 desigs) → despl **18,98 €** / fees **376,60 €** / total **395,58 €** idénticos en los tres;
+  2ª persona igual. No-regresión: jornada **6.076,70 €**, mes 2025-10 **66.908,30 €**. **Fix aplicado por
+  LAMBDA**: etiqueta "Desplazamiento (partidos jugados)" en perfil para distinguir de `totalEarned`
+  (`completed`) vs total historial (todas) — semántica intacta.
+
+**Cabos residuales tras Fase 4 (no bloqueantes):**
+
+1. Bug SOLO teórico (no ocurre con datos reales, reportado por LAMBDA): una designación huérfana (matchId
+   inexistente) contaría como `unresolvedFee` en portal/admin pero desaparecería de reports (itera por
+   matches). Si se quisiera blindar, unificar el universo de designaciones.
+2. `costByMatchday`/`costByMunicipality` mantienen el doble-conteo por `(persona,matchday,fecha)` (requiere
+   decidir a qué matchday atribuir el fijo de un día que mezcla competiciones).
+3. `?month=`/scope sin validación de formato de entrada (garbage → vacío silencioso).
+4. `scope=season` serializa liquidation por persona; agregar/paginar si se designa la temporada completa.
+5. Considerar subir el umbral del test de performance de dashboard (<200ms) que flaquea bajo suite paralela.
+6. Verificación VISUAL del panel + portal (render real + generar XLSX/PDF) NO ejecutada.
+7. Push pendiente de las 3 tandas de Fase 4 (f80e5cc, fa548fc, + commit de 4.4).
 
 **4.5 Verificación adversarial (cierre)**
 

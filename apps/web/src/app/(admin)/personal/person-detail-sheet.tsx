@@ -30,6 +30,8 @@ interface PersonDetail {
     status: string
     match?: { date: string; time: string; homeTeam: string; awayTeam: string }
     venue?: { name: string }
+    fee: number | null
+    feeReason: string | null
   }[]
   availability: {
     dayOfWeek: number
@@ -41,6 +43,16 @@ interface PersonDetail {
     reason: string
   }[]
   totalTravelCost: number
+  byDay: {
+    date: string
+    matches: { matchId: string; homeTeam: string; awayTeam: string; venue: string }[]
+    municipalities: string[]
+    km: number
+    travelCost: number
+  }[]
+  totalFees: number
+  unresolvedFees: number
+  totalCost: number
 }
 
 const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -83,6 +95,12 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
   // partido, informativa en la lista de arriba. Lo calcula el servidor
   // (/api/admin/persons/[id]): depende del calendario completo.
   const totalTravelCost = data?.totalTravelCost ?? 0
+  // Honorarios y total de temporada (4.4.2): misma fuente que reports para
+  // esta persona (designation-fees.ts vía el endpoint), nunca recalculados en
+  // cliente.
+  const totalFees = data?.totalFees ?? 0
+  const unresolvedFees = data?.unresolvedFees ?? 0
+  const totalCost = data?.totalCost ?? 0
 
   return (
     <Sheet
@@ -245,6 +263,44 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                       </div>
                       <p className="mt-1 text-xs text-gray-400">
                         {d.travelCost} € · {d.distanceKm} km
+                        {d.fee !== null ? (
+                          <> · {d.fee.toFixed(2)} € honorario</>
+                        ) : (
+                          <span className="text-orange-500"> · sin tarifa</span>
+                        )}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Desglose por día (4.4.2): fuente = travelCost.byDay del
+                servidor, misma agrupación (persona, fecha) que reports. */}
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase text-gray-500">
+                Desglose por día ({data.byDay.length})
+              </h3>
+              {data.byDay.length === 0 ? (
+                <p className="text-xs text-gray-400">Sin días con designaciones</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.byDay.map((day) => (
+                    <div
+                      key={day.date}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-2 text-xs"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">{day.date}</p>
+                        <p className="text-gray-500">
+                          {day.municipalities.join(', ')} · {day.matches.length} partido
+                          {day.matches.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <p className="font-medium text-gray-700">
+                        {day.travelCost.toFixed(2)} € · {day.km} km
                       </p>
                     </div>
                   ))}
@@ -253,8 +309,8 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
             </div>
 
             {/* Stats summary */}
-            <div className="rounded-lg bg-gray-50 p-3">
-              <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="space-y-3 rounded-lg bg-gray-50 p-3">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div>
                   <p className="text-lg font-bold text-gray-900">{data.designations.length}</p>
                   <p className="text-xs text-gray-500">Partidos</p>
@@ -265,11 +321,29 @@ export function PersonDetailSheet({ personId, onClose }: PersonDetailSheetProps)
                   </p>
                   <p className="text-xs text-gray-500">Completados</p>
                 </div>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
                   <p className="text-lg font-bold text-gray-900">{totalTravelCost.toFixed(2)} €</p>
-                  <p className="text-xs text-gray-500">Total coste</p>
+                  <p className="text-xs text-gray-500">Desplazamiento</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900">{totalFees.toFixed(2)} €</p>
+                  <p className="text-xs text-gray-500">Honorarios</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-gray-900">{totalCost.toFixed(2)} €</p>
+                  <p className="text-xs text-gray-500">Total temporada</p>
                 </div>
               </div>
+              {unresolvedFees > 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 p-2 text-xs text-orange-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {unresolvedFees} designación{unresolvedFees !== 1 ? 'es' : ''} sin tarifa resuelta
+                  (no incluida{unresolvedFees !== 1 ? 's' : ''} en Honorarios)
+                </div>
+              )}
             </div>
           </div>
         )}

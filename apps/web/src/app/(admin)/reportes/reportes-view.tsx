@@ -176,7 +176,17 @@ export function ReportesView() {
 
   const exportCSV = () => {
     if (!data) return
-    const headers = ['Persona', 'Rol', 'Municipio', 'IBAN', 'Partidos', 'Coste Total (€)']
+    const headers = [
+      'Persona',
+      'Rol',
+      'Municipio',
+      'IBAN',
+      'Partidos',
+      'Desplazamiento (€)',
+      'Honorarios (€)',
+      'Total (€)',
+      'Tarifas pendientes',
+    ]
     const rows = data.liquidation.map((p) => [
       p.name,
       p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
@@ -184,6 +194,9 @@ export function ReportesView() {
       p.bankIban,
       p.matches.length.toString(),
       p.totalCost.toFixed(2),
+      p.fees.toFixed(2),
+      p.total.toFixed(2),
+      p.unresolvedFees.toString(),
     ])
 
     const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')

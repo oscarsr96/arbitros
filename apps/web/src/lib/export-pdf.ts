@@ -8,7 +8,7 @@ import { formatLocalDate, seasonLabel } from './mock-data-client'
 // rango de fechas del informe; este default solo cubre llamadas sin ese dato.
 const CURRENT_SEASON = () => seasonLabel(formatLocalDate(new Date()))
 
-interface LiquidationPerson {
+export interface LiquidationPerson {
   name: string
   role: string
   municipality: string
@@ -23,11 +23,56 @@ interface LiquidationPerson {
     travelCost: number
     distanceKm: number
   }[]
+  // Desglose real por día (regla FBM): fuente de verdad del desplazamiento,
+  // Σ cost == totalCost. `matches[]` de arriba es solo informativa (fix P3).
+  byDay: { date: string; cost: number; km: number }[]
   totalCost: number
+  fees: number
+  total: number
+  unresolvedFees: number
 }
 
 // "Jornada 15" | "Mes 2025-10" | "Temporada completa" → slug de fichero.
 const scopeSlug = (label: string) => label.toLowerCase().replace(/\s+/g, '-')
+
+interface LiquidationPdfRow {
+  name: string
+  roleLabel: string
+  municipality: string
+  matchCount: number
+  travelCost: number
+  fees: number
+  total: number
+  unresolvedFees: number
+}
+
+// Función pura de armado de filas (testeable sin jsPDF): columnas separadas
+// Desplazamiento/Honorarios/Total + totales del ámbito (cabo 2).
+export function buildLiquidationPdfRows(liquidation: LiquidationPerson[]): {
+  rows: LiquidationPdfRow[]
+  totals: { travelCost: number; fees: number; total: number; unresolvedFees: number }
+} {
+  const rows: LiquidationPdfRow[] = liquidation.map((p) => ({
+    name: p.name,
+    roleLabel: p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
+    municipality: p.municipality,
+    matchCount: p.matches.length,
+    travelCost: p.totalCost,
+    fees: p.fees,
+    total: p.total,
+    unresolvedFees: p.unresolvedFees,
+  }))
+  const totals = rows.reduce(
+    (acc, r) => ({
+      travelCost: acc.travelCost + r.travelCost,
+      fees: acc.fees + r.fees,
+      total: acc.total + r.total,
+      unresolvedFees: acc.unresolvedFees + r.unresolvedFees,
+    }),
+    { travelCost: 0, fees: 0, total: 0, unresolvedFees: 0 },
+  )
+  return { rows, totals }
+}
 
 // `scopeLabel` es la etiqueta legible del ámbito exportado (fix "Jornada 0":
 // en ámbito mes/temporada no hay matchday, así que título y fichero usan la
@@ -49,27 +94,53 @@ export function exportLiquidationPdf(
   doc.text(`Liquidación ${scopeLabel} — Temporada ${season}`, 14, 30)
 
   // Table
-  const totalCost = liquidation.reduce((sum, p) => sum + p.totalCost, 0)
+  const { rows, totals } = buildLiquidationPdfRows(liquidation)
 
   autoTable(doc, {
     startY: 40,
-    head: [['Persona', 'Rol', 'Municipio', 'Partidos', 'Total (€)']],
-    body: [
-      ...liquidation.map((p) => [
-        p.name,
-        p.role === 'arbitro' ? 'Árbitro' : 'Anotador',
-        p.municipality,
-        p.matches.length.toString(),
-        p.totalCost.toFixed(2),
-      ]),
+    head: [
+      [
+        'Persona',
+        'Rol',
+        'Municipio',
+        'Partidos',
+        'Desplazamiento (€)',
+        'Honorarios (€)',
+        'Pend.',
+        'Total (€)',
+      ],
     ],
-    foot: [['Total', '', '', '', totalCost.toFixed(2) + ' €']],
+    body: rows.map((r) => [
+      r.name,
+      r.roleLabel,
+      r.municipality,
+      r.matchCount.toString(),
+      r.travelCost.toFixed(2),
+      r.fees.toFixed(2),
+      r.unresolvedFees > 0 ? r.unresolvedFees.toString() : '',
+      r.total.toFixed(2),
+    ]),
+    foot: [
+      [
+        'Total',
+        '',
+        '',
+        '',
+        totals.travelCost.toFixed(2),
+        totals.fees.toFixed(2),
+        totals.unresolvedFees > 0 ? totals.unresolvedFees.toString() : '',
+        totals.total.toFixed(2) + ' €',
+      ],
+    ],
     styles: { fontSize: 9 },
     headStyles: { fillColor: [0, 32, 91] }, // FBM navy
     footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
     columnStyles: {
       3: { halign: 'center' },
       4: { halign: 'right' },
+      5: { halign: 'right' },
+      6: { halign: 'center' },
+      7: { halign: 'right' },
     },
   })
 
@@ -80,6 +151,36 @@ export function exportLiquidationPdf(
   doc.text(`Generado el ${new Date().toLocaleDateString('es-ES')}`, 14, pageHeight - 10)
 
   doc.save(`liquidacion-${scopeSlug(scopeLabel)}.pdf`)
+}
+
+interface PersonDetailRow {
+  date: string
+  km: number
+  travelCost: number
+  matchCount: number
+  matchesDetail: string
+}
+
+// Función pura de armado de filas (testeable sin jsPDF): una fila por DÍA
+// (fix P3, cabo 1). Antes tabulaba `person.matches[]` con coste ESTIMADO por
+// partido (`calculateMockTravelCost`) mientras el pie usaba el total real
+// por día: las líneas no sumaban el pie. `byDay` es la fuente real (regla
+// FBM: fijo o km por día, nunca por partido), así que Σ travelCost de las
+// filas == person.totalCost por construcción. Los partidos de cada día se
+// listan solo como dato (equipos/hora/pabellón), sin cifra que no sume.
+export function buildPersonDetailRows(person: LiquidationPerson): PersonDetailRow[] {
+  return person.byDay.map((day) => {
+    const dayMatches = person.matches.filter((m) => m.date === day.date)
+    return {
+      date: day.date,
+      km: day.km,
+      travelCost: day.cost,
+      matchCount: dayMatches.length,
+      matchesDetail: dayMatches
+        .map((m) => `${m.time} ${m.homeTeam}-${m.awayTeam} (${m.venue})`)
+        .join('; '),
+    }
+  })
 }
 
 export function exportPersonDetailPdf(
@@ -109,27 +210,68 @@ export function exportPersonDetailPdf(
   doc.text(`Municipio: ${person.municipality}`, 14, 69)
   doc.text(`IBAN: ${person.bankIban}`, 14, 75)
 
-  // Matches table
+  // Days table (fix P3: por día, no por partido estimado)
+  const rows = buildPersonDetailRows(person)
+  const totalKm = rows.reduce((sum, r) => sum + r.km, 0)
+  const totalMatches = rows.reduce((sum, r) => sum + r.matchCount, 0)
+
   autoTable(doc, {
     startY: 85,
-    head: [['Partido', 'Fecha', 'Hora', 'Pabellón', 'Coste (€)', 'Km']],
-    body: person.matches.map((m) => [
-      `${m.homeTeam} vs ${m.awayTeam}`,
-      m.date,
-      m.time,
-      m.venue,
-      m.travelCost.toFixed(2),
-      m.distanceKm.toFixed(1),
+    head: [['Fecha', 'Km', 'Desplazamiento (€)', 'Partidos', 'Detalle']],
+    body: rows.map((r) => [
+      r.date,
+      r.km.toFixed(1),
+      r.travelCost.toFixed(2),
+      r.matchCount.toString(),
+      r.matchesDetail,
     ]),
-    foot: [['Total', '', '', '', person.totalCost.toFixed(2) + ' €', '']],
+    foot: [
+      [
+        'Total',
+        totalKm.toFixed(1),
+        person.totalCost.toFixed(2) + ' €',
+        totalMatches.toString(),
+        '',
+      ],
+    ],
     styles: { fontSize: 8 },
     headStyles: { fillColor: [0, 32, 91] },
     footStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0], fontStyle: 'bold' },
     columnStyles: {
-      4: { halign: 'right' },
-      5: { halign: 'right' },
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+      3: { halign: 'center' },
     },
   })
+
+  // Totales: desplazamiento + honorarios por separado (la Σ de días ya
+  // cuadra con totalCost, ver buildPersonDetailRows).
+  const finalY =
+    (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 85
+  let y = finalY + 10
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Resumen', 14, y)
+  doc.setFont('helvetica', 'normal')
+  y += 7
+  doc.text(`Desplazamiento: ${person.totalCost.toFixed(2)} €`, 14, y)
+  y += 6
+  doc.text(`Honorarios: ${person.fees.toFixed(2)} €`, 14, y)
+  y += 8
+  doc.setFont('helvetica', 'bold')
+  doc.text(`Total: ${person.total.toFixed(2)} €`, 14, y)
+
+  if (person.unresolvedFees > 0) {
+    y += 10
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(180, 60, 0)
+    doc.text(
+      `Aviso: ${person.unresolvedFees} designación${person.unresolvedFees !== 1 ? 'es' : ''} sin tarifa aplicada`,
+      14,
+      y,
+    )
+    doc.setTextColor(0, 0, 0)
+  }
 
   // Footer
   const pageHeight = doc.internal.pageSize.height
