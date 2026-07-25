@@ -3,6 +3,7 @@ import { POST } from '../route'
 import { validateDateRange, filterMatchesByRange } from '@/lib/optimize-range'
 import { mockMatches, mockPersons, mockDesignations } from '@/lib/mock-data'
 import { getJornadaSaturdayForDate } from '@/lib/matchday-availability'
+import { resolveDefaultJornada } from '@/lib/match-query'
 
 // Suma un día a una fecha YYYY-MM-DD en LOCAL (evita el desfase de toISOString con UTC).
 function addOneDay(dateStr: string): string {
@@ -99,20 +100,41 @@ describe('POST /api/optimize — rango y partial', () => {
     expect(data.error).toBeTruthy()
   })
 
-  // Nota: sin rango, la ruta resuelve la temporada COMPLETA (324 partidos × ~1279
-  // personas), un solve greedy que en local ronda los ~25s; de ahí el timeout amplio.
-  // El caso barato equivalente (helper puro sin rango → lista completa) está cubierto
-  // arriba en `filterMatchesByRange`.
-  it('sin rango, el comportamiento actual queda intacto (todos los partidos)', async () => {
+  // Sin rango NO se resuelve la temporada entera (se designa jornada a jornada): la
+  // ruta deriva la ventana viernes→jueves por defecto y lo declara en `appliedRange`.
+  // El caso del helper puro (sin rango → lista completa) sigue cubierto arriba en
+  // `filterMatchesByRange`: el default vive en el route, no en el helper.
+  it('sin rango, la ruta acota a la jornada por defecto y lo declara', async () => {
+    const todayISO = new Date().toISOString().slice(0, 10)
+    const jornada = resolveDefaultJornada(mockMatches, todayISO)
+    expect(jornada).not.toBeNull()
+
     const res = await POST(makeRequest({ numProposals: 1 }))
     expect(res.status).toBe(200)
     const data = await res.json()
-    const totalSlotsExpected = mockMatches.reduce(
-      (sum, m) => sum + m.refereesNeeded + m.scorersNeeded,
-      0,
-    )
+
+    expect(data.appliedRange).toEqual({
+      from: jornada!.from,
+      to: jornada!.to,
+      defaulted: true,
+    })
+
+    const totalSlotsExpected = mockMatches
+      .filter((m) => m.date >= jornada!.from && m.date <= jornada!.to)
+      .reduce((sum, m) => sum + m.refereesNeeded + m.scorersNeeded, 0)
     expect(data.proposals[0].metrics.totalSlots).toBe(totalSlotsExpected)
   }, 90000)
+
+  it('con rango explícito, appliedRange lo refleja sin marcar defaulted', async () => {
+    const minDate = mockMatches.reduce(
+      (min, m) => (m.date < min ? m.date : min),
+      mockMatches[0].date,
+    )
+    const res = await POST(makeRequest({ dateFrom: minDate, dateTo: minDate, numProposals: 1 }))
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.appliedRange).toEqual({ from: minDate, to: minDate, defaulted: false })
+  }, 60000)
 
   it('con rango de 1 jornada, todas las assignments/unassigned pertenecen a esa jornada', async () => {
     const minDate = mockMatches.reduce(

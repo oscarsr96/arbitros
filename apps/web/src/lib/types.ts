@@ -195,9 +195,11 @@ export interface SolverInput {
 }
 
 // Body aceptado por POST /api/optimize. dateFrom/dateTo acotan el solve a un rango de
-// fechas (YYYY-MM-DD); categories acota a las categorías de competición seleccionadas
-// (vacío/ausente = todas); partial acota el solve a un único partido+rol (re-optimización
-// de un slot concreto) e ignora dateFrom/dateTo y categories.
+// fechas (YYYY-MM-DD); si no se envía NINGUNO de los dos, la ruta acota por defecto a la
+// jornada FBM vigente (viernes→jueves) y lo declara en `appliedRange` de la respuesta:
+// nunca resuelve la temporada entera. categories acota a las categorías de competición
+// seleccionadas (vacío/ausente = todas); partial acota el solve a un único partido+rol
+// (re-optimización de un slot concreto) e ignora dateFrom/dateTo y categories.
 export interface OptimizeRequestBody {
   costWeight?: number
   balanceWeight?: number

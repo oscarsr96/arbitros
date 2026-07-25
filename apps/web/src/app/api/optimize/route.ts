@@ -14,9 +14,10 @@ import {
   mockCompetitions,
   mockVenues,
   getMockMunicipality,
-  getMockDesignationsForMatch,
+  enrichMatchDesignations,
 } from '@/lib/mock-data'
 import { validateDateRange, filterMatchesByRange } from '@/lib/optimize-range'
+import { resolveDefaultJornada } from '@/lib/match-query'
 import { resolveFineCategory } from '@/lib/competition-fine-category'
 
 export async function POST(request: Request) {
@@ -38,17 +39,58 @@ export async function POST(request: Request) {
       numProposals,
     }
 
-    // Partidos a considerar: `partial` acota a UN único partido (ignora dateFrom/dateTo);
-    // si no, se filtra por el rango de fechas activo (sin rango = temporada completa).
-    const scopedMatches = partial
-      ? mockMatches.filter((m) => m.id === partial.matchId)
-      : filterMatchesByRange(mockMatches, body.dateFrom, body.dateTo)
+    // Partidos a considerar: `partial` acota a UN único partido (ignora dateFrom/dateTo).
+    // Sin rango explícito NO se resuelve la temporada entera: la FBM designa jornada a
+    // jornada, así que se deriva la ventana viernes→jueves por defecto. Solo afecta a
+    // llamadas API directas: la UI de Asignación siempre envía rango.
+    let appliedRange: { from: string | null; to: string | null; defaulted: boolean } | null = null
+    let scopedMatches
+    if (partial) {
+      scopedMatches = mockMatches.filter((m) => m.id === partial.matchId)
+    } else {
+      let from = body.dateFrom
+      let to = body.dateTo
+      let defaulted = false
+      if (!from && !to) {
+        const todayISO = new Date().toISOString().slice(0, 10)
+        const jornada = resolveDefaultJornada(mockMatches, todayISO)
+        if (!jornada) {
+          return NextResponse.json(
+            {
+              error:
+                'No hay partidos cargados: no se puede derivar la jornada por defecto. Envía dateFrom y dateTo.',
+            },
+            { status: 400 },
+          )
+        }
+        from = jornada.from
+        to = jornada.to
+        defaulted = true
+      }
+      scopedMatches = filterMatchesByRange(mockMatches, from, to)
+      appliedRange = { from: from ?? null, to: to ?? null, defaulted }
+    }
+
+    // Índices por request: sin ellos el enriquecido es cuadrático (partidos ×
+    // designaciones, personas × designaciones) sobre el calendario real.
+    const venuesById = new Map(mockVenues.map((v) => [v.id, v]))
+    const competitionsById = new Map(mockCompetitions.map((c) => [c.id, c]))
+    const designationsByMatch = new Map<string, (typeof mockDesignations)[number][]>()
+    const designationsByPerson = new Map<string, (typeof mockDesignations)[number][]>()
+    for (const d of mockDesignations) {
+      const byMatch = designationsByMatch.get(d.matchId)
+      if (byMatch) byMatch.push(d)
+      else designationsByMatch.set(d.matchId, [d])
+      const byPerson = designationsByPerson.get(d.personId)
+      if (byPerson) byPerson.push(d)
+      else designationsByPerson.set(d.personId, [d])
+    }
 
     // Enrich matches
     const matches: EnrichedMatch[] = scopedMatches.map((m) => {
-      const venue = mockVenues.find((v) => v.id === m.venueId)
-      const competition = mockCompetitions.find((c) => c.id === m.competitionId)
-      const designations = getMockDesignationsForMatch(m.id)
+      const venue = venuesById.get(m.venueId)
+      const competition = competitionsById.get(m.competitionId)
+      const designations = enrichMatchDesignations(m, designationsByMatch.get(m.id) ?? [])
       const refereesAssigned = designations.filter((d) => d.role === 'arbitro').length
       const scorersAssigned = designations.filter((d) => d.role === 'anotador').length
 
@@ -72,7 +114,7 @@ export async function POST(request: Request) {
       .filter((p) => p.active)
       .map((p) => {
         const municipality = getMockMunicipality(p.municipalityId)
-        const personDesigs = mockDesignations.filter((d) => d.personId === p.id)
+        const personDesigs = designationsByPerson.get(p.id) ?? []
         return {
           id: p.id,
           name: p.name,
@@ -137,7 +179,7 @@ export async function POST(request: Request) {
       })
     }
 
-    return NextResponse.json({ proposals })
+    return NextResponse.json({ proposals, appliedRange })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error desconocido'
     return NextResponse.json({ error: message }, { status: 500 })

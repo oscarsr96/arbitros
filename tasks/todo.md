@@ -5,7 +5,23 @@ no en 4 porque `solver.ts` consume `PREFERRED_GAP_SAME_VENUE_MIN` (overlap) y `c
 (competition-fine-category): trocearlo más dejaba árboles intermedios que no compilaban.
 Verificación previa: typecheck limpio, 487 tests verdes.
 
-### ⚠️ PENDIENTE inmediato: 1 test rojo PREEXISTENTE (no lo rompió esta sesión)
+### ✅ R3' HECHA (2026-07-25): `/api/optimize` sin rango = jornada, no temporada
+
+`POST /api/optimize` sin `dateFrom`/`dateTo` ya NO resuelve la temporada entera: deriva la ventana
+viernes→jueves con `resolveDefaultJornada(mockMatches, hoy)` y la declara en `appliedRange:
+{ from, to, defaulted }` (aditivo; `null` en modo `partial`). Sin partidos cargados → 400 con mensaje.
+Añadidos índices por request (`venuesById`, `competitionsById`, `designationsByMatch`,
+`designationsByPerson`) que matan los dos cuadráticos del enriquecido.
+
+- **Suite ENTERA en verde por primera vez desde el 2026-07-21**: 489 passed, 0 failed, typecheck 0.
+- `optimize-range.test.ts` pasa de **197 s a 4,8 s** (17/17), y el test rojo queda reescrito a la
+  semántica nueva (ya no assertea "sin rango = temporada completa").
+- La UI de Asignación no cambia: siempre envía rango. Si el designador vacía el rango, ahora cae en
+  la jornada por defecto en vez de en un solve de 24.508 partidos.
+- Cabo (no tocado): siguen existiendo DOS `filterMatchesByRange` (`optimize-range.ts` y
+  `match-query.ts`) con firmas distintas.
+
+### (Resuelto por R3') 1 test rojo PREEXISTENTE, no lo rompió la sesión del 25
 
 `api/optimize/__tests__/optimize-range.test.ts` → "sin rango, el comportamiento actual queda intacto".
 Diagnosticado el 2026-07-21 (ver `todo-import-temporada.md:833-848`): assertea la semántica ANTIGUA
