@@ -1,9 +1,18 @@
-## PENDIENTE inmediato (2026-07-25): commitear la sesión
+## ✅ Sesión del 2026-07-25 COMMITEADA Y PUSHEADA
 
-14 ficheros modificados sin commitear. Agrupación propuesta: (1) cap por franja + adopción por
-defecto, (2) separaciones mínimas entre partidos, (3) matriz de elegibilidad + `cadete_1er_ano` +
-junior 1er año, (4) docs (CLAUDE.md restricciones 5 y 7 + todo.md). Las 2 baselines de BENCH van con
-el commit que cambia la salida del solver.
+3 commits en `main` (e6af751 overlap / 1b83dcd solver+elegibilidad / 316f4c6 docs). Se agrupó en 3 y
+no en 4 porque `solver.ts` consume `PREFERRED_GAP_SAME_VENUE_MIN` (overlap) y `cadete_1er_ano`
+(competition-fine-category): trocearlo más dejaba árboles intermedios que no compilaban.
+Verificación previa: typecheck limpio, 487 tests verdes.
+
+### ⚠️ PENDIENTE inmediato: 1 test rojo PREEXISTENTE (no lo rompió esta sesión)
+
+`api/optimize/__tests__/optimize-range.test.ts` → "sin rango, el comportamiento actual queda intacto".
+Diagnosticado el 2026-07-21 (ver `todo-import-temporada.md:833-848`): assertea la semántica ANTIGUA
+(sin rango = temporada completa), lanza `solve()` sobre los 24.508 partidos y revienta el timeout de
+90 s. **NO se arregla subiendo el timeout**: se arregla con la tarea R3' (default de `/api/optimize`
+= jornada actual, ya aprobada por el usuario), que hoy sigue SIN implementar (no existe
+`appliedRange`/`defaulted` en la ruta). Es el candidato natural a siguiente tarea.
 
 ## Modelo de carga: FRANJAS y cap POR FRANJA (regla de dominio, usuario 2026-07-25)
 
