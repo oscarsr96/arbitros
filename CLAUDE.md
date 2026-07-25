@@ -236,9 +236,9 @@ Donde α y β son pesos configurables por el designador. Por defecto α=0.7, β=
 2. **Disponibilidad**: solo asignar personas disponibles en la franja horaria del partido.
 3. **Rol**: árbitros solo se asignan como árbitros, anotadores como anotadores.
 4. **Elegibilidad de categoría**: el árbitro debe ser elegible según la matriz de 7 niveles (`ELIGIBILITY`) para la categoría fina de la competición y el rol del slot (principal/auxiliar); si el partido no tiene categoría fina o la persona no tiene nivel fino, se aplica el mínimo lineal legacy (nivel del árbitro ≥ al requerido por la competición) como fallback.
-5. **Sin solapamiento**: una persona no puede estar en dos partidos cuya franja horaria se solape (considerar duración del partido ~1,5h + margen de desplazamiento).
+5. **Sin solapamiento**: una persona no puede estar en dos partidos cuya franja horaria se solape (duración ~1,5h + margen de desplazamiento). Separaciones mínimas entre INICIOS de dos partidos consecutivos del mismo día (`lib/overlap.ts`): mismo pabellón 1:30 válido y 1:45 deseable (preferencia soft del solver + aviso en el panel de verificación); mismo municipio y distinto pabellón 2:00; municipios distintos 2:30. Los dos últimos son suelos duros: si el viaje estimado + 30 min pide más, manda el viaje.
 6. **Incompatibilidades**: un árbitro no puede pitar partidos de su propio club.
-7. **Carga máxima**: ninguna persona puede superar X partidos por jornada (configurable, por defecto 3).
+7. **Carga máxima**: ninguna persona (árbitro u oficial de mesa) puede superar X partidos **por FRANJA** (configurable, por defecto 3). Las franjas son: sábado mañana, sábado tarde, domingo mañana, domingo tarde y entresemana (lunes-viernes); el corte mañana/tarde está en las 15:00 (`getFranjaKey` en `lib/solver.ts`). Es el comportamiento por defecto del solver desde 2026-07-25; el cap legacy por jornada completa sigue disponible con `solve(input, { loadCapScope: 'jornada' })` solo para comparar mediciones. Consecuencia real: quien esté de alta sábado y domingo completos puede hacer 7-8 partidos en el fin de semana.
 8. **Restricción coche** (hard): persona sin coche (`hasCar=false`) y distancia >30km → descartada. Sin coche y 15-30km → penalización soft ×2 coste.
 
 ### Implementación

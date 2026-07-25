@@ -1,3 +1,125 @@
+## PENDIENTE inmediato (2026-07-25): commitear la sesión
+
+14 ficheros modificados sin commitear. Agrupación propuesta: (1) cap por franja + adopción por
+defecto, (2) separaciones mínimas entre partidos, (3) matriz de elegibilidad + `cadete_1er_ano` +
+junior 1er año, (4) docs (CLAUDE.md restricciones 5 y 7 + todo.md). Las 2 baselines de BENCH van con
+el commit que cambia la salida del solver.
+
+## Modelo de carga: FRANJAS y cap POR FRANJA (regla de dominio, usuario 2026-07-25)
+
+CORRIGE el modelo de capacidad actual del solver. La carga máxima de un oficial NO es "3 por jornada":
+
+- Aplica IGUAL a **árbitros y a anotadores/oficiales de mesa** (misma regla de franjas y de cap).
+- El cap de **3 partidos máximo es POR FRANJA**, no por jornada (viernes→jueves).
+- Franjas: **sábado mañana · sábado tarde · domingo mañana · domingo tarde · entresemana**.
+- En **entresemana** (lunes-viernes) cada oficial (árbitro o anotador) especifica QUÉ día(s) y QUÉ
+  horario(s) puede.
+- Consecuencia: un oficial (árbitro o anotador) dado de alta sábado completo + domingo completo puede
+  hacer fácilmente **7-8 partidos en el fin de semana** (hasta 3 por cada franja en la que esté
+  disponible).
+
+IMPLICACIÓN TÉCNICA — ✅ IMPLEMENTADA Y ADOPTADA COMO DEFAULT (2026-07-25): la carga se cuenta por
+`personId|franja` (`solver.ts`, `getFranjaKey`: sáb/dom mañana <15:00 y tarde ≥15:00, lunes-viernes =
+una franja). `solve` y `solvePartial` van por franja sin pedir nada; el cap legacy queda como
+`solve(input, { loadCapScope: 'jornada' })` solo para comparar mediciones. Actualizados el copy del
+panel de Asignación ("Máx. partidos/franja") y CLAUDE.md restricciones 5 y 7.
+
+## Matriz de elegibilidad — reglas del usuario (2026-07-25) APLICADAS
+
+Cambios en `lib/referee-eligibility.ts` a partir de la descripción operativa del usuario:
+
+- **Pareja del mismo nivel**: `nacional` en `nacional` y `primera_aut` en `primera_aut_*` pasan a
+  `['principal','auxiliar']` (2 nacionales por partido de nacional, 2 de 1ª aut en Liga Ginos). Antes
+  el 2º slot NO podía ser del mismo nivel: la preferencia `AUX_TITULAR_PREFERENCE_WEIGHT` no llegaba
+  a dispararse en esas categorías.
+- **Nacional de AUXILIAR bajo principal FEB**: `nacional` gana rol auxiliar en las 9 categorías que
+  también pita FEB (2ª plata/bronce, junior pref, junior especial oro/plata/bronce, sub22 oro/plata/bronce).
+- **2ª autonómica de auxiliar en su color** con un nacional de principal: `autonomico_oro` en
+  `segunda_aut_oro` y `autonomico_plata` en `segunda_aut_plata` pasan a `['principal','auxiliar']`
+  (bronce ya lo tenía).
+- **Todo 2ª aut es auxiliar de 1ª aut**: `autonomico_bronce` gana `primera_aut_oro/plata/fem: ['auxiliar']`
+  (oro y plata ya lo tenían).
+- **1ª autonómica sigue CERRADA a nacional** (confirmado por el usuario: la lectura "nacional pita 1ª aut"
+  era un malentendido). Sin cambios.
+- **FEB NO pita cadete ni infantil** (el usuario no lo confirmó al preguntar). Sin cambios.
+- **Nueva categoría `cadete_1er_ano`** (2 árbitros + 1 mesa, fila propia en Bases p.25): sale de
+  `CANONICALS_WITHOUT_FINE_CATEGORY` y se mapea desde 'Cadete Masculino/Femenino 1er año'. Elegible
+  como principal para nacional/1ª aut y en AMBOS roles para 2ª aut (oro/plata/bronce) y escuela.
+  Junior de 1er año se mapea a `junior_pref` (decisión del usuario 2026-07-25):
+  `CANONICALS_WITHOUT_FINE_CATEGORY` queda VACÍA, ya no hay canónicas sin tag fino.
+
+Resueltas 2026-07-25 (segunda tanda): FEB **no** pita cadete/infantil y **conserva** sub22 oro y
+junior especial plata/bronce (sin cambios). `autonomico_bronce` **sí** va de auxiliar bajo principal
+FEB/nacional, con dos topes: no sube de 2ª bronce (nada de 2ª oro/plata) y no entra en especiales ORO.
+Aplicado: `junior_pref` ['principal','auxiliar'], y `junior_especial_plata/bronce` + `sub22_plata/bronce`
+como ['auxiliar'].
+
+Asimetría RESUELTA (2026-07-25, tercera tanda): `autonomico_oro` y `autonomico_plata` heredan
+`junior_especial_plata/bronce` y `sub22_plata/bronce` como ['auxiliar'], y `junior_pref` pasa a
+['principal','auxiliar'] en los tres colores. El usuario descartó que cada color sea PRINCIPAL de su
+propio sub22: el sub22 lo siguen pitando de principal nacional / feb / 1ª aut.
+
+Re-medición FINAL (cap 3/franja, separaciones mínimas activas): **J1 100 %** (1.712 €), **J10 83,5 %**
+(6.202 €, árbitro 87,9 %), cero solapes duros y cero infracciones entre municipios. Baselines de los 2 BENCH
+regeneradas. Medias por nivel en J10: 1ª aut 3,33 · nacional 2,40 · 2ª plata 2,01 · feb 1,90 ·
+2ª bronce 1,91 · 2ª oro 1,76 · escuela 1,65.
+
+## Separaciones mínimas entre partidos consecutivos (regla de dominio, usuario 2026-07-25)
+
+Auditadas las jornadas 1 y 10 simuladas: **cero solapes duros** (nadie con dos partidos que se pisen),
+pero sí incumplimientos de los mínimos reales. Reglas y estado tras el fix:
+
+| Caso                           | Mínimo entre inicios           | Tratamiento                                                                | Estado                            |
+| ------------------------------ | ------------------------------ | -------------------------------------------------------------------------- | --------------------------------- |
+| Mismo pabellón                 | 1:30 válido, **1:45 deseable** | SOFT (penalización 4 € equiv. en el score) + aviso `tight-gap` en el panel | 383 → **246** casos en J10/franja |
+| Mismo municipio, otro pabellón | **2:00**                       | DURO (`MIN_GAP_SAME_MUNI_MIN`)                                             | 0 infracciones (ya se cumplía)    |
+| Municipios distintos           | **2:30**                       | DURO (`MIN_GAP_DIFF_MUNI_MIN`), suelo sobre viaje+30                       | 1 → **0**                         |
+
+Implementado en `lib/overlap.ts` (suelos + `sameMunicipality` en `OverlapResult`), `lib/solver.ts`
+(`hasTightSameVenueChain` + `TIGHT_SAME_VENUE_PENALTY_WEIGHT`) y `lib/schedule-conflicts.ts` (aviso de
+mismo pabellón <1:45). Baseline del BENCH regenerada (la salida del solver cambia a propósito).
+Coste en cobertura: J10/franja 83,7 % → **82,2 %**; J10/jornada 64,8 % → 64,0 %; J1 sigue al 100 %.
+
+### Simulación con cap por FRANJA (2026-07-25) — el cap era el cuello principal
+
+Mismo arnés que la medición de abajo, `forceExisting` sobre temporada sin designar, coords reales,
+seed 1, cap 3 en ambos casos; solo cambia el alcance del cap.
+
+| Jornada            | Partidos | Slots | Cobertura 3/JORNADA    | Cobertura 3/FRANJA                    |
+| ------------------ | -------- | ----- | ---------------------- | ------------------------------------- |
+| 1 (2025-09-19→25)  | 229      | 849   | **100 %** (2.066,66 €) | **100 %** (1.707,32 €, −17,4 % coste) |
+| 10 (2025-11-21→27) | 1.261    | 3.542 | 64,8 %                 | **83,7 %** (+18,9 pp)                 |
+
+- Jornada 1 es la más floja de la temporada (229 partidos): ya se cubría entera, el cap por franja
+  solo **abarata** (mismos slots con 468 personas en vez de 678, carga máx. 5).
+- Jornada 10: árbitro 70,2 % → **86,5 %**, mesa 59,1 % → **80,8 %**; partidos completos 43,9 % →
+  **70,7 %**, vacíos 297 → **71**. Coste total incluso baja (5.966 € → 5.752 €). Carga máx. 10, con
+  51 personas por encima de 8 partidos en la semana (coherente con el 7-8 que describe la regla).
+- **Cambia el cuello de botella**: con cap/jornada el motivo dominante de hueco era "carga máxima"
+  (793 slots); con cap/franja pasa a tercero (183) y mandan disponibilidad+solapamiento, nivel no
+  elegible (190) y sin coche >30 km (196).
+- **Revisar el dimensionamiento de roster de abajo**: el déficit aritmético de mesa (504×3=1.512 <
+  1.716) DESAPARECE con el cap por franja (504 personas × 3 × 2-3 franjas de fin de semana). La
+  palanca ya no es "captar 68 oficiales de mesa", sino **disponibilidad declarada** y las
+  restricciones de nivel/coche. Reconfirmar con disponibilidad real antes de decidir altas.
+
+### Simulación de cobertura — jornada 10 (2026-07-24, cap 3/JORNADA; superada por la tabla de arriba)
+
+Ventana viernes→jueves **2025-11-21 → 2025-11-27** (10ª jornada cronológica). 1.261 partidos, 3.542
+slots (1.826 árbitro + 1.716 mesa). Solver de cero (forceExisting sobre temporada sin designar), coords
+reales, ~12-17 s, status `partial`:
+
+- **Slots cubiertos: 65,2 %** (2.311/3.542) — árbitro 70,4 % (1.285/1.826), mesa 59,8 % (1.026/1.716).
+- **Partidos completos: 44,2 %** (557); parciales 414; sin cubrir 290.
+- Capacidad bruta (con el cap 3/jornada, ver arriba que es infraestima): árbitros 775×3=2.325 > 1.826
+  (superávit ~500) → el número de árbitros NO es el cuello; **mesa 504×3=1.512 < 1.716 (déficit ~204
+  plazas)** → aquí SÍ hay techo estructural de roster. Motivos de descarte dominantes: "sin
+  disponibilidad en la franja" y "carga máxima", por delante de solapamiento/nivel/coche.
+- Lectura de dimensionamiento: **captar oficiales de MESA** (déficit real, aritmético, ~204 plazas/
+  semana ≈ ≥68 altas solo para la capacidad bruta ideal); para ÁRBITROS la palanca es MÁS
+  DISPONIBILIDAD declarada, no más altas. Reconfirmar con disponibilidad real y con el cap POR FRANJA, y
+  medir 3-4 jornadas (la carga varía: punta ~1.309 partidos).
+
 ## Fase 4 — Reportes y Liquidaciones (PLAN) (2026-07-24)
 
 Estado: ✅ 4.1 + 4.2 COMPLETAS (commit f80e5cc). ✅ 4.3 COMPLETA Y VERIFICADA (2026-07-24, ver

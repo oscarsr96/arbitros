@@ -5,23 +5,17 @@
 ## Normativa oficial antes de sintetizar datos de dominio
 
 - **Regla:** si hay que inventar un dato de dominio (horarios, tarifas, nº de árbitros), buscar primero el documento normativo del cliente y preguntarle por él.
-- **Why:** propuse sintetizar horarios "por categoría" a ojo; el usuario respondió que las Bases Generales FBM ya traen la franja horaria Y el nº de árbitros/mesa por categoría. Lo inventado habría sido plausible y falso. Las Bases resultaron traer además la equivalencia patrocinador→categoría (Liga Ginos = 1ª Autonómica), que si no se habría inferido a ojo.
+- **Why:** propuse sintetizar horarios "por categoría" a ojo; las Bases Generales FBM ya traían franja horaria, nº de árbitros/mesa por categoría y la equivalencia patrocinador→categoría (Liga Ginos = 1ª Autonómica). Lo inventado habría sido plausible y falso.
 - **How to apply:** ofrecer la síntesis como plan B, no como plan A. Preguntar "¿hay bases/reglamento/tarifario?" antes de generar. Ver [[cost-model]].
 
-## Verificar el informe del subagente, no solo leerlo
+## Ni un informe en verde ni una cifra extrapolada son una medición
 
-- **Regla:** re-medir el criterio de aceptación de forma independiente antes de cerrar una tanda.
-- **Why:** tres fallos reales sobrevivieron a informes en verde: 7 grupos con más partidos de los posibles (identidades de equipo fundidas), un cuadrático `partidos × designaciones` en una ruta, y un solver que tarda minutos con volumen real. Los tests pasaban con el seed pequeño. (2026-07-22: un pipeline de geo "en verde" generó direcciones de Madrid en Iowa; lo cazó un invariante propio de bbox, no el pipeline.)
-- **How to apply:** los verdes con datos de juguete no dicen nada del caso real. Medir con volumen de producción y con un invariante propio, no con el del autor.
+- **Regla:** re-medir el criterio de aceptación de forma independiente, con volumen de producción, proceso frío y un invariante propio. Si la premisa de un plan es un número, el primer paso del plan es re-medirlo.
+- **Why:** tres fallos reales sobrevivieron a informes de subagente en verde (identidades de equipo fundidas, un cuadrático `partidos × designaciones`, un solver lento con datos reales): los tests pasaban con seed pequeño. Y al revés, se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió — medido de verdad, ~9-21 s.
+- **How to apply:** `verify:bundle` en CI; `performance.now()` sobre el seed real, nunca sobre el generador sintético. Y mantén `MEMORY.md` en sync con el cuerpo del fichero: un índice desactualizado hizo perseguir el fantasma de los "4-7 min" tres veces. Ver [[import-temporada-completa]].
 
-## Datos externos geográficos (OSM/geocoders): restringir la query y validar con bbox
+## Reglas de dominio dictadas en prosa: parsearlas CON el usuario
 
-- **Regla:** al generar datos desde una fuente externa por NOMBRE (Overpass, Nominatim), acotar la query a la región Y validar cada coordenada de salida contra un bbox de dominio como test permanente. El pipeline en verde NO garantiza datos correctos.
-- **Why:** `rel["name"="Madrid"]` sin bbox trajo Madrid, IOWA (y Pinto→Argentina, Arroyomolinos→Cáceres): centroide y direcciones de la capital (45% del roster) en EE.UU., con los tests de consistencia en verde. Aparte: el límite OSM viene partido en varios `way` que hay que COSER en anillos (tratar cada segmento como anillo daba ~0 puntos dentro del polígono en municipios multi-way). Ver [[geo-pipeline]], [[import-temporada-completa]].
-- **How to apply:** bbox de región en la query por nombre; test que exija el 100% de coords dentro del bbox de dominio (umbrales laxos ocultan homónimos); coser anillos multi-way; medir `inside≈raw` por municipio.
-
-## Medir el problema ANTES de planificar su solución
-
-- **Regla:** una cifra de rendimiento extrapolada no es una medición. Antes de planificar una optimización, medir el escenario real, con datos de producción, en proceso frío y mediana de 3.
-- **Why:** dos veces, en direcciones opuestas. Al importar 75× el volumen, medir destapó problemas invisibles en verde (seed de 9,5 MB al bundle cliente, ruta de 21 MB). Y al revés: se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió; medido de verdad, 20,8 s de mediana, ya bajo el objetivo.
-- **How to apply:** `verify:bundle` en CI tras el build; `performance.now()` sobre el seed real, nunca sobre el generador sintético. Si la premisa de un plan es un número, el primer paso del plan es re-medirlo. Y mantén el índice `MEMORY.md` en sync con el cuerpo del fichero: en 2026-07-23 el índice aún repetía los "4-7 min" ya corregidos en el fichero e hizo perseguir el fantasma por 3ª vez (medido: ~9 s/jornada punta). Ver [[import-temporada-completa]].
+- **Regla:** al traducir una descripción en prosa a una matriz o restricción, presentar los deltas "lo que dices vs lo que hace el código" en tabla y hacer elegir en bloque. Si dice "está bien X aunque debería ser Y", modelar Y como preferencia soft, nunca como bloqueo.
+- **Why:** "nacional pita especial 1ª aut fem, oro plata y bronce" admitía dos lecturas y la mía habría roto la exclusividad de 1ª autonómica; y tratar el "debería ser 1:45" como restricción dura habría tirado cobertura sin que él lo pidiera.
+- **How to apply:** una AskUserQuestion multiSelect con los deltas rinde más que seis preguntas sueltas. Tras aplicar una regla parcial, buscar INVERSIONES: el 2ª bronce quedó menos restringido que oro/plata hasta preguntarlo. Ver [[referee-categories]].

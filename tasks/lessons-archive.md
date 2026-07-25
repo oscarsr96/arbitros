@@ -55,3 +55,9 @@
 - **Regla:** para validar un parser de datos estructurados, buscar un invariante EXACTO del dominio en vez de una heurística con tolerancias.
   - **Why:** el parser de calendarios usaba "coverage warnings" con tolerancia `T-1`: daba falsos positivos con los `DESCANSA` y, sobre todo, NO detectaba el bug real (7 grupos con MÁS partidos de los posibles porque el matching voraz por prefijo fundía equipos distintos en un nombre). El invariante `n*(n-1)` de una liga a doble vuelta lo cazó de inmediato: 259/272 exactos, 6 con déficit, 7 imposibles.
   - **How to apply:** liga a doble vuelta → `n*(n-1)`; detectar exceso además de déficit (el exceso delata identidades colapsadas, el déficit filas perdidas). Al emparejar nombres contra un vocabulario cerrado, usar coincidencia MÁS LARGA, no la primera que encaja.
+
+## Datos externos geográficos (OSM/geocoders): restringir la query y validar con bbox
+
+- **Regla:** al generar datos desde una fuente externa por NOMBRE (Overpass, Nominatim), acotar la query a la región Y validar cada coordenada de salida contra un bbox de dominio como test permanente. El pipeline en verde NO garantiza datos correctos.
+- **Why:** `rel["name"="Madrid"]` sin bbox trajo Madrid, IOWA (y Pinto→Argentina, Arroyomolinos→Cáceres): centroide y direcciones de la capital (45% del roster) en EE.UU., con los tests de consistencia en verde. Aparte: el límite OSM viene partido en varios `way` que hay que COSER en anillos (tratar cada segmento como anillo daba ~0 puntos dentro del polígono en municipios multi-way). Ver [[geo-pipeline]], [[import-temporada-completa]].
+- **How to apply:** bbox de región en la query por nombre; test que exija el 100% de coords dentro del bbox de dominio (umbrales laxos ocultan homónimos); coser anillos multi-way; medir `inside≈raw` por municipio.
