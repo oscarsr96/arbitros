@@ -43,6 +43,7 @@ const KNOWN_FINE_CATEGORIES: Record<CompetitionCategory, true> = {
   sub22_plata: true,
   sub22_bronce: true,
   cadete_pref: true,
+  cadete_1er_ano: true,
   infantil_pref: true,
   minibasket: true,
 }

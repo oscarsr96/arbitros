@@ -515,11 +515,10 @@ describe('categoría fina (matriz de 7 niveles) para cada canónica', () => {
     expect(sinTag.sort()).toEqual([...CANONICALS_WITHOUT_FINE_CATEGORY].sort())
   })
 
-  it('las excepciones son solo Junior y Cadete de 1er año (fila propia en las Bases)', () => {
-    expect(CANONICALS_WITHOUT_FINE_CATEGORY).toHaveLength(4)
-    for (const canonical of CANONICALS_WITHOUT_FINE_CATEGORY) {
-      expect(canonical).toMatch(/^(Junior|Cadete) (Masculino|Femenino) 1er año$/)
-    }
+  it('ya no queda ninguna canónica sin tag fino', () => {
+    // 2026-07-25: Cadete de 1er año pasó a tag propio `cadete_1er_ano` y Junior de
+    // 1er año se trata como `junior_pref` (decisiones del usuario).
+    expect(CANONICALS_WITHOUT_FINE_CATEGORY).toHaveLength(0)
   })
 
   it('mapea los tres niveles de 1ª Autonómica (Liga Ginos) a sus tags exactos', () => {

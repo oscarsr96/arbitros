@@ -240,9 +240,11 @@ describe('canOfficiate (matriz de elegibilidad)', () => {
   })
 
   it('las 3 subcategorías de 1ª aut son CompetitionCategory válidas', () => {
+    // Pareja de 2 árbitros de 1ª aut en su propia categoría (usuario 2026-07-25):
+    // el nivel es elegible en ambos slots.
     const cats: CompetitionCategory[] = ['primera_aut_oro', 'primera_aut_plata', 'primera_aut_fem']
     for (const cat of cats) {
-      expect(eligibleRoles('primera_aut', cat)).toEqual(['principal'])
+      expect(eligibleRoles('primera_aut', cat)).toEqual(['principal', 'auxiliar'])
     }
   })
 })

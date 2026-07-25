@@ -21,7 +21,13 @@ import {
   isPersonAvailable,
   calculateDailyTravelCost,
 } from './mock-data'
-import { pairOverlap, timeToMinutes, isSolverConflict, type OverlapMatch } from './overlap'
+import {
+  pairOverlap,
+  timeToMinutes,
+  isSolverConflict,
+  PREFERRED_GAP_SAME_VENUE_MIN,
+  type OverlapMatch,
+} from './overlap'
 import { roadKmBetween } from './geo-distance'
 import {
   mapDesignationsToSlots,
@@ -90,6 +96,7 @@ const FINE_PRIORITY: Record<CompetitionCategory, number> = {
   segunda_aut_bronce: 4,
   junior_pref: 3,
   cadete_pref: 2,
+  cadete_1er_ano: 2,
   infantil_pref: 2,
   minibasket: 1,
 }
@@ -254,6 +261,44 @@ function hasScheduleConflict(
   return false
 }
 
+// Encadenar dos partidos en el MISMO pabellón a 1:30 entre inicios es VÁLIDO
+// (isSolverConflict no lo bloquea), pero lo deseable son 1:45
+// (PREFERRED_GAP_SAME_VENUE_MIN de hueco tras el final). Esto lo detecta para
+// aplicarlo como penalización SOFT en el score: el candidato apretado solo gana
+// el slot si la alternativa holgada sale bastante más cara.
+function hasTightSameVenueChain(
+  personId: string,
+  candidateMatch: OverlapMatch,
+  hasCar: boolean,
+  assignmentsByPerson: Map<string, Assignment[]>,
+  designationsByPerson: Map<string, typeof mockDesignations>,
+  matchesById: Map<string, OverlapMatch>,
+): boolean {
+  const ctx = { hasCar, getDistanceKm: getMockDistance }
+  const isTight = (other: OverlapMatch): boolean => {
+    const o = pairOverlap(candidateMatch, other, ctx)
+    return o.sameVenue && !o.intervalsOverlap && o.gapMin < PREFERRED_GAP_SAME_VENUE_MIN
+  }
+
+  const current = assignmentsByPerson.get(personId)
+  if (current) {
+    for (const a of current) {
+      if (isTight(toOverlapMatch(a, a.venueMuniId))) return true
+    }
+  }
+
+  const existing = designationsByPerson.get(personId)
+  if (existing) {
+    for (const d of existing) {
+      const match = matchesById.get(d.matchId)
+      if (!match) continue
+      if (isTight(match)) return true
+    }
+  }
+
+  return false
+}
+
 function buildDesignationIndex(
   designations: typeof mockDesignations,
 ): Map<string, typeof mockDesignations> {
@@ -332,6 +377,22 @@ export interface SolveOptions {
   // Override del peso de la preferencia de auxiliar titular (0 = desactivada).
   // Por defecto AUX_TITULAR_PREFERENCE_WEIGHT.
   auxTitularPreferenceWeight?: number
+  // Alcance del cap `maxMatchesPerPerson`. Por defecto 'franja' (regla real FBM
+  // desde 2026-07-25): 3 partidos por franja — sáb mañana/tarde, dom mañana/tarde
+  // y entresemana — igual para árbitros y para oficiales de mesa. 'jornada' es el
+  // modelo legacy (cap único para toda la ventana viernes→jueves) y se conserva
+  // solo para comparar mediciones.
+  loadCapScope?: 'jornada' | 'franja'
+}
+
+/** Franja de carga de un partido (regla FBM): sábado y domingo se parten en
+ *  mañana (<15:00) y tarde (>=15:00); lunes-viernes son una única franja. */
+export function getFranjaKey(date: string, time: string): string {
+  const dow = new Date(`${date}T00:00:00`).getDay() // 0=dom, 6=sáb
+  if (dow !== 0 && dow !== 6) return 'entresemana'
+  const day = dow === 6 ? 'sab' : 'dom'
+  const hour = parseInt(time.slice(0, 2), 10)
+  return `${day}-${hour < 15 ? 'manana' : 'tarde'}`
 }
 
 // ── Solver principal ────────────────────────────────────────────────────────
@@ -366,7 +427,12 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
   const mockMatchById = new Map(mockMatches.map((m) => [m.id, m]))
   const assignedPersonsByMatch = new Map<string, Set<string>>()
 
-  // Contar partidos asignados por persona (incluye existentes)
+  // Contar partidos asignados por persona (incluye existentes). Por defecto
+  // (loadCapScope='franja') la clave es `personId|franja`, de modo que el cap
+  // de 3 aplica POR FRANJA; con 'jornada' vuelve al cap único legacy.
+  const capScope = options.loadCapScope ?? 'franja'
+  const loadKey = (personId: string, date: string, time: string) =>
+    capScope === 'franja' ? `${personId}|${getFranjaKey(date, time)}` : personId
   const personLoadCount: Record<string, number> = {}
   for (const p of persons) {
     personLoadCount[p.id] = 0
@@ -395,9 +461,6 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
   for (const d of mockDesignations) {
     if (!existingByMatch[d.matchId]) existingByMatch[d.matchId] = []
     existingByMatch[d.matchId].push({ personId: d.personId, role: d.role, position: d.position })
-    if (personLoadCount[d.personId] !== undefined && inScopeMatchIds.has(d.matchId)) {
-      personLoadCount[d.personId]++
-    }
 
     // Resolver fecha + municipio del venue de esta designación, ESTÉ O NO en scope.
     // El coste marginal debe ver el día COMPLETO de la persona (F2): un partido ya
@@ -420,6 +483,14 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
       time = gm.time
       venueId = gm.venueId
       venueMuniId = getMockVenue(gm.venueId)?.municipalityId ?? ''
+    }
+
+    // La carga cuenta SOLO designaciones en scope; se contabiliza aquí (y no
+    // antes) porque la clave depende de la fecha/hora del partido cuando el
+    // cap es por franja.
+    if (inScopeMatch && personLoadCount[d.personId] !== undefined) {
+      const key = loadKey(d.personId, date, time)
+      personLoadCount[key] = (personLoadCount[key] ?? 0) + 1
     }
 
     // forceExisting sólo MANTIENE en la salida las designaciones EN SCOPE; las de
@@ -510,6 +581,7 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
         matchesById,
         personLoadCount,
         maxMatchesPerPerson,
+        capScope === 'franja' ? `|${getFranjaKey(match.date, match.time)}` : '',
         costWeight,
         balanceWeight,
         auxTitularPreferenceWeight,
@@ -542,7 +614,8 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
           venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
-        personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
+        const loadK = loadKey(candidate.person.id, match.date, match.time)
+        personLoadCount[loadK] = (personLoadCount[loadK] ?? 0) + 1
       } else {
         unassigned.push({
           matchId: match.id,
@@ -558,6 +631,7 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
             matchesById,
             personLoadCount,
             maxMatchesPerPerson,
+            capScope === 'franja' ? `|${getFranjaKey(match.date, match.time)}` : '',
             assignedPersonsByMatch,
             slotPosition,
           ),
@@ -586,6 +660,7 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
         matchesById,
         personLoadCount,
         maxMatchesPerPerson,
+        capScope === 'franja' ? `|${getFranjaKey(match.date, match.time)}` : '',
         costWeight,
         balanceWeight,
         auxTitularPreferenceWeight,
@@ -618,7 +693,8 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
           venueMuniId: venueMuni,
         })
         markAssigned(assignedPersonsByMatch, match.id, candidate.person.id)
-        personLoadCount[candidate.person.id] = (personLoadCount[candidate.person.id] ?? 0) + 1
+        const loadK = loadKey(candidate.person.id, match.date, match.time)
+        personLoadCount[loadK] = (personLoadCount[loadK] ?? 0) + 1
       } else {
         unassigned.push({
           matchId: match.id,
@@ -634,6 +710,7 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
             matchesById,
             personLoadCount,
             maxMatchesPerPerson,
+            capScope === 'franja' ? `|${getFranjaKey(match.date, match.time)}` : '',
             assignedPersonsByMatch,
             slotPosition,
           ),
@@ -732,6 +809,11 @@ export function solve(input: SolverInput, seedOrOptions?: number | SolveOptions)
 
 // ── Buscar mejor candidato para un slot ─────────────────────────────────────
 
+// Penalización soft (en € equivalentes, misma escala que
+// AUX_TITULAR_PREFERENCE_WEIGHT) por encadenar en el mismo pabellón a 1:30 en
+// vez de 1:45. Baja a propósito: la regla lo admite, solo desempata.
+const TIGHT_SAME_VENUE_PENALTY_WEIGHT = 4
+
 function findBestCandidate(
   match: EnrichedMatch,
   role: 'arbitro' | 'anotador',
@@ -742,6 +824,8 @@ function findBestCandidate(
   matchesById: Map<string, OverlapMatch>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
+  // Sufijo de la clave de carga ('' = cap por jornada; '|<franja>' = cap por franja)
+  loadKeySuffix: string,
   costWeight: number,
   balanceWeight: number,
   auxTitularPreferenceWeight: number,
@@ -784,7 +868,7 @@ function findBestCandidate(
     if (assignedPersonsByMatch.get(match.id)?.has(person.id)) continue
 
     // Carga maxima
-    const currentLoad = personLoadCount[person.id] ?? 0
+    const currentLoad = personLoadCount[person.id + loadKeySuffix] ?? 0
     if (currentLoad >= maxMatchesPerPerson) continue
 
     // Disponibilidad (misma lógica minutos/semiabierto que el picker del portal/admin)
@@ -859,6 +943,18 @@ function findBestCandidate(
     ) {
       score += auxTitularPenalty
     }
+    if (
+      hasTightSameVenueChain(
+        person.id,
+        candidateMatch,
+        person.hasCar,
+        assignmentsByPerson,
+        designationsByPerson,
+        matchesById,
+      )
+    ) {
+      score += costWeight * (TIGHT_SAME_VENUE_PENALTY_WEIGHT / 26)
+    }
     candidates.push({ person, cost: marginalCost, km: directKm, score })
   }
 
@@ -925,6 +1021,7 @@ function getUnassignedReason(
   matchesById: Map<string, OverlapMatch>,
   personLoadCount: Record<string, number>,
   maxMatchesPerPerson: number,
+  loadKeySuffix: string,
   assignedPersonsByMatch: Map<string, Set<string>>,
   slotPosition?: DesignationPosition,
 ): string {
@@ -950,7 +1047,7 @@ function getUnassignedReason(
       alreadyAssigned++
       continue
     }
-    if ((personLoadCount[person.id] ?? 0) >= maxMatchesPerPerson) {
+    if ((personLoadCount[person.id + loadKeySuffix] ?? 0) >= maxMatchesPerPerson) {
       maxLoad++
       continue
     }
@@ -1026,8 +1123,11 @@ export function solvePartial(
   const assignmentsByPerson = new Map<string, Assignment[]>()
   const designationsByPerson = buildDesignationIndex(mockDesignations)
   const matchesById = buildOverlapMatchIndex()
+  // Cap por FRANJA, igual que `solve` (regla FBM 2026-07-25): la carga se cuenta
+  // por `personId|franja` y el chequeo usa el sufijo de la franja del partido.
   const personLoadCount: Record<string, number> = {}
   for (const p of persons) personLoadCount[p.id] = 0
+  const loadKeySuffix = `|${getFranjaKey(match.date, match.time)}`
 
   for (const d of mockDesignations) {
     const m = matches.find((m) => m.id === d.matchId)
@@ -1041,7 +1141,10 @@ export function solvePartial(
         venueId: m.venueId,
         venueMuniId: m.venue?.municipalityId ?? '',
       })
-      if (personLoadCount[d.personId] !== undefined) personLoadCount[d.personId]++
+      if (personLoadCount[d.personId] !== undefined) {
+        const key = `${d.personId}|${getFranjaKey(m.date, m.time)}`
+        personLoadCount[key] = (personLoadCount[key] ?? 0) + 1
+      }
     }
   }
 
@@ -1078,6 +1181,7 @@ export function solvePartial(
     matchesById,
     personLoadCount,
     parameters.maxMatchesPerPerson,
+    loadKeySuffix,
     parameters.costWeight,
     parameters.balanceWeight,
     AUX_TITULAR_PREFERENCE_WEIGHT,
@@ -1140,6 +1244,7 @@ export function solvePartial(
           matchesById,
           personLoadCount,
           parameters.maxMatchesPerPerson,
+          loadKeySuffix,
           assignedPersonsByMatch,
           slotPosition,
         ),

@@ -98,6 +98,14 @@ export const FINE_CATEGORY_BY_CANONICAL: Record<string, CompetitionCategory> = {
   [normalizeText('Cadete Masculino PLATA/BRONCE')]: 'cadete_pref',
   [normalizeText('Cadete Femenino PLATA/BRONCE')]: 'cadete_pref',
   [normalizeText('Cadete Femenino Preferente')]: 'cadete_pref',
+  // Cadete de 1er año: fila propia en las Bases (2 árbitros + 1 mesa) y categoría
+  // fina propia desde 2026-07-25 (decisión del usuario); ya no cae al fallback.
+  [normalizeText('Cadete Masculino 1er año')]: 'cadete_1er_ano',
+  [normalizeText('Cadete Femenino 1er año')]: 'cadete_1er_ano',
+  // Junior de 1er año se trata como Junior Preferente (decisión del usuario
+  // 2026-07-25): mismo número de árbitros y misma elegibilidad.
+  [normalizeText('Junior Masculino 1er año')]: 'junior_pref',
+  [normalizeText('Junior Femenino 1er año')]: 'junior_pref',
   [normalizeText('Infantil Masculino ORO')]: 'infantil_pref',
   [normalizeText('Infantil Femenino ORO')]: 'infantil_pref',
   [normalizeText('Infantil Masculino PLATA/BRONCE')]: 'infantil_pref',
@@ -129,24 +137,13 @@ export const FINE_CATEGORY_BY_CANONICAL: Record<string, CompetitionCategory> = {
  * `CompetitionCategory` que las represente y forzar el más parecido daría una
  * elegibilidad incorrecta. Caen al fallback lineal (`meetsMinCategory`).
  *
- * Junior y Cadete de 1er año tienen fila PROPIA en la tabla de arbitraje de las
- * Bases (p. 25), distinta de la de su Preferente:
- *   - Cadete 1er año   2 árbitros + 1 mesa  vs  Cadete Preferente 1 árbitro + 1 mesa
- *   - Junior 1er año   2 árbitros + 1 mesa  vs  Junior Preferente 2 árbitros + 1 mesa
- * Para Cadete el mapeo a `cadete_pref` sería claramente erróneo (ese tag modela
- * un partido a árbitro único). Para Junior, `junior_pref` encajaría en número de
- * árbitros y las Bases los agrupan en la tabla de horarios (p. 55), pero son
- * competiciones distintas y no hay tag propio: queda pendiente de decisión.
+ * VACÍA desde el 2026-07-25: todas las canónicas tienen tag fino.
  *
- * (A diferencia de Infantil de 1er año, que SÍ comparte fila oficial con
- * Infantil Preferente y por eso va mapeado arriba.)
+ * Cadete de 1er año tiene tag propio (`cadete_1er_ano`, 2 árbitros) y Junior de
+ * 1er año se mapea a `junior_pref` (mismo nº de árbitros; las Bases los agrupan
+ * en la tabla de horarios, p. 55). Ambas decisiones del usuario, 2026-07-25.
  */
-export const CANONICALS_WITHOUT_FINE_CATEGORY: string[] = [
-  'Junior Masculino 1er año',
-  'Junior Femenino 1er año',
-  'Cadete Masculino 1er año',
-  'Cadete Femenino 1er año',
-]
+export const CANONICALS_WITHOUT_FINE_CATEGORY: string[] = []
 
 /**
  * Resuelve la categoría fina de una competición por nombre canónico

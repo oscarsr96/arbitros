@@ -719,8 +719,11 @@ export function AsignacionView() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">
-                Máx. partidos/persona
+              <label
+                className="mb-1 block text-xs font-medium text-gray-500"
+                title="Franjas: sábado mañana, sábado tarde, domingo mañana, domingo tarde y entresemana"
+              >
+                Máx. partidos/franja
               </label>
               <select
                 value={solverParameters.maxMatchesPerPerson}

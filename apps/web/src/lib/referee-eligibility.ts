@@ -47,6 +47,7 @@ export type CompetitionCategory =
   | 'sub22_plata'
   | 'sub22_bronce'
   | 'cadete_pref' // escuela (se pita solo)
+  | 'cadete_1er_ano' // escuela a DOS árbitros (fila propia en Bases p.25)
   | 'infantil_pref' // escuela (se pita solo)
   | 'minibasket' // escuela (se pita solo)
 
@@ -110,18 +111,23 @@ export const ELIGIBILITY: Record<
   // el resto de FBM SALVO 1ª autonómica. Siempre principal. Foco: junior
   // especial oro, junior pref, cadete, infantil.
   nacional: {
-    nacional: ['principal'],
+    // Pareja de 2 nacionales en la propia nacional (usuario 2026-07-25): el
+    // segundo ocupa el slot auxiliar, por eso el nivel es elegible en ambos roles.
+    nacional: ['principal', 'auxiliar'],
     segunda_aut_oro: ['principal'],
-    segunda_aut_plata: ['principal'],
-    segunda_aut_bronce: ['principal'],
-    junior_pref: ['principal'],
-    junior_especial_oro: ['principal'],
-    junior_especial_plata: ['principal'],
-    junior_especial_bronce: ['principal'],
-    sub22_oro: ['principal'],
-    sub22_plata: ['principal'],
-    sub22_bronce: ['principal'],
+    // En las categorías que también pita FEB, el nacional va de AUXILIAR cuando
+    // el principal es de grupo FEB (usuario 2026-07-25).
+    segunda_aut_plata: ['principal', 'auxiliar'],
+    segunda_aut_bronce: ['principal', 'auxiliar'],
+    junior_pref: ['principal', 'auxiliar'],
+    junior_especial_oro: ['principal', 'auxiliar'],
+    junior_especial_plata: ['principal', 'auxiliar'],
+    junior_especial_bronce: ['principal', 'auxiliar'],
+    sub22_oro: ['principal', 'auxiliar'],
+    sub22_plata: ['principal', 'auxiliar'],
+    sub22_bronce: ['principal', 'auxiliar'],
     cadete_pref: ['principal'],
+    cadete_1er_ano: ['principal'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
   },
@@ -145,9 +151,11 @@ export const ELIGIBILITY: Record<
   primera_aut: {
     // Los 3 subniveles heredan la misma elegibilidad que la antigua
     // primera_aut; refinar si las reglas FBM difieren por oro/plata/fem.
-    primera_aut_oro: ['principal'],
-    primera_aut_plata: ['principal'],
-    primera_aut_fem: ['principal'],
+    // Pareja de 2 árbitros de 1ª aut en la propia 1ª autonómica (usuario
+    // 2026-07-25): el segundo ocupa el slot auxiliar.
+    primera_aut_oro: ['principal', 'auxiliar'],
+    primera_aut_plata: ['principal', 'auxiliar'],
+    primera_aut_fem: ['principal', 'auxiliar'],
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     sub22_oro: ['auxiliar'],
@@ -160,13 +168,15 @@ export const ELIGIBILITY: Record<
     junior_especial_plata: ['principal'],
     junior_especial_bronce: ['principal'],
     cadete_pref: ['principal'],
+    cadete_1er_ano: ['principal'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
   },
   // AUTONÓMICO ORO: exclusiva en 2ª aut oro. Auxiliar de FEB/nacionales/1ª aut.
   // Principal de 2ª plata, 2ª bronce y escuela.
   autonomico_oro: {
-    segunda_aut_oro: ['principal'],
+    // 2 autonómicos oro, o 1 nacional principal + 1 oro auxiliar (usuario 2026-07-25).
+    segunda_aut_oro: ['principal', 'auxiliar'],
     segunda_aut_plata: ['principal'],
     segunda_aut_bronce: ['principal'],
     primera_aut_oro: ['auxiliar'],
@@ -175,15 +185,25 @@ export const ELIGIBILITY: Record<
     nacional: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     sub22_oro: ['auxiliar'],
+    // Auxiliar también en las versiones plata/bronce de especiales y sub22
+    // (usuario 2026-07-25): un nivel superior no puede quedar más restringido que
+    // `autonomico_bronce`, que sí las hace.
+    junior_especial_plata: ['auxiliar'],
+    junior_especial_bronce: ['auxiliar'],
+    sub22_plata: ['auxiliar'],
+    sub22_bronce: ['auxiliar'],
     cadete_pref: ['principal'],
+    // Cadete 1er año va a DOS árbitros: este nivel cubre ambos slots.
+    cadete_1er_ano: ['principal', 'auxiliar'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
-    junior_pref: ['principal'],
+    junior_pref: ['principal', 'auxiliar'],
   },
   // AUTONÓMICO PLATA: 2ª plata (exclusiva o con nacionales/1ª aut). Auxiliar de
   // FEB/nacional/1ª aut/2ª oro. Principal de 2ª bronce y escuela.
   autonomico_plata: {
-    segunda_aut_plata: ['principal'],
+    // 2 autonómicos plata, o 1 nacional principal + 1 plata auxiliar (usuario 2026-07-25).
+    segunda_aut_plata: ['principal', 'auxiliar'],
     segunda_aut_bronce: ['principal'],
     segunda_aut_oro: ['auxiliar'],
     nacional: ['auxiliar'],
@@ -192,19 +212,41 @@ export const ELIGIBILITY: Record<
     primera_aut_fem: ['auxiliar'],
     junior_especial_oro: ['auxiliar'],
     sub22_oro: ['auxiliar'],
+    // Auxiliar también en las versiones plata/bronce de especiales y sub22
+    // (usuario 2026-07-25): un nivel superior no puede quedar más restringido que
+    // `autonomico_bronce`, que sí las hace.
+    junior_especial_plata: ['auxiliar'],
+    junior_especial_bronce: ['auxiliar'],
+    sub22_plata: ['auxiliar'],
+    sub22_bronce: ['auxiliar'],
     cadete_pref: ['principal'],
+    // Cadete 1er año va a DOS árbitros: este nivel cubre ambos slots.
+    cadete_1er_ano: ['principal', 'auxiliar'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
-    junior_pref: ['principal'],
+    junior_pref: ['principal', 'auxiliar'],
   },
   // AUTONÓMICO BRONCE: como máximo 2ª bronce (con feb/nacional/1ª aut/2ª oro/2ª
   // plata de principal). Principal de escuela. Nada por encima de 2ª bronce.
   autonomico_bronce: {
     segunda_aut_bronce: ['principal', 'auxiliar'],
+    // "Todo 2ª autonómica va de aux de 1ª autonómica" (usuario 2026-07-25).
+    primera_aut_oro: ['auxiliar'],
+    primera_aut_plata: ['auxiliar'],
+    primera_aut_fem: ['auxiliar'],
+    // Auxiliar bajo principal FEB/nacional (usuario 2026-07-25) con DOS topes
+    // explícitos: no sube de 2ª bronce (nada de 2ª oro/plata) y no entra en
+    // especiales ORO (ni junior especial oro ni sub22 oro).
+    junior_pref: ['principal', 'auxiliar'],
+    junior_especial_plata: ['auxiliar'],
+    junior_especial_bronce: ['auxiliar'],
+    sub22_plata: ['auxiliar'],
+    sub22_bronce: ['auxiliar'],
     cadete_pref: ['principal'],
+    // Cadete 1er año va a DOS árbitros: este nivel cubre ambos slots.
+    cadete_1er_ano: ['principal', 'auxiliar'],
     infantil_pref: ['principal'],
     minibasket: ['principal'],
-    junior_pref: ['principal'],
   },
   // ESCUELA: solos en minibasket, infantil pref, cadete pref. A dobles en junior
   // pref (auxiliar, en especial junto a 1ª aut). Pitan más solos que a dobles.
@@ -212,6 +254,8 @@ export const ELIGIBILITY: Record<
     minibasket: ['principal'],
     infantil_pref: ['principal'],
     cadete_pref: ['principal'],
+    // Cadete 1er año va a DOS árbitros y lo pitan entre ellos.
+    cadete_1er_ano: ['principal', 'auxiliar'],
     junior_pref: ['auxiliar'],
   },
 }
