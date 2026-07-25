@@ -112,18 +112,28 @@ Código vigente: cap 3 POR FRANJA + separaciones mínimas + matriz de elegibilid
 `forceExisting` sobre temporada sin designar, coords reales, enriquecido indexado igual que la ruta.
 
 **Cobertura ponderada de la temporada: 86,8 %** (58.910 / 67.872 slots). Coste de desplazamiento
-124.321 € (sin honorarios). **La temporada entera, jornada a jornada, se resuelve en 165 s**; la
-jornada más lenta son 10,6 s (objetivo <30 s cumplido con holgura, y ahora medido en las 29).
+124.321 € (sin honorarios). **La temporada entera, jornada a jornada, se resuelve en 198 s de mediana**
+(rango 124-305 s en 3 corridas); ninguna jornada superó los 24,6 s, por debajo del objetivo de 30 s.
+Imagen de la tabla: `tasks/cobertura-jornadas-2026-07-25.jpg`.
 
-**Qué mide la columna de segundos (y qué no)**: solo `solve()`, con el input ya construido y las 29
-jornadas encadenadas en el MISMO proceso. Comprobado el mismo día en proceso limpio sobre la jornada
-punta (1.309 partidos, 1.279 personas): enriquecido del input **10 ms** (irrelevante; el store de
-designaciones está vacío en el arnés), y `solve()` **15,5 s en frío / 16,3 s / 10,7 s** en llamadas
-sucesivas, contra los **8,1 s** que marcó esa misma jornada en el barrido. O sea, **varianza de ~2×
-entre procesos** — la misma que ya documentaba el diagnóstico del 2026-07-21 (mediana 20,8 s) frente
-al 2026-07-23 (~9 s). Los 165 s son la suma de UNA corrida concreta: con la varianza observada la
-temporada puede irse a ~300 s. Lo robusto es la conclusión, no la cifra: **el peor caso medido
-(16,3 s) sigue por debajo del objetivo de 30 s por jornada**.
+**Tiempos re-medidos con 3 corridas en procesos separados (2026-07-25)**. La columna de segundos mide
+solo `solve()`, sin construir el input (el enriquecido son 10 ms, medido aparte; el store de
+designaciones está vacío en el arnés). Resultados:
+
+| Métrica                         | Mediana de 3 | Rango observado |
+| ------------------------------- | ------------ | --------------- |
+| Temporada entera (29 jornadas)  | **198 s**    | 124 - 305 s     |
+| Jornada punta (J6, 1.309 part.) | 18,2 s       | 5,8 - 22,3 s    |
+| Jornada más lenta observada     | —            | **24,6 s** (J9) |
+
+- **La cobertura salió IDÉNTICA en las 3 corridas** (columna a columna): con seed fija el solver es
+  determinista; lo que varía es el reloj de la máquina, no el resultado. Los porcentajes de la tabla
+  son reproducibles; los segundos, no.
+- **Varianza de ~2,5× entre procesos**, coherente con el diagnóstico del 2026-07-21 (mediana 20,8 s)
+  frente al 2026-07-23 (~9 s). Los 165 s de la primera corrida eran el extremo optimista.
+- **El objetivo de <30 s por jornada se cumple en las 3 corridas**, pero el margen real es el peor
+  caso (24,6 s), no la mediana. Si se quiere holgura, la tarea S1 (factor constante del solver,
+  `todo-import-temporada.md`) sigue teniendo sentido.
 
 Por qué es tan rápido: el solver es un **greedy en TypeScript**, no un ILP exhaustivo (OR-Tools sigue
 siendo la Fase 3 pendiente). Recorre los slots una vez y para cada uno evalúa candidatos con podas
