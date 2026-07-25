@@ -12,7 +12,7 @@
 
 - **Regla:** re-medir el criterio de aceptación de forma independiente, con volumen de producción, proceso frío y un invariante propio. Si la premisa de un plan es un número, el primer paso del plan es re-medirlo.
 - **Why:** tres fallos reales sobrevivieron a informes de subagente en verde (identidades de equipo fundidas, un cuadrático `partidos × designaciones`, un solver lento con datos reales): los tests pasaban con seed pequeño. Y al revés, se planificó una tanda entera contra un solver "de 4,5-7 min por jornada" que nunca se midió — medido de verdad, ~9-21 s.
-- **How to apply:** `verify:bundle` en CI; `performance.now()` sobre el seed real, nunca sobre el generador sintético. Y mantén `MEMORY.md` en sync con el cuerpo del fichero: un índice desactualizado hizo perseguir el fantasma de los "4-7 min" tres veces. Ver [[import-temporada-completa]].
+- **How to apply:** `verify:bundle` en CI; `performance.now()` sobre el seed real, nunca sobre el generador sintético. **Una sola corrida tampoco es una medición**: la varianza entre procesos es de ~2,5x (la misma jornada dio 8,1 s y 24,6 s), así que reporta MEDIANA de ≥3 corridas en procesos separados y su rango, y valida contra el objetivo con el peor caso, no con la mediana. Mantén `MEMORY.md` en sync con el cuerpo del fichero: un índice desactualizado hizo perseguir el fantasma de los "4-7 min" tres veces. Ver [[import-temporada-completa]].
 
 ## Reglas de dominio dictadas en prosa: parsearlas CON el usuario
 
