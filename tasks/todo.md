@@ -115,6 +115,22 @@ Código vigente: cap 3 POR FRANJA + separaciones mínimas + matriz de elegibilid
 124.321 € (sin honorarios). **La temporada entera, jornada a jornada, se resuelve en 165 s**; la
 jornada más lenta son 10,6 s (objetivo <30 s cumplido con holgura, y ahora medido en las 29).
 
+**Qué mide la columna de segundos (y qué no)**: solo `solve()`, con el input ya construido y las 29
+jornadas encadenadas en el MISMO proceso. Comprobado el mismo día en proceso limpio sobre la jornada
+punta (1.309 partidos, 1.279 personas): enriquecido del input **10 ms** (irrelevante; el store de
+designaciones está vacío en el arnés), y `solve()` **15,5 s en frío / 16,3 s / 10,7 s** en llamadas
+sucesivas, contra los **8,1 s** que marcó esa misma jornada en el barrido. O sea, **varianza de ~2×
+entre procesos** — la misma que ya documentaba el diagnóstico del 2026-07-21 (mediana 20,8 s) frente
+al 2026-07-23 (~9 s). Los 165 s son la suma de UNA corrida concreta: con la varianza observada la
+temporada puede irse a ~300 s. Lo robusto es la conclusión, no la cifra: **el peor caso medido
+(16,3 s) sigue por debajo del objetivo de 30 s por jornada**.
+
+Por qué es tan rápido: el solver es un **greedy en TypeScript**, no un ILP exhaustivo (OR-Tools sigue
+siendo la Fase 3 pendiente). Recorre los slots una vez y para cada uno evalúa candidatos con podas
+duras (disponibilidad, elegibilidad, solapamiento, coche >30 km) — ~O(slots × personas) con podas, no
+búsqueda combinatoria. Además el barrido mide el caso CARO (jornada virgen): con la jornada ya
+designada y `forceExisting`, el solve baja a ~2 s.
+
 | Jornada         | Partidos | Slots | Cobertura  | Árbitro | Mesa   | Completos | Coste   | Carga máx | s    |
 | --------------- | -------- | ----- | ---------- | ------- | ------ | --------- | ------- | --------- | ---- |
 | 1 (2025-09-20)  | 229      | 849   | 100 %      | 100 %   | 100 %  | 100 %     | 1.712 € | 5         | 2,0  |
