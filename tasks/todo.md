@@ -105,6 +105,65 @@ Implementado en `lib/overlap.ts` (suelos + `sameMunicipality` en `OverlapResult`
 mismo pabellón <1:45). Baseline del BENCH regenerada (la salida del solver cambia a propósito).
 Coste en cobertura: J10/franja 83,7 % → **82,2 %**; J10/jornada 64,8 % → 64,0 %; J1 sigue al 100 %.
 
+### BARRIDO COMPLETO: las 29 jornadas con el modelo vigente (2026-07-25)
+
+Arnés nuevo `lib/__tests__/coverage-sweep.bench.test.ts` (guarda `SWEEP=1`, fuera de la suite).
+Código vigente: cap 3 POR FRANJA + separaciones mínimas + matriz de elegibilidad; seed 1,
+`forceExisting` sobre temporada sin designar, coords reales, enriquecido indexado igual que la ruta.
+
+**Cobertura ponderada de la temporada: 86,8 %** (58.910 / 67.872 slots). Coste de desplazamiento
+124.321 € (sin honorarios). **La temporada entera, jornada a jornada, se resuelve en 165 s**; la
+jornada más lenta son 10,6 s (objetivo <30 s cumplido con holgura, y ahora medido en las 29).
+
+| Jornada         | Partidos | Slots | Cobertura  | Árbitro | Mesa   | Completos | Coste   | Carga máx | s    |
+| --------------- | -------- | ----- | ---------- | ------- | ------ | --------- | ------- | --------- | ---- |
+| 1 (2025-09-20)  | 229      | 849   | 100 %      | 100 %   | 100 %  | 100 %     | 1.712 € | 5         | 2,0  |
+| 2 (2025-09-27)  | 330      | 1.200 | 99,8 %     | 99,7 %  | 100 %  | 99,4 %    | 2.512 € | 6         | 4,5  |
+| 3 (2025-10-04)  | 721      | 2.236 | 97,0 %     | 98,2 %  | 95,6 % | 93,2 %    | 4.473 € | 8         | 4,9  |
+| 4 (2025-10-11)  | 455      | 1.228 | 99,9 %     | 99,8 %  | 100 %  | 99,8 %    | 2.594 € | 6         | 2,6  |
+| 5 (2025-10-18)  | 1.207    | 3.278 | 87,0 %     | 91,6 %  | 82,0 % | 76,4 %    | 5.918 € | 9         | 8,5  |
+| 6 (2025-10-25)  | 1.309    | 3.686 | **81,1 %** | 85,1 %  | 76,8 % | 68,9 %    | 6.239 € | 10        | 8,1  |
+| 7 (2025-11-01)  | 53       | 212   | 100 %      | 100 %   | 100 %  | 100 %     | 433 €   | 4         | 0,6  |
+| 8 (2025-11-08)  | 1.189    | 3.347 | 84,5 %     | 88,0 %  | 80,8 % | 71,2 %    | 6.039 € | 9         | 6,4  |
+| 9 (2025-11-15)  | 1.309    | 3.686 | 82,0 %     | 87,4 %  | 76,1 % | 68,3 %    | 6.466 € | 10        | 8,4  |
+| 10 (2025-11-22) | 1.261    | 3.542 | 83,4 %     | 87,6 %  | 78,9 % | 70,2 %    | 6.299 € | 10        | 8,9  |
+| 11 (2025-11-29) | 1.248    | 3.559 | **81,5 %** | 86,5 %  | 76,1 % | 69,6 %    | 6.281 € | 9         | 8,5  |
+| 12 (2025-12-13) | 1.309    | 3.686 | **81,7 %** | 85,1 %  | 78,1 % | 68,3 %    | 6.230 € | 9         | 10,0 |
+| 13 (2025-12-20) | 288      | 1.153 | 90,5 %     | 86,3 %  | 94,6 % | 72,2 %    | 2.785 € | 6         | 1,8  |
+| 14 (2026-01-10) | 1.184    | 3.148 | 84,6 %     | 85,6 %  | 83,5 % | 73,0 %    | 5.620 € | 9         | 8,2  |
+| 15 (2026-01-17) | 1.183    | 3.146 | 83,2 %     | 84,5 %  | 81,8 % | 73,7 %    | 5.794 € | 9         | 7,2  |
+| 16 (2026-01-24) | 1.183    | 3.146 | 84,5 %     | 85,6 %  | 83,3 % | 74,0 %    | 5.613 € | 9         | 7,2  |
+| 17 (2026-01-31) | 977      | 2.612 | 89,3 %     | 92,0 %  | 86,3 % | 78,5 %    | 5.007 € | 8         | 5,7  |
+| 18 (2026-02-07) | 1.183    | 3.146 | 84,6 %     | 85,8 %  | 83,3 % | 73,0 %    | 5.645 € | 9         | 7,4  |
+| 19 (2026-02-14) | 1.183    | 3.146 | 87,0 %     | 89,8 %  | 83,7 % | 76,0 %    | 5.630 € | 9         | 7,5  |
+| 20 (2026-02-21) | 1.127    | 3.034 | 86,3 %     | 88,2 %  | 84,2 % | 75,4 %    | 5.488 € | 9         | 6,9  |
+| 21 (2026-02-28) | 828      | 2.341 | 92,2 %     | 91,9 %  | 92,6 % | 85,0 %    | 4.545 € | 8         | 4,9  |
+| 22 (2026-03-07) | 1.183    | 3.146 | 86,0 %     | 86,7 %  | 85,2 % | 76,0 %    | 5.623 € | 9         | 9,8  |
+| 23 (2026-03-14) | 1.183    | 3.146 | 87,8 %     | 90,4 %  | 84,8 % | 76,2 %    | 5.892 € | 9         | 10,6 |
+| 24 (2026-03-21) | 1.171    | 3.086 | 85,5 %     | 86,8 %  | 84,0 % | 75,4 %    | 5.494 € | 9         | 8,2  |
+| 25 (2026-03-28) | 141      | 564   | 98,2 %     | 96,5 %  | 100 %  | 92,9 %    | 1.372 € | 4         | 1,9  |
+| 26 (2026-04-11) | 496      | 1.291 | 99,9 %     | 99,9 %  | 100 %  | 99,8 %    | 2.471 € | 6         | 2,1  |
+| 27 (2026-04-18) | 357      | 792   | 100 %      | 100 %   | 100 %  | 100 %     | 1.390 € | 5         | 1,5  |
+| 28 (2026-04-25) | 209      | 430   | 100 %      | 100 %   | 100 %  | 100 %     | 687 €   | 4         | 1,0  |
+| 29 (2026-05-09) | 12       | 36    | 100 %      | 100 %   | 100 %  | 100 %     | 69 €    | 2         | 0,2  |
+
+Lecturas:
+
+- **La cobertura la marca el TAMAÑO de la jornada, no el calendario**: las 12 jornadas de ≥1.100
+  partidos caen al 81-87 %; las de ≤730 van del 90 % al 100 %. Ninguna jornada baja del 81 %.
+- **Mesa sigue por debajo de árbitro en las jornadas punta** (76-85 % vs 85-92 %), pero ya no por
+  déficit aritmético de personal (el cap por franja lo eliminó): con jornadas pequeñas la mesa llega
+  al 100 %, incluso por encima del árbitro (J13, J25).
+- **El cuello ya NO es la carga**: en los slots vacíos el motivo dominante es "sin disponibilidad"
+  (350-580 personas descartadas por slot) más solapamiento (120-155); "con carga máxima" aparece
+  con 1-32 y "nivel no elegible" solo pesa en jornadas flojas de categorías altas.
+- **Aviso metodológico**: la disponibilidad es SIMULADA por arquetipos, no declarada por personas
+  reales. El techo del 81-87 % en jornada punta mide el modelo de disponibilidad actual, no la
+  capacidad real del colectivo. Antes de concluir "faltan oficiales" hay que repetir el barrido con
+  disponibilidad real.
+- Detalle crudo (JSON por jornada, incluye motivos): se regenera con
+  `SWEEP=1 SWEEP_OUT=<ruta> npx vitest run src/lib/__tests__/coverage-sweep.bench.test.ts`.
+
 ### Simulación con cap por FRANJA (2026-07-25) — el cap era el cuello principal
 
 Mismo arnés que la medición de abajo, `forceExisting` sobre temporada sin designar, coords reales,
