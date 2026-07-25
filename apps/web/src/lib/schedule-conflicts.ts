@@ -10,7 +10,13 @@
 // (lib/utils.ts) sobre la distancia entre los municipios de los pabellones; viaje = 0 si
 // es el mismo pabellón.
 
-import { pairOverlap, timeToMinutes, MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN } from './overlap'
+import {
+  pairOverlap,
+  timeToMinutes,
+  MATCH_DURATION_MIN,
+  CONFLICT_MARGIN_MIN,
+  PREFERRED_GAP_SAME_VENUE_MIN,
+} from './overlap'
 import type { DesignationStatus } from './mock-data-client'
 
 export { MATCH_DURATION_MIN, CONFLICT_MARGIN_MIN }
@@ -76,8 +82,9 @@ function buildConflict(
  *   par, incluso mismo pabellón: nadie está en dos partidos a la vez).
  * - ERROR `insufficient-gap`: el hueco entre dos partidos CONSECUTIVOS (ordenados por
  *   inicio) es menor que el viaje estimado entre ambos.
- * - AVISO `tight-gap`: el hueco es menor que viaje + CONFLICT_MARGIN_MIN. Exento si
- *   ambos partidos son en el mismo pabellón (encadenar en la misma pista es deseable).
+ * - AVISO `tight-gap`: el hueco es menor que viaje + CONFLICT_MARGIN_MIN entre pabellones
+ *   distintos; en el MISMO pabellón, cuando encadena a menos de
+ *   PREFERRED_GAP_SAME_VENUE_MIN (1:30 entre inicios es válido, 1:45 es lo deseable).
  *
  * Si el viaje entre un par no es estimable (`travelKnown=false`, municipio de alguno de
  * los pabellones sin resolver) no se emite `insufficient-gap` ni `tight-gap` para ese
@@ -125,6 +132,9 @@ export function detectDayConflicts(
     if (gapMin < travelMin) {
       conflicts.push(buildConflict(a, b, 'error', 'insufficient-gap', gapMin, travelMin))
     } else if (!sameVenue && gapMin < travelMin + CONFLICT_MARGIN_MIN) {
+      conflicts.push(buildConflict(a, b, 'warning', 'tight-gap', gapMin, travelMin))
+    } else if (sameVenue && gapMin < PREFERRED_GAP_SAME_VENUE_MIN) {
+      // Mismo pabellón encadenado a 1:30: válido, pero lo deseable es 1:45.
       conflicts.push(buildConflict(a, b, 'warning', 'tight-gap', gapMin, travelMin))
     }
   }

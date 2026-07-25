@@ -110,11 +110,26 @@ describe('detectDayConflicts', () => {
     expect(conflicts).toHaveLength(0)
   })
 
-  it('exime del aviso de hueco corto cuando es el mismo pabellón (encadenar es deseable)', () => {
-    // Mismo venueId → viaje=0. Hueco de 5min sería aviso (5 < 0+30) si no estuviera exento.
+  it('avisa (no bloquea) al encadenar en el mismo pabellón a menos de 1:45', () => {
+    // Mismo venueId → viaje=0. Inicios a 600 y 695 = 1:35 entre partidos: válido
+    // (1:30 se admite), pero por debajo del 1:45 deseable → aviso, no error.
     const entries = [
       entry({ matchId: 'm-a', startMin: 600, venueId: 'venue-a', municipalityId: 'muni-a' }),
       entry({ matchId: 'm-b', startMin: 695, venueId: 'venue-a', municipalityId: 'muni-a' }),
+    ]
+
+    const conflicts = detectDayConflicts(entries, getDistance20km)
+
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0].severity).toBe('warning')
+    expect(conflicts[0].reason).toBe('tight-gap')
+  })
+
+  it('no avisa si el encadenado en el mismo pabellón llega a 1:45', () => {
+    // Inicios a 600 y 705 = 1:45 exactos → sin conflicto.
+    const entries = [
+      entry({ matchId: 'm-a', startMin: 600, venueId: 'venue-a', municipalityId: 'muni-a' }),
+      entry({ matchId: 'm-b', startMin: 705, venueId: 'venue-a', municipalityId: 'muni-a' }),
     ]
 
     const conflicts = detectDayConflicts(entries, getDistance20km)

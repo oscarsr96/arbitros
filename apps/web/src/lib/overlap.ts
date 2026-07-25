@@ -12,6 +12,17 @@ import { estimateTravelMinutes } from './utils'
 export const MATCH_DURATION_MIN = 90
 export const CONFLICT_MARGIN_MIN = 30
 
+// Suelos mínimos de separación ENTRE INICIOS de dos partidos consecutivos de la
+// misma persona (regla de dominio FBM, usuario 2026-07-25). Expresados aquí como
+// hueco mínimo tras el fin del primero (= separación − MATCH_DURATION_MIN):
+//   mismo pabellón            1:30 válido (hueco 0), 1:45 deseable (hueco 15) → SOFT
+//   mismo municipio, otro pabellón  2:00 (hueco 30)                          → DURO
+//   municipios distintos      2:30 (hueco 60)                                → DURO
+// Los dos duros son SUELOS: si el viaje estimado + CONFLICT_MARGIN_MIN pide más, manda ese.
+export const PREFERRED_GAP_SAME_VENUE_MIN = 15
+export const MIN_GAP_SAME_MUNI_MIN = 30
+export const MIN_GAP_DIFF_MUNI_MIN = 60
+
 /** Datos mínimos de un partido de UNA persona necesarios para comparar solapamiento. */
 export interface OverlapMatch {
   date: string
@@ -37,6 +48,8 @@ export interface OverlapResult {
   travelMin: number
   /** true si a y b comparten pabellón. */
   sameVenue: boolean
+  /** true si a y b son en el mismo municipio (y está resuelto en ambos). */
+  sameMunicipality: boolean
   /**
    * true si el viaje es estimable: mismo pabellón, o ambos municipios resueltos
    * (no vacíos/falsy). Si es false, `travelMin` es 0 y los consumidores NO deben aplicar
@@ -63,8 +76,17 @@ export function timeToMinutes(time: string): number {
 export function pairOverlap(a: OverlapMatch, b: OverlapMatch, ctx: OverlapCtx): OverlapResult {
   const sameVenue = a.venueId === b.venueId
 
+  const sameMunicipality = Boolean(a.municipalityId) && a.municipalityId === b.municipalityId
+
   if (a.date !== b.date)
-    return { intervalsOverlap: false, gapMin: Infinity, travelMin: 0, sameVenue, travelKnown: true }
+    return {
+      intervalsOverlap: false,
+      gapMin: Infinity,
+      travelMin: 0,
+      sameVenue,
+      sameMunicipality,
+      travelKnown: true,
+    }
 
   const [e, l] = a.startMin <= b.startMin ? [a, b] : [b, a]
   const dur = ctx.durationMin ?? MATCH_DURATION_MIN
@@ -76,19 +98,22 @@ export function pairOverlap(a: OverlapMatch, b: OverlapMatch, ctx: OverlapCtx): 
       : estimateTravelMinutes(ctx.getDistanceKm(e.municipalityId, l.municipalityId), ctx.hasCar)
   const gapMin = l.startMin - (e.startMin + dur)
 
-  return { intervalsOverlap, gapMin, travelMin, sameVenue, travelKnown }
+  return { intervalsOverlap, gapMin, travelMin, sameVenue, sameMunicipality, travelKnown }
 }
 
 /**
  * Decisión de conflicto duro para el SOLVER (más estricta que el panel de verificación:
  * exige un colchón adicional `CONFLICT_MARGIN_MIN` sobre el viaje estimado, salvo cuando
- * ambos partidos son en el mismo pabellón, donde encadenar sin margen es válido). Si el
- * viaje no es estimable (`travelKnown=false`, municipio sin resolver) el chequeo de viaje
- * se omite por completo: solo bloquea el solape real de intervalos.
+ * ambos partidos son en el mismo pabellón, donde encadenar sin margen es válido — 1:30 se
+ * acepta; el 1:45 deseable es preferencia SOFT del solver, no bloqueo). Entre pabellones
+ * distintos rige además el suelo mínimo de la regla FBM (2:00 dentro del municipio, 2:30
+ * entre municipios), que manda cuando el viaje estimado se queda corto. Si el viaje no es
+ * estimable (`travelKnown=false`, municipio sin resolver) el chequeo de viaje se omite por
+ * completo: solo bloquea el solape real de intervalos.
  */
 export function isSolverConflict(o: OverlapResult): boolean {
-  return (
-    o.intervalsOverlap ||
-    (!o.sameVenue && o.travelKnown && o.gapMin < o.travelMin + CONFLICT_MARGIN_MIN)
-  )
+  if (o.intervalsOverlap) return true
+  if (o.sameVenue || !o.travelKnown) return false
+  const floor = o.sameMunicipality ? MIN_GAP_SAME_MUNI_MIN : MIN_GAP_DIFF_MUNI_MIN
+  return o.gapMin < Math.max(o.travelMin + CONFLICT_MARGIN_MIN, floor)
 }
